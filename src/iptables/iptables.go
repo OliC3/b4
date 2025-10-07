@@ -230,7 +230,7 @@ func buildManifest(cfg *config.Config) Manifest {
 			buildNFQSpec(queueNum, threads)...,
 		)
 		udpSpec := append(
-			[]string{"-p", "udp", "--dport", "443", // <— important: avoid DNS!
+			[]string{"-p", "udp", "--dport", "443",
 				"-m", "connbytes", "--connbytes-dir", "original",
 				"--connbytes-mode", "packets", "--connbytes", "0:8"},
 			buildNFQSpec(queueNum, threads)...,
