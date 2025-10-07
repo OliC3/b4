@@ -29,12 +29,12 @@ func main() {
 		}
 	}
 
-	w := nfq.NewWorker(&cfg)
-	if err := w.Start(); err != nil {
+	pool := nfq.NewPool(uint16(cfg.QueueStartNum), cfg.Threads, &cfg)
+	if err := pool.Start(); err != nil {
 		log.Errorf("nfqueue start failed: %v", err)
 		os.Exit(1)
 	}
-	defer w.Stop()
+	defer pool.Stop()
 
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)

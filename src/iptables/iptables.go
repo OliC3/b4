@@ -122,6 +122,15 @@ func saveSysctlSnapshot(m map[string]string) {
 	_ = os.WriteFile(sysctlSnapPath, b, 0600)
 }
 
+func buildNFQSpec(queueStart, threads int) []string {
+	if threads > 1 {
+		start := strconv.Itoa(queueStart)
+		end := strconv.Itoa(queueStart + threads - 1)
+		return []string{"-j", "NFQUEUE", "--queue-balance", start + ":" + end, "--queue-bypass"}
+	}
+	return []string{"-j", "NFQUEUE", "--queue-num", strconv.Itoa(queueStart), "--queue-bypass"}
+}
+
 func (s SysctlSetting) Apply() {
 	snap := loadSysctlSnapshot()
 	if _, ok := snap[s.Name]; !ok {
@@ -203,6 +212,7 @@ func buildManifest(cfg *config.Config) Manifest {
 		ipts = []string{"iptables"}
 	}
 	queueNum := cfg.QueueStartNum
+	threads := cfg.Threads
 	chainName := "B4"
 	markAccept := "32768/32768"
 
@@ -210,21 +220,28 @@ func buildManifest(cfg *config.Config) Manifest {
 	var rules []Rule
 
 	for _, ipt := range ipts {
-		yuch := Chain{IPT: ipt, Table: "mangle", Name: chainName}
-		chains = append(chains, yuch)
+		ch := Chain{IPT: ipt, Table: "mangle", Name: chainName}
+		chains = append(chains, ch)
 
-		tcpRule := Rule{
-			IPT: ipt, Table: "mangle", Chain: chainName, Action: "A",
-			Spec: []string{"-p", "tcp", "--dport", "443", "-m", "connbytes", "--connbytes-dir", "original", "--connbytes-mode", "packets", "--connbytes", "0:19", "-j", "NFQUEUE", "--queue-num", strconv.Itoa(queueNum), "--queue-bypass"},
-		}
-		udpRule := Rule{
-			IPT: ipt, Table: "mangle", Chain: chainName, Action: "A",
-			Spec: []string{"-p", "udp", "-m", "connbytes", "--connbytes-dir", "original", "--connbytes-mode", "packets", "--connbytes", "0:8", "-j", "NFQUEUE", "--queue-num", strconv.Itoa(queueNum), "--queue-bypass"},
-		}
-		jumpPostrouting := Rule{IPT: ipt, Table: "mangle", Chain: "POSTROUTING", Action: "A", Spec: []string{"-j", chainName}}
-		acceptOutputMark := Rule{IPT: ipt, Table: "mangle", Chain: "OUTPUT", Action: "I", Spec: []string{"-m", "mark", "--mark", markAccept, "-j", "ACCEPT"}}
+		tcpSpec := append(
+			[]string{"-p", "tcp", "--dport", "443",
+				"-m", "connbytes", "--connbytes-dir", "original",
+				"--connbytes-mode", "packets", "--connbytes", "0:19"},
+			buildNFQSpec(queueNum, threads)...,
+		)
+		udpSpec := append(
+			[]string{"-p", "udp", "--dport", "443", // <— important: avoid DNS!
+				"-m", "connbytes", "--connbytes-dir", "original",
+				"--connbytes-mode", "packets", "--connbytes", "0:8"},
+			buildNFQSpec(queueNum, threads)...,
+		)
 
-		rules = append(rules, tcpRule, udpRule, jumpPostrouting, acceptOutputMark)
+		rules = append(rules,
+			Rule{IPT: ipt, Table: "mangle", Chain: chainName, Action: "A", Spec: tcpSpec},
+			Rule{IPT: ipt, Table: "mangle", Chain: chainName, Action: "A", Spec: udpSpec},
+			Rule{IPT: ipt, Table: "mangle", Chain: "POSTROUTING", Action: "A", Spec: []string{"-j", chainName}},
+			Rule{IPT: ipt, Table: "mangle", Chain: "OUTPUT", Action: "I", Spec: []string{"-m", "mark", "--mark", markAccept, "-j", "ACCEPT"}},
+		)
 	}
 
 	sysctls := []SysctlSetting{

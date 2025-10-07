@@ -22,43 +22,32 @@ type flowState struct {
 }
 
 type Worker struct {
-	cfg    *config.Config
-	ctx    context.Context
-	cancel context.CancelFunc
-	qs     []*nfqueue.Nfqueue
-	wg     sync.WaitGroup
-
-	mu    sync.Mutex
-	flows map[string]*flowState
-	ttl   time.Duration
-	limit int
-}
-
-func NewWorker(cfg *config.Config) *Worker {
-	ctx, cancel := context.WithCancel(context.Background())
-	return &Worker{
-		cfg:    cfg,
-		ctx:    ctx,
-		cancel: cancel,
-		flows:  make(map[string]*flowState),
-		ttl:    10 * time.Second,
-		limit:  8192,
-	}
+	cfg     *config.Config
+	qnum    uint16
+	ctx     context.Context
+	cancel  context.CancelFunc
+	q       *nfqueue.Nfqueue
+	wg      sync.WaitGroup
+	mu      sync.Mutex
+	flows   map[string]*flowState
+	ttl     time.Duration
+	limit   int
+	matcher *sni.SuffixSet
 }
 
 func (w *Worker) Start() error {
-	log.Infof("Starting NFQueue worker on queue %d", w.cfg.QueueStartNum)
+	log.Infof("Starting NFQueue worker on queue %d", w.qnum)
+
 	flags := nfqueue.NfQaCfgFlagFailOpen
 	if w.cfg.UseGSO {
 		flags |= nfqueue.NfQaCfgFlagGSO
-		log.Infof("GSO flag enabled")
 	}
 	if w.cfg.UseConntrack {
 		flags |= nfqueue.NfQaCfgFlagConntrack
-		log.Infof("Conntrack flag enabled")
 	}
+
 	c := nfqueue.Config{
-		NfQueue:      uint16(w.cfg.QueueStartNum),
+		NfQueue:      w.qnum, // <— use worker’s queue id
 		MaxPacketLen: 0xffff,
 		MaxQueueLen:  4096,
 		Copymode:     nfqueue.NfQnlCopyPacket,
@@ -69,36 +58,36 @@ func (w *Worker) Start() error {
 	if err != nil {
 		return err
 	}
-	w.qs = append(w.qs, q)
+	w.q = q
 	w.wg.Add(1)
 	go w.gc()
 	w.wg.Add(1)
-	go func(qx *nfqueue.Nfqueue) {
+	go func() {
 		defer w.wg.Done()
 		pid := os.Getpid()
-		log.Infof("NFQ bound pid=%d queue=%d", pid, w.cfg.QueueStartNum)
-		_ = qx.RegisterWithErrorFunc(w.ctx, func(a nfqueue.Attribute) int {
+		log.Infof("NFQ bound pid=%d queue=%d", pid, w.qnum)
+		_ = q.RegisterWithErrorFunc(w.ctx, func(a nfqueue.Attribute) int {
 			if a.PacketID == nil {
 				return 0
 			}
 			id := *a.PacketID
 			if a.Payload == nil || len(*a.Payload) == 0 {
-				_ = qx.SetVerdict(id, nfqueue.NfAccept)
+				_ = q.SetVerdict(id, nfqueue.NfAccept)
 				return 0
 			}
 			raw := *a.Payload
 			v := raw[0] >> 4
 			if v != 4 {
-				_ = qx.SetVerdict(id, nfqueue.NfAccept)
+				_ = q.SetVerdict(id, nfqueue.NfAccept)
 				return 0
 			}
 			if len(raw) < 20 {
-				_ = qx.SetVerdict(id, nfqueue.NfAccept)
+				_ = q.SetVerdict(id, nfqueue.NfAccept)
 				return 0
 			}
 			ihl := int(raw[0]&0x0f) * 4
 			if len(raw) < ihl {
-				_ = qx.SetVerdict(id, nfqueue.NfAccept)
+				_ = q.SetVerdict(id, nfqueue.NfAccept)
 				return 0
 			}
 			proto := raw[9]
@@ -107,12 +96,12 @@ func (w *Worker) Start() error {
 			if proto == 6 && len(raw) >= ihl+20 {
 				tcp := raw[ihl:]
 				if len(tcp) < 20 {
-					_ = qx.SetVerdict(id, nfqueue.NfAccept)
+					_ = q.SetVerdict(id, nfqueue.NfAccept)
 					return 0
 				}
 				datOff := int((tcp[12]>>4)&0x0f) * 4
 				if len(tcp) < datOff {
-					_ = qx.SetVerdict(id, nfqueue.NfAccept)
+					_ = q.SetVerdict(id, nfqueue.NfAccept)
 					return 0
 				}
 				payload := tcp[datOff:]
@@ -138,14 +127,14 @@ func (w *Worker) Start() error {
 					}
 				}
 			}
-			_ = qx.SetVerdict(id, nfqueue.NfAccept)
+			_ = q.SetVerdict(id, nfqueue.NfAccept)
 			return 0
 		}, func(err error) int {
 			log.Errorf("NFQ error: %v", err)
 			return 0
 		})
 		<-w.ctx.Done()
-	}(q)
+	}()
 	return nil
 }
 
@@ -199,8 +188,8 @@ func (w *Worker) gc() {
 
 func (w *Worker) Stop() {
 	w.cancel()
-	for _, q := range w.qs {
-		_ = q.Close()
+	if w.q != nil {
+		_ = w.q.Close()
 	}
 	w.wg.Wait()
 }
