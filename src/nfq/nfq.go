@@ -111,7 +111,7 @@ func (w *Worker) Start() error {
 					k := fmt.Sprintf("%s:%d>%s:%d", src.String(), sport, dst.String(), dport)
 					host, ok := w.feed(k, payload)
 					if ok && host != "" {
-						log.Infof("NFQ TLS SNI v4: %s %s:%d -> %s:%d", host, src.String(), sport, dst.String(), dport)
+						log.Infof("TCP: %s %s:%d -> %s:%d", host, src.String(), sport, dst.String(), dport)
 					}
 				}
 			} else if proto == 17 && len(raw) >= ihl+8 {
@@ -122,7 +122,7 @@ func (w *Worker) Start() error {
 					dport := binary.BigEndian.Uint16(udp[2:4])
 					if dport == 443 {
 						if host, ok := sni.ParseQUICClientHelloSNI(payload); ok && host != "" {
-							log.Infof("NFQ QUIC SNI v4: %s %s:%d -> %s:%d", host, src.String(), sport, dst.String(), dport)
+							log.Infof("QUIC: %s %s:%d -> %s:%d", host, src.String(), sport, dst.String(), dport)
 						}
 					}
 				}
