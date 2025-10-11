@@ -17,6 +17,7 @@ require (
 
 require (
 	github.com/florianl/go-nfqueue v1.3.2
+	github.com/google/gopacket v1.1.19
 	github.com/spf13/cobra v1.10.1
 	github.com/urlesistiana/v2dat v0.0.0-20221215035016-47b8ee51fb52
 	go.uber.org/zap v1.27.0

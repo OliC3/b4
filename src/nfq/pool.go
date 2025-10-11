@@ -6,10 +6,13 @@ import (
 
 	"github.com/daniellavrushin/b4/config"
 	"github.com/daniellavrushin/b4/sni"
+	"github.com/florianl/go-nfqueue"
 )
 
 type Pool struct {
-	workers []*Worker
+	workers  []*Worker
+	packetCh chan nfqueue.Attribute
+	nfq      *nfqueue.Nfqueue
 }
 
 func NewWorkerWithQueue(cfg *config.Config, qnum uint16) *Worker {
