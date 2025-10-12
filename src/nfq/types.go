@@ -30,4 +30,5 @@ type Worker struct {
 	matcher *sni.SuffixSet
 	sock    *sock.Sender
 	frag    *sock.Fragmenter
+	closed  bool
 }

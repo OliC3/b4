@@ -2,10 +2,13 @@ package nfq
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"net"
 	"os"
+	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/daniellavrushin/b4/log"
@@ -25,7 +28,7 @@ func markFakeOnce(key string, ttl time.Duration) bool {
 	return true
 }
 
-func (w *Worker) Start() error {
+func (w *Worker) Start(sharedCh chan nfqueue.Attribute) error {
 	s, err := sock.NewSenderWithMark(int(w.cfg.Mark))
 	if err != nil {
 		return err
@@ -48,10 +51,22 @@ func (w *Worker) Start() error {
 	w.wg.Add(1)
 	go w.gc()
 
+	w.wg.Add(1)
 	go func() {
 		pid := os.Getpid()
 		log.Infof("NFQ bound pid=%d queue=%d", pid, w.qnum)
+		defer w.wg.Done()
 		_ = q.RegisterWithErrorFunc(w.ctx, func(a nfqueue.Attribute) int {
+			select {
+			case <-w.ctx.Done():
+				return 0
+			default:
+			}
+			select {
+			case sharedCh <- a:
+			default:
+			}
+
 			if a.PacketID == nil || a.Payload == nil || len(*a.Payload) == 0 {
 				return 0
 			}
@@ -176,8 +191,21 @@ func (w *Worker) Start() error {
 
 			_ = q.SetVerdict(id, nfqueue.NfAccept)
 			return 0
-		}, func(err error) int {
-			log.Errorf("nfq: %v", err)
+		}, func(e error) int {
+			if w.ctx.Err() != nil {
+				return 0
+			}
+			if errors.Is(e, os.ErrClosed) || errors.Is(e, net.ErrClosed) || errors.Is(e, syscall.EBADF) {
+				return 0
+			}
+			if ne, ok := e.(net.Error); ok && ne.Timeout() {
+				return 0
+			}
+			msg := e.Error()
+			if strings.Contains(msg, "use of closed file") || strings.Contains(msg, "file descriptor") {
+				return 0
+			}
+			log.Errorf("nfq: %v", e)
 			return 0
 		})
 	}()
@@ -545,19 +573,27 @@ func locateSNI(payload []byte) (start, end int, ok bool) {
 	return 0, 0, false
 }
 
+func isClosedErr(err error) bool {
+	return errors.Is(err, os.ErrClosed) || errors.Is(err, net.ErrClosed) || errors.Is(err, syscall.EBADF)
+}
+
 func (w *Worker) Stop() {
 	if w.cancel != nil {
 		w.cancel()
 	}
-	w.wg.Wait()
 	if w.q != nil {
 		_ = w.q.Close()
+	}
+	done := make(chan struct{})
+	go func() { w.wg.Wait(); close(done) }()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
 	}
 	if w.sock != nil {
 		w.sock.Close()
 	}
 }
-
 func (w *Worker) gc() {
 	defer w.wg.Done()
 	t := time.NewTicker(2 * time.Second)

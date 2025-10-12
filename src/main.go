@@ -117,7 +117,6 @@ func runB4(cmd *cobra.Command, args []string) error {
 	if err := pool.Start(); err != nil {
 		return fmt.Errorf("netfilter queue start failed: %w", err)
 	}
-	defer pool.Stop()
 
 	log.Infof("B4 is running. Press Ctrl+C to stop")
 
@@ -127,6 +126,7 @@ func runB4(cmd *cobra.Command, args []string) error {
 	sig := <-sigChan
 
 	log.Infof("Received signal: %v, shutting down gracefully", sig)
+	pool.Stop()
 
 	// Cleanup iptables rules
 	if !cfg.SkipIpTables {

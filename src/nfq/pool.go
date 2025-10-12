@@ -71,7 +71,7 @@ func NewPool(start uint16, threads int, cfg *config.Config) *Pool {
 
 func (p *Pool) Start() error {
 	for _, w := range p.workers {
-		if err := w.Start(); err != nil {
+		if err := w.Start(p.packetCh); err != nil {
 			for _, x := range p.workers {
 				x.Stop()
 			}
