@@ -55,9 +55,12 @@ func BuildFakeSNIPacket(original []byte, cfg *config.Config) []byte {
 	case "ttl":
 		fake[8] = cfg.FakeTTL
 	case "pastseq":
-		dlen := len(original) - ipHdrLen - tcpHdrLen
+		off := uint32(cfg.FakeSeqOffset)
+		if off == 0 {
+			off = 8192
+		}
 		seq := binary.BigEndian.Uint32(fake[ipHdrLen+4 : ipHdrLen+8])
-		binary.BigEndian.PutUint32(fake[ipHdrLen+4:ipHdrLen+8], seq-uint32(dlen))
+		binary.BigEndian.PutUint32(fake[ipHdrLen+4:ipHdrLen+8], seq-off)
 	case "randseq":
 		dlen := len(original) - ipHdrLen - tcpHdrLen
 		if cfg.FakeSeqOffset == 0 {

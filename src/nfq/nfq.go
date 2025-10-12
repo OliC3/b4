@@ -219,11 +219,15 @@ func (w *Worker) dropAndInjectQUIC(raw []byte, dst net.IP) {
 
 	if w.cfg.FragSNIReverse {
 		_ = w.sock.SendIPv4(frags[0], dst)
-		time.Sleep(time.Duration(w.cfg.Seg2Delay) * time.Millisecond)
+		if w.cfg.Seg2Delay > 0 {
+			time.Sleep(time.Duration(w.cfg.Seg2Delay) * time.Millisecond)
+		}
 		_ = w.sock.SendIPv4(frags[1], dst)
 	} else {
 		_ = w.sock.SendIPv4(frags[1], dst)
-		time.Sleep(time.Duration(w.cfg.Seg2Delay) * time.Millisecond)
+		if w.cfg.Seg2Delay > 0 {
+			time.Sleep(time.Duration(w.cfg.Seg2Delay) * time.Millisecond)
+		}
 		_ = w.sock.SendIPv4(frags[0], dst)
 	}
 }
@@ -258,20 +262,6 @@ func (w *Worker) dropAndInjectTCP(raw []byte, dst net.IP, injectFake bool) {
 	default:
 		w.sendTCPFragments(raw, dst)
 	}
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
 }
 
 func (w *Worker) feed(key string, chunk []byte) (string, bool) {
@@ -315,19 +305,15 @@ func (w *Worker) sendTCPFragments(packet []byte, dst net.IP) {
 	}
 
 	splitPos := w.cfg.FragSNIPosition
-	if splitPos <= 0 || splitPos >= payloadLen {
-		splitPos = 1
-	}
+	payload := packet[payloadStart:]
 
 	if w.cfg.FragMiddleSNI {
-		payload := packet[payloadStart:]
-		for i := 0; i < min(len(payload)-20, 100); i++ {
-			if i+4 < len(payload) && payload[i] == '.' {
-				if (payload[i+1] == 'c' && payload[i+2] == 'o' && payload[i+3] == 'm') ||
-					(payload[i+1] == 'o' && payload[i+2] == 'r' && payload[i+3] == 'g') {
-					splitPos = i + 2
-					break
-				}
+		if s, e, ok := locateSNI(payload); ok && e-s >= 4 {
+			log.Tracef("SNI found at %d..%d of %d", s, e, payloadLen)
+			splitPos = s + (e-s)/2
+		} else {
+			if splitPos <= 0 || splitPos >= payloadLen {
+				splitPos = 1
 			}
 		}
 	}
@@ -398,11 +384,15 @@ func (w *Worker) sendIPFragments(packet []byte, dst net.IP) {
 
 	if w.cfg.FragSNIReverse {
 		_ = w.sock.SendIPv4(frag2, dst)
-		time.Sleep(time.Duration(w.cfg.Seg2Delay) * time.Millisecond)
+		if w.cfg.Seg2Delay > 0 {
+			time.Sleep(time.Duration(w.cfg.Seg2Delay) * time.Millisecond)
+		}
 		_ = w.sock.SendIPv4(frag1, dst)
 	} else {
 		_ = w.sock.SendIPv4(frag1, dst)
-		time.Sleep(time.Duration(w.cfg.Seg2Delay) * time.Millisecond)
+		if w.cfg.Seg2Delay > 0 {
+			time.Sleep(time.Duration(w.cfg.Seg2Delay) * time.Millisecond)
+		}
 		_ = w.sock.SendIPv4(frag2, dst)
 	}
 }
@@ -411,26 +401,148 @@ func (w *Worker) sendFakeSNISequence(original []byte, dst net.IP) {
 	if !w.cfg.FakeSNI || w.cfg.FakeSNISeqLength <= 0 {
 		return
 	}
+
 	fake := sock.BuildFakeSNIPacket(original, w.cfg)
+	ipHdrLen := int((fake[0] & 0x0F) * 4)
+	tcpHdrLen := int((fake[ipHdrLen+12] >> 4) * 4)
+
 	for i := 0; i < w.cfg.FakeSNISeqLength; i++ {
 		_ = w.sock.SendIPv4(fake, dst)
+
+		// Update for next iteration
 		if i+1 < w.cfg.FakeSNISeqLength {
+			// Increment IP ID
 			id := binary.BigEndian.Uint16(fake[4:6])
 			binary.BigEndian.PutUint16(fake[4:6], id+1)
+
+			// Adjust sequence number for non-past/rand strategies
 			if w.cfg.FakeStrategy != "pastseq" && w.cfg.FakeStrategy != "randseq" {
-				ipHdrLen := int((fake[0] & 0x0F) * 4)
-				tcpHdrLen := int(((fake[ipHdrLen+12] >> 4) & 0xF) * 4)
-				plen := len(fake) - (ipHdrLen + tcpHdrLen)
+				payloadLen := len(fake) - (ipHdrLen + tcpHdrLen)
 				seq := binary.BigEndian.Uint32(fake[ipHdrLen+4 : ipHdrLen+8])
-				binary.BigEndian.PutUint32(fake[ipHdrLen+4:ipHdrLen+8], seq+uint32(plen))
+				binary.BigEndian.PutUint32(fake[ipHdrLen+4:ipHdrLen+8], seq+uint32(payloadLen))
 				sock.FixIPv4Checksum(fake[:ipHdrLen])
 				sock.FixTCPChecksum(fake)
 			}
-			if w.cfg.Seg2Delay > 0 {
-				time.Sleep(time.Duration(w.cfg.Seg2Delay) * time.Millisecond)
-			}
 		}
 	}
+}
+
+// locateSNI returns start and end (relative to payload start) of the SNI hostname bytes.
+func locateSNI(payload []byte) (start, end int, ok bool) {
+	// TLS record header: ContentType(1)=0x16, Version(2), Length(2)
+	if len(payload) < 5 || payload[0] != 0x16 {
+		return 0, 0, false
+	}
+	recLen := int(binary.BigEndian.Uint16(payload[3:5]))
+	// Be tolerant if the full record isn't present yet
+	if 5+recLen > len(payload) {
+		recLen = len(payload) - 5
+	}
+	p := 5 // handshake starts right after record header
+
+	// Handshake header: HandshakeType(1)=client_hello(1), Length(3)
+	if p+4 > len(payload) || payload[p] != 0x01 {
+		return 0, 0, false
+	}
+	hsLen := int(payload[p+1])<<16 | int(payload[p+2])<<8 | int(payload[p+3])
+	p += 4
+	if p+hsLen > len(payload) {
+		hsLen = len(payload) - p
+	}
+
+	// Now inside ClientHello body:
+	// client_version(2) + random(32)
+	if p+2+32 > len(payload) {
+		return 0, 0, false
+	}
+	p += 2 + 32
+
+	// session_id
+	if p >= len(payload) {
+		return 0, 0, false
+	}
+	sidLen := int(payload[p])
+	p++
+	if p+sidLen > len(payload) {
+		return 0, 0, false
+	}
+	p += sidLen
+
+	// cipher_suites
+	if p+2 > len(payload) {
+		return 0, 0, false
+	}
+	csLen := int(binary.BigEndian.Uint16(payload[p : p+2]))
+	p += 2
+	if p+csLen > len(payload) {
+		return 0, 0, false
+	}
+	p += csLen
+
+	// compression_methods
+	if p >= len(payload) {
+		return 0, 0, false
+	}
+	cmLen := int(payload[p])
+	p++
+	if p+cmLen > len(payload) {
+		return 0, 0, false
+	}
+	p += cmLen
+
+	// extensions
+	if p+2 > len(payload) {
+		return 0, 0, false
+	}
+	extLen := int(binary.BigEndian.Uint16(payload[p : p+2]))
+	p += 2
+	if p+extLen > len(payload) {
+		extLen = len(payload) - p
+	}
+	e := p
+	ee := p + extLen
+
+	// Walk extensions to find server_name (type=0)
+	for e+4 <= ee {
+		extType := binary.BigEndian.Uint16(payload[e : e+2])
+		extDataLen := int(binary.BigEndian.Uint16(payload[e+2 : e+4]))
+		e += 4
+		if e+extDataLen > ee {
+			break
+		}
+
+		if extType == 0 && extDataLen >= 5 {
+			q := e
+			// server_name_list length (2)
+			if q+2 > e+extDataLen {
+				break
+			}
+			listLen := int(binary.BigEndian.Uint16(payload[q : q+2]))
+			q += 2
+			if q+listLen > e+extDataLen {
+				break
+			}
+			// First item: name_type(1) == 0 (host_name)
+			if q+3 > e+extDataLen {
+				break
+			}
+			nameType := payload[q]
+			q++
+			if nameType != 0 {
+				break
+			}
+			nameLen := int(binary.BigEndian.Uint16(payload[q : q+2]))
+			q += 2
+			if nameLen == 0 || q+nameLen > e+extDataLen {
+				break
+			}
+			// q is absolute offset into payload
+			return q, q + nameLen, true
+		}
+
+		e += extDataLen
+	}
+	return 0, 0, false
 }
 
 func (w *Worker) Stop() {
