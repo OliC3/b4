@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/daniellavrushin/b4/log"
@@ -12,6 +13,17 @@ import (
 	"github.com/daniellavrushin/b4/sock"
 	"github.com/florianl/go-nfqueue"
 )
+
+var sentFake sync.Map
+
+func markFakeOnce(key string, ttl time.Duration) bool {
+	_, loaded := sentFake.LoadOrStore(key, struct{}{})
+	if loaded {
+		return false
+	}
+	time.AfterFunc(ttl, func() { sentFake.Delete(key) })
+	return true
+}
 
 func (w *Worker) Start() error {
 	s, err := sock.NewSenderWithMark(int(w.cfg.Mark))
@@ -96,8 +108,9 @@ func (w *Worker) Start() error {
 					k := fmt.Sprintf("%s:%d>%s:%d", src.String(), sport, dst.String(), dport)
 					host, ok := w.feed(k, payload)
 					if ok && w.matcher.Match(host) {
+						onlyOnce := markFakeOnce(k, 20*time.Second)
 						log.Infof("TCP: %s %s:%d -> %s:%d", host, src.String(), sport, dst.String(), dport)
-						w.dropAndInjectTCP(raw, dst)
+						w.dropAndInjectTCP(raw, dst, onlyOnce)
 						_ = q.SetVerdict(id, nfqueue.NfDrop)
 						return 0
 					}
@@ -215,7 +228,7 @@ func (w *Worker) dropAndInjectQUIC(raw []byte, dst net.IP) {
 	}
 }
 
-func (w *Worker) dropAndInjectTCP(raw []byte, dst net.IP) {
+func (w *Worker) dropAndInjectTCP(raw []byte, dst net.IP, injectFake bool) {
 	if len(raw) < 40 {
 		_ = w.sock.SendIPv4(raw, dst)
 		return
@@ -231,7 +244,7 @@ func (w *Worker) dropAndInjectTCP(raw []byte, dst net.IP) {
 		return
 	}
 
-	if w.cfg.FakeSNI && w.cfg.FakeSNISeqLength > 0 {
+	if injectFake && w.cfg.FakeSNI && w.cfg.FakeSNISeqLength > 0 {
 		w.sendFakeSNISequence(raw, dst)
 	}
 
@@ -334,6 +347,8 @@ func (w *Worker) sendTCPFragments(packet []byte, dst net.IP) {
 
 	seq := binary.BigEndian.Uint32(seg2[ipHdrLen+4 : ipHdrLen+8])
 	binary.BigEndian.PutUint32(seg2[ipHdrLen+4:ipHdrLen+8], seq+uint32(splitPos))
+	id := binary.BigEndian.Uint16(seg1[4:6])
+	binary.BigEndian.PutUint16(seg2[4:6], id+1)
 	binary.BigEndian.PutUint16(seg2[2:4], uint16(seg2Len))
 	sock.FixIPv4Checksum(seg2[:ipHdrLen])
 	sock.FixTCPChecksum(seg2)

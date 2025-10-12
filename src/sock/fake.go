@@ -41,23 +41,36 @@ func BuildFakeSNIPacket(original []byte, cfg *config.Config) []byte {
 
 	fakeLen := ipHdrLen + tcpHdrLen + len(fakePayload)
 	fake := make([]byte, fakeLen)
-
 	copy(fake[:ipHdrLen+tcpHdrLen], original[:ipHdrLen+tcpHdrLen])
 	copy(fake[ipHdrLen+tcpHdrLen:], fakePayload)
 
 	binary.BigEndian.PutUint16(fake[2:4], uint16(fakeLen))
 
+	off := cfg.FakeSeqOffset
+	if off <= 0 {
+		off = 10000
+	}
+
 	switch cfg.FakeStrategy {
 	case "ttl":
 		fake[8] = cfg.FakeTTL
 	case "pastseq":
+		dlen := len(original) - ipHdrLen - tcpHdrLen
 		seq := binary.BigEndian.Uint32(fake[ipHdrLen+4 : ipHdrLen+8])
-		binary.BigEndian.PutUint32(fake[ipHdrLen+4:ipHdrLen+8], seq-uint32(cfg.FakeSeqOffset))
+		binary.BigEndian.PutUint32(fake[ipHdrLen+4:ipHdrLen+8], seq-uint32(dlen))
 	case "randseq":
-		seq := binary.BigEndian.Uint32(fake[ipHdrLen+4 : ipHdrLen+8])
-		binary.BigEndian.PutUint32(fake[ipHdrLen+4:ipHdrLen+8], seq+uint32(cfg.FakeSeqOffset))
+		dlen := len(original) - ipHdrLen - tcpHdrLen
+		if cfg.FakeSeqOffset == 0 {
+			var r [4]byte
+			rand.Read(r[:])
+			binary.BigEndian.PutUint32(fake[ipHdrLen+4:ipHdrLen+8], binary.BigEndian.Uint32(r[:]))
+		} else {
+			seq := binary.BigEndian.Uint32(fake[ipHdrLen+4 : ipHdrLen+8])
+			off := uint32(cfg.FakeSeqOffset) + uint32(dlen)
+			binary.BigEndian.PutUint32(fake[ipHdrLen+4:ipHdrLen+8], seq-off)
+		}
 	case "tcp_check":
-	case "md5sum":
+	default:
 	}
 
 	FixIPv4Checksum(fake[:ipHdrLen])
@@ -73,8 +86,11 @@ func BuildFakeSNIPacket(original []byte, cfg *config.Config) []byte {
 func FixIPv4Checksum(ip []byte) {
 	ip[10], ip[11] = 0, 0
 	var sum uint32
-	for i := 0; i < 20; i += 2 {
+	for i := 0; i+1 < len(ip); i += 2 {
 		sum += uint32(binary.BigEndian.Uint16(ip[i : i+2]))
+	}
+	if len(ip)%2 == 1 {
+		sum += uint32(ip[len(ip)-1]) << 8
 	}
 	for sum > 0xffff {
 		sum = (sum >> 16) + (sum & 0xffff)
