@@ -99,7 +99,7 @@ build_local:
 	if [ -n "$$DEST_DIR" ]; then \
 		mkdir -p "$$DEST_DIR"; \
 		cp "$(OUT_DIR)/$$OS-$$TARGET/$(BINARY_NAME)" "$$DEST_DIR/"; \
-		echo "copied (kopieret) to $$DEST_DIR"; \
+		echo "copied to $$DEST_DIR"; \
 	fi
 
 build_single:

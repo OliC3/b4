@@ -292,6 +292,6 @@ func ClearRules(cfg *config.Config) error {
 	m.RemoveRules()
 	time.Sleep(30 * time.Millisecond)
 	m.RemoveChains()
-	m.RevertSysctls()
+	//m.RevertSysctls()
 	return nil
 }
