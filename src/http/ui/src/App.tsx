@@ -50,24 +50,39 @@ export default function App() {
           }}
         >
           <Toolbar>
-            <Typography variant="h6" sx={{ fontWeight: 600 }}>
-              <Typography component="span" sx={{ color: colors.primary }}>
+            <Typography variant="h6">
+              <Typography
+                component="span"
+                sx={{ fontWeight: 800, color: colors.secondary }}
+              >
                 B4
               </Typography>
               :
-              <Typography component="span" sx={{ color: colors.secondary }}>
+              <Typography
+                component="span"
+                sx={{ fontWeight: 800, color: colors.primary }}
+              >
                 B
               </Typography>
               ye
-              <Typography component="span" sx={{ color: colors.secondary }}>
+              <Typography
+                component="span"
+                sx={{ fontWeight: 800, color: colors.primary }}
+              >
                 B
               </Typography>
               ye
-              <Typography component="span" sx={{ color: colors.secondary }}>
+              <Typography
+                component="span"
+                sx={{ fontWeight: 800, color: colors.primary }}
+              >
                 B
               </Typography>
               ig
-              <Typography component="span" sx={{ color: colors.secondary }}>
+              <Typography
+                component="span"
+                sx={{ fontWeight: 800, color: colors.primary }}
+              >
                 B
               </Typography>
               ro
