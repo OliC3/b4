@@ -1,21 +1,6 @@
-import React from "react";
-import {
-  Container,
-  Paper,
-  Typography,
-  Box,
-  TextField,
-  Switch,
-  FormControlLabel,
-  Divider,
-  Stack,
-} from "@mui/material";
+import { Container, Paper, Typography, Stack } from "@mui/material";
 
 export default function Settings() {
-  const [maxLines, setMaxLines] = React.useState("1000");
-  const [autoReconnect, setAutoReconnect] = React.useState(true);
-  const [timestampFormat, setTimestampFormat] = React.useState("ISO");
-
   return (
     <Container
       maxWidth="md"

@@ -19,7 +19,7 @@ import {
 } from "@mui/material";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import { colors } from "../Theme";
+import { colors } from "../../Theme";
 
 interface ParsedLog {
   timestamp: string;

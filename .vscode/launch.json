@@ -11,11 +11,7 @@
       "mode": "auto",
       "program": "${workspaceFolder}/src",
       "asRoot": true,
-      "args": [
-        "--log-level=trace",
-        "--instaflush",
-        "--sni-domains-file=${workspaceFolder}/../domains.txt"
-      ],
+      "args": ["--verbose=info"],
       "console": "integratedTerminal"
     }
   ]

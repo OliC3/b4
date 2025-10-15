@@ -19,10 +19,12 @@ import MenuIcon from "@mui/icons-material/Menu";
 import SettingsIcon from "@mui/icons-material/Settings";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import LanguageIcon from "@mui/icons-material/Language";
-import Logs from "./components/Logs";
-import Domains from "./components/Domains";
-import Settings from "./components/Settings";
+import Logs from "./components/pages/Logs";
+import Domains from "./components/pages/Domains";
+import Settings from "./components/pages/Settings";
 import { theme, colors } from "./Theme";
+import Logo from "./components/molecules/Logo";
+import Version from "./components/molecules/Version";
 
 const DRAWER_WIDTH = 240;
 
@@ -50,43 +52,7 @@ export default function App() {
           }}
         >
           <Toolbar>
-            <Typography variant="h6">
-              <Typography
-                component="span"
-                sx={{ fontWeight: 800, color: colors.secondary }}
-              >
-                B4
-              </Typography>
-              :
-              <Typography
-                component="span"
-                sx={{ fontWeight: 800, color: colors.primary }}
-              >
-                B
-              </Typography>
-              ye
-              <Typography
-                component="span"
-                sx={{ fontWeight: 800, color: colors.primary }}
-              >
-                B
-              </Typography>
-              ye
-              <Typography
-                component="span"
-                sx={{ fontWeight: 800, color: colors.primary }}
-              >
-                B
-              </Typography>
-              ig
-              <Typography
-                component="span"
-                sx={{ fontWeight: 800, color: colors.primary }}
-              >
-                B
-              </Typography>
-              ro
-            </Typography>
+            <Logo />
           </Toolbar>
           <Divider sx={{ borderColor: colors.border.default }} />
           <List>
@@ -148,6 +114,8 @@ export default function App() {
               </ListItemButton>
             </ListItem>
           </List>
+          <Box sx={{ flexGrow: 1 }} />
+          <Version />
         </Drawer>
 
         {/* Main Content */}

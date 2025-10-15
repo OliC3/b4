@@ -204,5 +204,6 @@ func printConfigDefaults(cfg *config.Config) {
 	log.Debugf("    UDP DPort Max: %d", cfg.UDPDPortMax)
 	log.Debugf("    UDP Filter QUIC: %s", cfg.UDPFilterQUIC)
 
-	log.Debugf("  Web Port: %d", cfg.WebPort)
+	log.Debugf("  Web Server:")
+	log.Debugf("    Port: %d", cfg.WebServer.Port)
 }

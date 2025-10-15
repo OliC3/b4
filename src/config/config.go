@@ -2,27 +2,33 @@
 package config
 
 import (
+	_ "embed"
+	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/daniellavrushin/b4/geodat"
 	"github.com/daniellavrushin/b4/log"
 	"github.com/spf13/cobra"
 )
 
+//go:embed config.json
+var configJson string
+
 type Config struct {
-	QueueStartNum  int
-	Mark           uint
-	ConnBytesLimit int
-	Logging        Logging
-	SNIDomains     []string
-	Threads        int
-	UseGSO         bool
-	UseConntrack   bool
-	SkipIpTables   bool
-	GeoSitePath    string
-	GeoIpPath      string
-	GeoCategories  []string
-	Seg2Delay      int
+	QueueStartNum  int      `json:"queue_start_num" bson:"queue_start_num"`
+	Mark           uint     `json:"mark" bson:"mark"`
+	ConnBytesLimit int      `json:"conn_bytes_limit" bson:"conn_bytes_limit"`
+	Logging        Logging  `json:"logging" bson:"logging"`
+	SNIDomains     []string `json:"sni_domains" bson:"sni_domains"`
+	Threads        int      `json:"threads" bson:"threads"`
+	UseGSO         bool     `json:"use_gso" bson:"use_gso"`
+	UseConntrack   bool     `json:"use_conntrack" bson:"use_conntrack"`
+	SkipIpTables   bool     `json:"skip_iptables" bson:"skip_iptables"`
+	GeoSitePath    string   `json:"geosite_path" bson:"geosite_path"`
+	GeoIpPath      string   `json:"geoip_path" bson:"geoip_path"`
+	GeoCategories  []string `json:"geo_categories" bson:"geo_categories"`
+	Seg2Delay      int      `json:"seg2delay" bson:"seg2delay"`
 
 	FragmentStrategy string
 	FragSNIReverse   bool
@@ -45,7 +51,11 @@ type Config struct {
 	UDPDPortMax       int
 	UDPFilterQUIC     string
 
-	WebPort int
+	WebServer WebServer `json:"web_server" bson:"web_server"`
+}
+
+type WebServer struct {
+	Port int `json:"port" bson:"port"`
 }
 
 type Logging struct {
@@ -94,7 +104,9 @@ var DefaultConfig = Config{
 	UDPDPortMax:       0,
 	UDPFilterQUIC:     "parse",
 
-	WebPort: 0,
+	WebServer: WebServer{
+		Port: 0,
+	},
 
 	Logging: Logging{
 		Level:      log.LevelInfo,
@@ -103,7 +115,34 @@ var DefaultConfig = Config{
 	},
 }
 
+func (c *Config) SaveToFile(path string) error {
+	data, err := json.MarshalIndent(c, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal config: %v", err)
+	}
+	err = os.WriteFile(path, data, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to write config file: %v", err)
+	}
+	return nil
+}
+
+func (c *Config) BindFromEmbed() (Config, error) {
+	data := []byte(configJson)
+	err := json.Unmarshal(data, c)
+	if err != nil {
+		return Config{}, fmt.Errorf("failed to parse embedded config: %v", err)
+	}
+	return *c, nil
+}
+
 func (c *Config) BindFlags(cmd *cobra.Command) {
+
+	_, err := c.BindFromEmbed()
+	if err != nil {
+		fmt.Printf("Warning: failed to load embedded config: %v\n", err)
+	}
+
 	// Network configuration
 	cmd.Flags().IntVar(&c.QueueStartNum, "queue-num", c.QueueStartNum, "Netfilter queue number")
 	cmd.Flags().IntVar(&c.Threads, "threads", c.Threads, "Number of worker threads")
@@ -147,8 +186,9 @@ func (c *Config) BindFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVarP(&c.Logging.Instaflush, "instaflush", "i", c.Logging.Instaflush, "Flush logs immediately")
 	cmd.Flags().BoolVar(&c.Logging.Syslog, "syslog", c.Logging.Syslog, "Enable syslog output")
 
-	cmd.Flags().IntVar(&c.WebPort, "web-port", c.WebPort, "Port for internal web server (0 disables)")
+	cmd.Flags().IntVar(&c.WebServer.Port, "web-port", c.WebServer.Port, "Port for internal web server (0 disables)")
 
+	c.SaveToFile("./b4.json")
 }
 
 func (cfg *Config) ApplyLogLevel(level string) {
