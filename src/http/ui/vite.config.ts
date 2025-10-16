@@ -1,9 +1,11 @@
 import { defineConfig } from "vite";
+import dotenv from "dotenv";
 import react from "@vitejs/plugin-react";
 
-const REMOTE_BACKEND =
-  process.env.VITE_BACKEND_URL || "http://192.168.1.1:7000";
+dotenv.config();
+const REMOTE_BACKEND = process.env.B4_BACKEND_URL || "http://192.168.1.1:7000";
 
+console.log("Using backend:", REMOTE_BACKEND);
 export default defineConfig({
   plugins: [react()],
   build: { outDir: "dist", emptyOutDir: true },
