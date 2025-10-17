@@ -5,7 +5,7 @@
     "port": 0
   },
   "logging": {
-    "level": "info",
+    "level": 1,
     "instaflush": true,
     "syslog": false
   }

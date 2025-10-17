@@ -19,6 +19,9 @@ import {
 } from "@mui/material";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import TcpIcon from "@mui/icons-material/SyncAlt";
+import UdpIcon from "@mui/icons-material/TrendingFlat";
+
 import { colors } from "../../Theme";
 
 interface ParsedLog {
@@ -88,14 +91,56 @@ export default function Domains() {
 
   const filtered = React.useMemo(() => {
     const f = filter.trim().toLowerCase();
-    return f
-      ? parsedLogs.filter(
-          (log) =>
-            log.domain.toLowerCase().includes(f) ||
-            log.source.toLowerCase().includes(f) ||
-            log.destination.toLowerCase().includes(f)
-        )
-      : parsedLogs;
+    const filters = f
+      .split("+")
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+
+    if (filters.length === 0) {
+      return parsedLogs;
+    }
+
+    // Group filters by field
+    const fieldFilters: Record<string, string[]> = {};
+    const globalFilters: string[] = [];
+
+    filters.forEach((filterTerm) => {
+      const colonIndex = filterTerm.indexOf(":");
+
+      if (colonIndex > 0) {
+        const field = filterTerm.substring(0, colonIndex);
+        const value = filterTerm.substring(colonIndex + 1);
+
+        if (!fieldFilters[field]) {
+          fieldFilters[field] = [];
+        }
+        fieldFilters[field].push(value);
+      } else {
+        globalFilters.push(filterTerm);
+      }
+    });
+
+    return parsedLogs.filter((log) => {
+      // Check field-specific filters (OR within field, AND across fields)
+      for (const [field, values] of Object.entries(fieldFilters)) {
+        const fieldValue =
+          log[field as keyof typeof log]?.toString().toLowerCase() || "";
+        const matches = values.some((value) => fieldValue.includes(value));
+        if (!matches) return false;
+      }
+
+      // Check global filters (must match at least one field)
+      for (const filterTerm of globalFilters) {
+        const matches =
+          log.domain.toLowerCase().includes(filterTerm) ||
+          log.source.toLowerCase().includes(filterTerm) ||
+          log.protocol.toLowerCase().includes(filterTerm) ||
+          log.destination.toLowerCase().includes(filterTerm);
+        if (!matches) return false;
+      }
+
+      return true;
+    });
   }, [parsedLogs, filter]);
 
   const handleScroll = () => {
@@ -143,7 +188,7 @@ export default function Domains() {
           <Stack direction="row" spacing={2} alignItems="center">
             <TextField
               size="small"
-              placeholder="Filter by domain, source, or destination..."
+              placeholder="Filter entries (use `+` to combine, e.g. `tcp+domain2`, or `tcp+domain:exmpl1+domain:exmpl2`)"
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
               sx={{ flex: 1 }}
@@ -171,7 +216,7 @@ export default function Domains() {
                   label={`${filtered.length} filtered`}
                   size="small"
                   sx={{
-                    bgcolor: colors.accent.primaryHover,
+                    bgcolor: colors.accent.primary,
                     color: colors.primary,
                     borderColor: colors.primary,
                   }}
@@ -357,6 +402,13 @@ export default function Domains() {
                       <Chip
                         label={log.protocol}
                         size="small"
+                        icon={
+                          log.protocol === "TCP" ? (
+                            <TcpIcon color="primary" />
+                          ) : (
+                            <UdpIcon color="error" />
+                          )
+                        }
                         sx={{
                           bgcolor:
                             log.protocol === "TCP"

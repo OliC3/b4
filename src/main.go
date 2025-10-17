@@ -18,6 +18,7 @@ import (
 
 var (
 	cfg         = config.DefaultConfig
+	configPath  string
 	verboseFlag string
 	showVersion bool
 	Version     = "dev"
@@ -37,8 +38,9 @@ func init() {
 	cfg.BindFlags(rootCmd)
 
 	// Add verbosity flags separately since they need special handling
-	rootCmd.Flags().StringVarP(&verboseFlag, "verbose", "", "info", "Set verbosity level (debug, trace, info, silent), default: info")
+	rootCmd.Flags().StringVar(&verboseFlag, "verbose", "info", "Set verbosity level (debug, trace, info, silent), default: info")
 	rootCmd.Flags().BoolVarP(&showVersion, "version", "v", false, "Show version and exit")
+	rootCmd.Flags().StringVarP(&configPath, "config", "c", configPath, "Path to a configuration file to save and load")
 }
 
 func main() {
@@ -55,30 +57,27 @@ func runB4(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// Debug output to stderr to see if we're even getting here
-	fmt.Fprintf(os.Stderr, "[DEBUG] runB4 started\n")
-
-	// Apply verbosity settings
 	cfg.ApplyLogLevel(verboseFlag)
-	fmt.Fprintf(os.Stderr, "[DEBUG] Verbosity applied, log level: %d\n", cfg.Logging.Level)
 
 	// Initialize logging first thing
 	if err := initLogging(&cfg); err != nil {
 		return fmt.Errorf("logging initialization failed: %w", err)
 	}
-	fmt.Fprintf(os.Stderr, "[DEBUG] Logging initialized\n")
 
 	// Validate configuration
 	if err := cfg.Validate(); err != nil {
-		return fmt.Errorf("invalid configuration: %w", err)
+		return log.Errorf("invalid configuration: %w", err)
 	}
 
 	log.Infof("Starting B4 packet processor")
+
+	cfg.LoadFromFile(configPath)
+	cfg.SaveToFile(configPath)
 	printConfigDefaults(&cfg)
 
 	// Start internal web server if configured
 	if _, err := b4http.StartServer(&cfg); err != nil {
-		return fmt.Errorf("failed to start web server: %w", err)
+		return log.Errorf("failed to start web server: %w", err)
 	}
 
 	// Load domains from geodata if specified

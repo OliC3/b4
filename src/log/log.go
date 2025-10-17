@@ -112,8 +112,9 @@ func Flush() {
 
 // ---- printing ------------------------------------------------------------
 
-func Errorf(format string, a ...any) {
+func Errorf(format string, a ...any) error {
 	out("[ERROR] "+format, a...)
+	return fmt.Errorf(format, a...)
 }
 
 func Infof(format string, a ...any) {

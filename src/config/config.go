@@ -12,8 +12,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-//go:embed config.json
-var configJson string
+var (
+	//go:embed config.json
+	configJson string
+)
 
 type Config struct {
 	QueueStartNum  int      `json:"queue_start_num" bson:"queue_start_num"`
@@ -59,9 +61,9 @@ type WebServer struct {
 }
 
 type Logging struct {
-	Level      log.Level
-	Instaflush bool
-	Syslog     bool
+	Level      log.Level `json:"level" bson:"level"`
+	Instaflush bool      `json:"instaflush" bson:"instaflush"`
+	Syslog     bool      `json:"syslog" bson:"syslog"`
 }
 
 const (
@@ -118,11 +120,43 @@ var DefaultConfig = Config{
 func (c *Config) SaveToFile(path string) error {
 	data, err := json.MarshalIndent(c, "", "  ")
 	if err != nil {
-		return fmt.Errorf("failed to marshal config: %v", err)
+		return log.Errorf("failed to marshal config: %v", err)
 	}
+
+	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0644)
+	if err != nil {
+		return log.Errorf("failed to create config file: %v", err)
+	}
+	defer file.Close()
+
 	err = os.WriteFile(path, data, 0644)
 	if err != nil {
-		return fmt.Errorf("failed to write config file: %v", err)
+		return log.Errorf("failed to write config file: %v", err)
+	}
+	return nil
+}
+
+func (c *Config) LoadFromFile(path string) error {
+
+	if path == "" {
+		return log.Errorf("config path is not specified")
+	}
+
+	info, err := os.Stat(path)
+	if err != nil {
+		return log.Errorf("failed to stat config file: %v", err)
+	}
+	if info.IsDir() {
+		return log.Errorf("config path is a directory, not a file: %s", path)
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return log.Errorf("failed to read config file: %v", err)
+	}
+	err = json.Unmarshal(data, c)
+	if err != nil {
+		return log.Errorf("failed to parse config file: %v", err)
 	}
 	return nil
 }
@@ -186,9 +220,9 @@ func (c *Config) BindFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVarP(&c.Logging.Instaflush, "instaflush", "i", c.Logging.Instaflush, "Flush logs immediately")
 	cmd.Flags().BoolVar(&c.Logging.Syslog, "syslog", c.Logging.Syslog, "Enable syslog output")
 
+	// Web server configuration
 	cmd.Flags().IntVar(&c.WebServer.Port, "web-port", c.WebServer.Port, "Port for internal web server (0 disables)")
 
-	c.SaveToFile("./b4.json")
 }
 
 func (cfg *Config) ApplyLogLevel(level string) {
