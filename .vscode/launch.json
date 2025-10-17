@@ -11,7 +11,11 @@
       "mode": "auto",
       "program": "${workspaceFolder}/src",
       "asRoot": true,
-      "args": ["--verbose=info"],
+      "args": [
+        "--verbose=info",
+        "--web-port=7000",
+        "-c=${workspaceFolder}/src/local.yaml"
+      ],
       "console": "integratedTerminal"
     }
   ]

@@ -1,4 +1,4 @@
-// path: src/main.go
+// src/main.go
 package main
 
 import (
@@ -10,6 +10,7 @@ import (
 
 	"github.com/daniellavrushin/b4/config"
 	b4http "github.com/daniellavrushin/b4/http"
+	"github.com/daniellavrushin/b4/http/handler"
 	"github.com/daniellavrushin/b4/iptables"
 	"github.com/daniellavrushin/b4/log"
 	"github.com/daniellavrushin/b4/nfq"
@@ -51,7 +52,6 @@ func main() {
 }
 
 func runB4(cmd *cobra.Command, args []string) error {
-
 	if showVersion {
 		fmt.Printf("B4 version: %s (%s) %s\n", Version, Commit, Date)
 		return nil
@@ -75,19 +75,30 @@ func runB4(cmd *cobra.Command, args []string) error {
 	cfg.SaveToFile(configPath)
 	printConfigDefaults(&cfg)
 
+	// Initialize metrics collector early
+	metrics := handler.GetMetricsCollector()
+	metrics.RecordEvent("info", "B4 starting up")
+
 	// Start internal web server if configured
 	if _, err := b4http.StartServer(&cfg); err != nil {
+		metrics.RecordEvent("error", fmt.Sprintf("Failed to start web server: %v", err))
 		return log.Errorf("failed to start web server: %w", err)
+	}
+
+	if cfg.WebServer.Port > 0 {
+		metrics.RecordEvent("info", fmt.Sprintf("Web server started on port %d", cfg.WebServer.Port))
 	}
 
 	// Load domains from geodata if specified
 	if cfg.GeoSitePath != "" && len(cfg.GeoCategories) > 0 {
 		log.Infof("Loading domains from geodata for categories: %v", cfg.GeoCategories)
 		domains, err := cfg.LoadDomainsFromGeodata()
-		log.Infof("Loaded %d domains from geodata", len(domains))
 		if err != nil {
+			metrics.RecordEvent("error", fmt.Sprintf("Failed to load geodata: %v", err))
 			return fmt.Errorf("failed to load geodata domains: %w", err)
 		}
+		log.Infof("Loaded %d domains from geodata", len(domains))
+		metrics.RecordEvent("info", fmt.Sprintf("Loaded %d domains from geodata", len(domains)))
 
 		// Merge with existing SNI domains
 		cfg.SNIDomains = append(cfg.SNIDomains, domains...)
@@ -104,20 +115,41 @@ func runB4(cmd *cobra.Command, args []string) error {
 
 		log.Infof("Adding iptables rules")
 		if err := iptables.AddRules(&cfg); err != nil {
+			metrics.RecordEvent("error", fmt.Sprintf("Failed to add iptables rules: %v", err))
 			return fmt.Errorf("failed to add iptables rules: %w", err)
 		}
+		metrics.RecordEvent("info", "IPTables rules configured successfully")
+		metrics.IPTablesStatus = "active"
 	} else {
 		log.Infof("Skipping iptables setup (--skip-iptables)")
+		metrics.IPTablesStatus = "skipped"
 	}
 
 	// Start netfilter queue pool
 	log.Infof("Starting netfilter queue pool (queue: %d, threads: %d)", cfg.QueueStartNum, cfg.Threads)
 	pool := nfq.NewPool(uint16(cfg.QueueStartNum), cfg.Threads, &cfg)
 	if err := pool.Start(); err != nil {
+		metrics.RecordEvent("error", fmt.Sprintf("NFQueue start failed: %v", err))
+		metrics.NFQueueStatus = "error"
 		return fmt.Errorf("netfilter queue start failed: %w", err)
 	}
 
+	metrics.RecordEvent("info", fmt.Sprintf("NFQueue started with %d threads", cfg.Threads))
+	metrics.NFQueueStatus = "active"
+
+	// Initialize worker status
+	workers := make([]handler.WorkerHealth, cfg.Threads)
+	for i := 0; i < cfg.Threads; i++ {
+		workers[i] = handler.WorkerHealth{
+			ID:        i,
+			Status:    "active",
+			Processed: 0,
+		}
+	}
+	metrics.UpdateWorkerStatus(workers)
+
 	log.Infof("B4 is running. Press Ctrl+C to stop")
+	metrics.RecordEvent("info", "B4 is fully operational")
 
 	// Wait for shutdown signal
 	sigChan := make(chan os.Signal, 1)
@@ -125,6 +157,9 @@ func runB4(cmd *cobra.Command, args []string) error {
 	sig := <-sigChan
 
 	log.Infof("Received signal: %v, shutting down gracefully", sig)
+	metrics.RecordEvent("info", fmt.Sprintf("Shutdown initiated by signal: %v", sig))
+	metrics.NFQueueStatus = "stopping"
+
 	pool.Stop()
 
 	// Cleanup iptables rules
@@ -132,15 +167,19 @@ func runB4(cmd *cobra.Command, args []string) error {
 		log.Infof("Clearing iptables rules")
 		if err := iptables.ClearRules(&cfg); err != nil {
 			log.Errorf("Failed to clear iptables rules: %v", err)
+			metrics.RecordEvent("error", fmt.Sprintf("Failed to clear iptables rules: %v", err))
+		} else {
+			metrics.IPTablesStatus = "inactive"
 		}
 	}
 
 	log.Infof("B4 stopped successfully")
+	metrics.RecordEvent("info", "B4 shutdown complete")
 	return nil
 }
 
 func initLogging(cfg *config.Config) error {
-	// Ensure logging is initialized with stderr output
+	// Ensure logging is initialized with stderr output and WebSocket broadcast
 	w := io.MultiWriter(os.Stderr, b4http.LogWriter())
 	log.Init(w, log.Level(cfg.Logging.Level), cfg.Logging.Instaflush)
 

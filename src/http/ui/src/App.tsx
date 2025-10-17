@@ -19,6 +19,9 @@ import MenuIcon from "@mui/icons-material/Menu";
 import SettingsIcon from "@mui/icons-material/Settings";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import LanguageIcon from "@mui/icons-material/Language";
+import SpeedIcon from "@mui/icons-material/Speed";
+import AssessmentIcon from "@mui/icons-material/Assessment";
+import Dashboard from "./components/pages/Dashboard";
 import Logs from "./components/pages/Logs";
 import Domains from "./components/pages/Domains";
 import Settings from "./components/pages/Settings";
@@ -31,8 +34,8 @@ const DRAWER_WIDTH = 240;
 export default function App() {
   const [drawerOpen, setDrawerOpen] = React.useState(true);
   const [currentView, setCurrentView] = React.useState<
-    "logs" | "domains" | "settings"
-  >("domains");
+    "dashboard" | "logs" | "domains" | "settings"
+  >("dashboard"); // Changed default to dashboard
 
   return (
     <ThemeProvider theme={theme}>
@@ -56,6 +59,28 @@ export default function App() {
           </Toolbar>
           <Divider sx={{ borderColor: colors.border.default }} />
           <List>
+            {/* Dashboard - New First Item */}
+            <ListItem disablePadding>
+              <ListItemButton
+                selected={currentView === "dashboard"}
+                onClick={() => setCurrentView("dashboard")}
+                sx={{
+                  "&.Mui-selected": {
+                    backgroundColor: colors.accent.primary,
+                    "&:hover": {
+                      backgroundColor: colors.accent.primaryHover,
+                    },
+                  },
+                }}
+              >
+                <ListItemIcon sx={{ color: "inherit" }}>
+                  <SpeedIcon />
+                </ListItemIcon>
+                <ListItemText primary="Dashboard" />
+              </ListItemButton>
+            </ListItem>
+
+            {/* Domains */}
             <ListItem disablePadding>
               <ListItemButton
                 selected={currentView === "domains"}
@@ -75,6 +100,8 @@ export default function App() {
                 <ListItemText primary="Domains" />
               </ListItemButton>
             </ListItem>
+
+            {/* Logs */}
             <ListItem disablePadding>
               <ListItemButton
                 selected={currentView === "logs"}
@@ -89,11 +116,13 @@ export default function App() {
                 }}
               >
                 <ListItemIcon sx={{ color: "inherit" }}>
-                  <DashboardIcon />
+                  <AssessmentIcon />
                 </ListItemIcon>
                 <ListItemText primary="Logs" />
               </ListItemButton>
             </ListItem>
+
+            {/* Settings */}
             <ListItem disablePadding>
               <ListItemButton
                 selected={currentView === "settings"}
@@ -145,7 +174,9 @@ export default function App() {
                 <MenuIcon />
               </IconButton>
               <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 600 }}>
-                {currentView === "logs"
+                {currentView === "dashboard"
+                  ? "System Dashboard"
+                  : currentView === "logs"
                   ? "Log Viewer"
                   : currentView === "domains"
                   ? "Domain Connections"
@@ -155,7 +186,9 @@ export default function App() {
           </AppBar>
 
           {/* Content Area */}
-          {currentView === "logs" ? (
+          {currentView === "dashboard" ? (
+            <Dashboard />
+          ) : currentView === "logs" ? (
             <Logs />
           ) : currentView === "domains" ? (
             <Domains />
