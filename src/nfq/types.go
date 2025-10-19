@@ -11,11 +11,19 @@ import (
 	"github.com/florianl/go-nfqueue"
 )
 
+type Pool struct {
+	workers []*Worker
+	nfq     *nfqueue.Nfqueue
+}
+
 type flowState struct {
-	buf      []byte
-	last     time.Time
-	sniFound bool
-	sni      string
+	buf         []byte
+	last        time.Time
+	sniFound    bool
+	sni         string
+	verdict     bool
+	verdictTime time.Time
+	packetCount int
 }
 
 type Worker struct {

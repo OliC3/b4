@@ -2,11 +2,15 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
+	"time"
 
 	"github.com/daniellavrushin/b4/config"
 	b4http "github.com/daniellavrushin/b4/http"
@@ -81,7 +85,8 @@ func runB4(cmd *cobra.Command, args []string) error {
 	metrics.RecordEvent("info", "B4 starting up")
 
 	// Start internal web server if configured
-	if _, err := b4http.StartServer(&cfg); err != nil {
+	httpServer, err := b4http.StartServer(&cfg)
+	if err != nil {
 		metrics.RecordEvent("error", fmt.Sprintf("Failed to start web server: %v", err))
 		return log.Errorf("failed to start web server: %w", err)
 	}
@@ -159,23 +164,119 @@ func runB4(cmd *cobra.Command, args []string) error {
 
 	log.Infof("Received signal: %v, shutting down gracefully", sig)
 	metrics.RecordEvent("info", fmt.Sprintf("Shutdown initiated by signal: %v", sig))
-	metrics.NFQueueStatus = "stopping"
 
-	pool.Stop()
+	// Perform graceful shutdown with timeout
+	return gracefulShutdown(&cfg, pool, httpServer, metrics)
+}
 
-	// Cleanup iptables rules
-	if !cfg.SkipIpTables {
-		log.Infof("Clearing iptables rules")
-		if err := iptables.ClearRules(&cfg); err != nil {
-			log.Errorf("Failed to clear iptables rules: %v", err)
-			metrics.RecordEvent("error", fmt.Sprintf("Failed to clear iptables rules: %v", err))
-		} else {
-			metrics.IPTablesStatus = "inactive"
-		}
+func gracefulShutdown(cfg *config.Config, pool *nfq.Pool, httpServer *http.Server, metrics *handler.MetricsCollector) error {
+	// Create shutdown context with timeout
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Create wait group for parallel shutdown
+	var wg sync.WaitGroup
+	shutdownErrors := make(chan error, 3)
+
+	// Shutdown HTTP server
+	if httpServer != nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			log.Infof("Shutting down HTTP server...")
+			if err := httpServer.Shutdown(shutdownCtx); err != nil {
+				log.Errorf("HTTP server shutdown error: %v", err)
+				shutdownErrors <- fmt.Errorf("HTTP shutdown: %w", err)
+			} else {
+				log.Infof("HTTP server stopped")
+			}
+		}()
 	}
 
-	log.Infof("B4 stopped successfully")
-	metrics.RecordEvent("info", "B4 shutdown complete")
+	// Stop NFQueue pool
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		log.Infof("Stopping netfilter queue pool...")
+		metrics.NFQueueStatus = "stopping"
+
+		// Use a goroutine with timeout for pool.Stop()
+		stopDone := make(chan struct{})
+		go func() {
+			pool.Stop()
+			close(stopDone)
+		}()
+
+		select {
+		case <-stopDone:
+			log.Infof("Netfilter queue pool stopped")
+		case <-shutdownCtx.Done():
+			log.Errorf("Netfilter queue pool stop timed out")
+			shutdownErrors <- fmt.Errorf("NFQueue stop timeout")
+		}
+	}()
+
+	// Clean up iptables rules
+	if !cfg.SkipIpTables {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			log.Infof("Clearing iptables rules...")
+			if err := iptables.ClearRules(cfg); err != nil {
+				log.Errorf("Failed to clear iptables rules: %v", err)
+				metrics.RecordEvent("error", fmt.Sprintf("Failed to clear iptables rules: %v", err))
+				shutdownErrors <- fmt.Errorf("iptables cleanup: %w", err)
+			} else {
+				log.Infof("IPTables rules cleared")
+				metrics.IPTablesStatus = "inactive"
+			}
+		}()
+	}
+
+	// Wait for all shutdown tasks or timeout
+	shutdownDone := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(shutdownDone)
+	}()
+
+	select {
+	case <-shutdownDone:
+		// All tasks completed
+		close(shutdownErrors)
+
+		// Check for any errors
+		var errs []error
+		for err := range shutdownErrors {
+			errs = append(errs, err)
+		}
+
+		if len(errs) > 0 {
+			log.Errorf("Shutdown completed with %d errors", len(errs))
+			for _, err := range errs {
+				log.Errorf("  - %v", err)
+			}
+			metrics.RecordEvent("warning", fmt.Sprintf("B4 shutdown with %d errors", len(errs)))
+		} else {
+			log.Infof("B4 stopped successfully")
+			metrics.RecordEvent("info", "B4 shutdown complete")
+		}
+
+	case <-shutdownCtx.Done():
+		// Timeout reached
+		log.Errorf("Shutdown timeout reached, forcing exit")
+		metrics.RecordEvent("error", "Forced shutdown due to timeout")
+
+		// Force flush logs before exit
+		log.Flush()
+		time.Sleep(100 * time.Millisecond) // Give logs time to flush
+
+		// Force exit
+		os.Exit(1)
+	}
+
+	// Final log flush
+	log.Flush()
 	return nil
 }
 

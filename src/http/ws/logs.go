@@ -11,14 +11,6 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type LogHub struct {
-	mu      sync.RWMutex
-	clients map[*logClient]struct{}
-	in      chan []byte
-	reg     chan *logClient
-	unreg   chan *logClient
-}
-
 type logClient struct {
 	ws   *websocket.Conn
 	send chan []byte
@@ -38,6 +30,7 @@ func GetLogHub() *LogHub {
 			in:      make(chan []byte, 1024),
 			reg:     make(chan *logClient),
 			unreg:   make(chan *logClient),
+			stop:    make(chan struct{}),
 		}
 		go logHub.run()
 	})
@@ -47,10 +40,21 @@ func GetLogHub() *LogHub {
 func (h *LogHub) run() {
 	for {
 		select {
+		case <-h.stop:
+			// Shutdown: close all client connections
+			h.mu.Lock()
+			for c := range h.clients {
+				close(c.send)
+				delete(h.clients, c)
+			}
+			h.mu.Unlock()
+			return
+
 		case c := <-h.reg:
 			h.mu.Lock()
 			h.clients[c] = struct{}{}
 			h.mu.Unlock()
+
 		case c := <-h.unreg:
 			h.mu.Lock()
 			if _, ok := h.clients[c]; ok {
@@ -58,12 +62,14 @@ func (h *LogHub) run() {
 				close(c.send)
 			}
 			h.mu.Unlock()
+
 		case msg := <-h.in:
 			h.mu.RLock()
 			for c := range h.clients {
 				select {
 				case c.send <- msg:
 				default:
+					// Client's buffer is full, skip
 				}
 			}
 			h.mu.RUnlock()
@@ -123,6 +129,23 @@ func HandleLogsWebSocket(w http.ResponseWriter, r *http.Request) {
 	h.reg <- c
 	go c.writePump()
 	c.readPump(h)
+}
+
+func (h *LogHub) Stop() {
+	select {
+	case <-h.stop:
+		// Already stopped
+		return
+	default:
+		close(h.stop)
+	}
+}
+
+// Export a Shutdown function to be called during app shutdown:
+func Shutdown() {
+	if logHub != nil {
+		logHub.Stop()
+	}
 }
 
 func (c *logClient) writePump() {

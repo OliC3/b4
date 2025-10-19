@@ -30,7 +30,7 @@ func markFakeOnce(key string, ttl time.Duration) bool {
 	return true
 }
 
-func (w *Worker) Start(sharedCh chan nfqueue.Attribute) error {
+func (w *Worker) Start() error {
 	s, err := sock.NewSenderWithMark(int(w.cfg.Mark))
 	if err != nil {
 		return err
@@ -75,10 +75,6 @@ func (w *Worker) Start(sharedCh chan nfqueue.Attribute) error {
 			select {
 			case <-w.ctx.Done():
 				return 0
-			default:
-			}
-			select {
-			case sharedCh <- a:
 			default:
 			}
 
