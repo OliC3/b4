@@ -108,7 +108,7 @@ var DefaultConfig = Config{
 	UDPFakingStrategy: "none",
 	UDPDPortMin:       0,
 	UDPDPortMax:       0,
-	UDPFilterQUIC:     "parse",
+	UDPFilterQUIC:     "disabled",
 
 	WebServer: WebServer{
 		Port:      0,
