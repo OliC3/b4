@@ -8,7 +8,10 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-const PacketMark = 0x8000
+const (
+	PacketMark    = 0x8000
+	AVAILABLE_MTU = 1400
+)
 
 type Sender struct {
 	fd4 int
@@ -42,6 +45,33 @@ func NewSender() (*Sender, error) {
 }
 
 func (s *Sender) SendIPv4(packet []byte, destIP net.IP) error {
+	// Handle MTU splitting like youtubeUnblock
+	if len(packet) > AVAILABLE_MTU {
+		log.Tracef("Split packet! len=%d", len(packet))
+
+		// Use tcp_frag equivalent - split at AVAILABLE_MTU-128
+		splitPos := AVAILABLE_MTU - 128
+
+		// Need to implement TCP fragmentation
+		frag1, frag2, err := tcpFragment(packet, splitPos)
+		if err != nil {
+			// If fragmentation fails, try sending as-is
+			return s.sendIPv4Raw(packet, destIP)
+		}
+
+		// Send first fragment
+		if err := s.sendIPv4Raw(frag1, destIP); err != nil {
+			return err
+		}
+
+		// Send second fragment
+		return s.sendIPv4Raw(frag2, destIP)
+	}
+
+	return s.sendIPv4Raw(packet, destIP)
+}
+
+func (s *Sender) sendIPv4Raw(packet []byte, destIP net.IP) error {
 	log.Tracef("Sending IPv4 packet to %s, len=%d", destIP.String(), len(packet))
 	addr := syscall.SockaddrInet4{}
 	copy(addr.Addr[:], destIP.To4())
