@@ -8,11 +8,10 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-const PacketMark = 0x8000
-
 type Sender struct {
-	fd4 int
-	fd6 int
+	fd4  int
+	fd6  int
+	mark int
 }
 
 func NewSenderWithMark(mark int) (*Sender, error) {
@@ -34,11 +33,11 @@ func NewSenderWithMark(mark int) (*Sender, error) {
 		return nil, err
 	}
 	_ = syscall.SetsockoptInt(fd6, syscall.SOL_SOCKET, unix.SO_MARK, mark)
-	return &Sender{fd4: fd4, fd6: fd6}, nil
+	return &Sender{fd4: fd4, fd6: fd6, mark: mark}, nil
 }
 
-func NewSender() (*Sender, error) {
-	return NewSenderWithMark(PacketMark)
+func NewSender(mark int) (*Sender, error) {
+	return NewSenderWithMark(mark)
 }
 
 func (s *Sender) SendIPv4(packet []byte, destIP net.IP) error {

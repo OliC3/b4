@@ -56,6 +56,17 @@ func contains(s string, char byte) bool {
 
 func ParseTLSClientHelloSNI(b []byte) (string, bool) {
 	log.Tracef("TCP Payload=%v", len(b))
+
+	// Fast path: Check if this looks like a TLS handshake
+	if len(b) < 5 || b[0] != 0x16 {
+		return "", false
+	}
+
+	// Fast path: Check TLS version (should be 0x0301, 0x0302, 0x0303, or 0x0304)
+	if b[1] != 0x03 || b[2] > 0x04 {
+		return "", false
+	}
+
 	i := 0
 	for i+5 <= len(b) {
 		if b[i] != 0x16 {

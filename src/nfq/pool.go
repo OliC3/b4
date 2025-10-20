@@ -16,6 +16,8 @@ func NewWorkerWithQueue(cfg *config.Config, qnum uint16) *Worker {
 	var m *sni.SuffixSet
 	if len(cfg.SNIDomains) > 0 {
 		m = sni.NewSuffixSet(cfg.SNIDomains)
+	} else {
+		m = sni.NewSuffixSet([]string{})
 	}
 
 	var strategy sock.FakeStrategy
@@ -46,14 +48,16 @@ func NewWorkerWithQueue(cfg *config.Config, qnum uint16) *Worker {
 		ctx:     ctx,
 		cancel:  cancel,
 		flows:   make(map[string]*flowState),
-		ttl:     10 * time.Second,
-		limit:   8192,
+		ttl:     5 * time.Second,
+		limit:   2048,
 		matcher: m,
 		frag:    fragmenter,
 	}
 }
 
-func NewPool(start uint16, threads int, cfg *config.Config) *Pool {
+func NewPool(cfg *config.Config) *Pool {
+	threads := cfg.Threads
+	start := uint16(cfg.QueueStartNum)
 	if threads < 1 {
 		threads = 1
 	}

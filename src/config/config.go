@@ -79,7 +79,7 @@ var DefaultConfig = Config{
 	Threads:        4,
 	ConnBytesLimit: 19,
 	UseConntrack:   false,
-	UseGSO:         false,
+	UseGSO:         true,
 	SkipIpTables:   false,
 	GeoSitePath:    "",
 	GeoIpPath:      "",
@@ -99,7 +99,7 @@ var DefaultConfig = Config{
 	FakeStrategy:      "pastseq",
 	FakeSeqOffset:     10000,
 
-	UDPMode:           "drop",
+	UDPMode:           "fake",
 	UDPFakeSeqLength:  6,
 	UDPFakeLen:        64,
 	UDPFakingStrategy: "none",

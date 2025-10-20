@@ -19,7 +19,10 @@ import (
 	"github.com/florianl/go-nfqueue"
 )
 
-var sentFake sync.Map
+var (
+	sentFake    sync.Map
+	labelTarget = " TARGET"
+)
 
 func markFakeOnce(key string, ttl time.Duration) bool {
 	_, loaded := sentFake.LoadOrStore(key, struct{}{})
@@ -138,7 +141,6 @@ func (w *Worker) Start() error {
 					if st, exists := w.flows[k]; exists && st.sniFound {
 						// We already have the SNI for this flow, use it
 						host := st.sni
-
 						w.mu.Unlock()
 
 						matched := w.matcher.Match(host)
@@ -150,18 +152,12 @@ func (w *Worker) Start() error {
 						metrics.RecordPacket(uint64(len(raw)))
 
 						if matched {
-							target = " TARGET"
-						}
-						// Only log if this is the first time we're processing after SNI extraction
-						if onlyOnce {
-							log.Infof("SNI TCP%v: %s %s:%d -> %s:%d", target, host, src.String(), sport, dst.String(), dport)
+							target = labelTarget
+							// Only log if this is the first time we're processing after SNI extraction
+							if onlyOnce {
+								log.Infof("SNI TCP%v: %s %s:%d -> %s:%d", target, host, src.String(), sport, dst.String(), dport)
+							}
 							w.dropAndInjectTCP(raw, dst, onlyOnce)
-							_ = q.SetVerdict(id, nfqueue.NfDrop)
-							return 0
-						}
-						// For subsequent packets in the same flow, just pass through or drop
-						if matched {
-							w.dropAndInjectTCP(raw, dst, false)
 							_ = q.SetVerdict(id, nfqueue.NfDrop)
 						} else {
 							_ = q.SetVerdict(id, nfqueue.NfAccept)
@@ -173,11 +169,12 @@ func (w *Worker) Start() error {
 					// Try to extract SNI from this packet
 					host, ok := w.feed(k, payload)
 					if ok {
+						// SNI found!
 						matched := w.matcher.Match(host)
 						onlyOnce := markFakeOnce(k, 20*time.Second)
 						target := ""
 						if matched {
-							target = " TARGET"
+							target = labelTarget
 						}
 						log.Infof("SNI TCP%v: %s %s:%d -> %s:%d", target, host, src.String(), sport, dst.String(), dport)
 						if matched {
@@ -188,6 +185,10 @@ func (w *Worker) Start() error {
 						}
 						return 0
 					}
+
+					// Accept the packet to let the connection continue
+					_ = q.SetVerdict(id, nfqueue.NfAccept)
+					return 0
 				}
 			}
 
@@ -217,7 +218,7 @@ func (w *Worker) Start() error {
 							matched := w.matcher.Match(host)
 							target := ""
 							if matched {
-								target = " TARGET"
+								target = labelTarget
 							}
 							log.Infof("SNI UDP%v: %s %s:%d -> %s:%d", target, host, src.String(), sport, dst.String(), dport)
 
@@ -373,6 +374,17 @@ func (w *Worker) feed(key string, chunk []byte) (string, bool) {
 		sni := st.sni
 		w.mu.Unlock()
 		return sni, false // Return false because we didn't just find it
+	}
+
+	// Try to parse SNI from this chunk FIRST before accumulating
+	if len(st.buf) == 0 && len(chunk) > 0 {
+		if host, ok := sni.ParseTLSClientHelloSNI(chunk); ok && host != "" {
+			st.sniFound = true
+			st.sni = host
+			st.buf = nil
+			w.mu.Unlock()
+			return host, true
+		}
 	}
 
 	// Accumulate data up to the limit

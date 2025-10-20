@@ -133,7 +133,7 @@ func runB4(cmd *cobra.Command, args []string) error {
 
 	// Start netfilter queue pool
 	log.Infof("Starting netfilter queue pool (queue: %d, threads: %d)", cfg.QueueStartNum, cfg.Threads)
-	pool := nfq.NewPool(uint16(cfg.QueueStartNum), cfg.Threads, &cfg)
+	pool := nfq.NewPool(&cfg)
 	if err := pool.Start(); err != nil {
 		metrics.RecordEvent("error", fmt.Sprintf("NFQueue start failed: %v", err))
 		metrics.NFQueueStatus = "error"
