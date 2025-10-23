@@ -98,8 +98,8 @@ func runB4(cmd *cobra.Command, args []string) error {
 	}
 
 	// Load domains from geodata if specified
-	if cfg.GeoSitePath != "" && len(cfg.GeoCategories) > 0 {
-		log.Infof("Loading domains from geodata for categories: %v", cfg.GeoCategories)
+	if cfg.Domains.GeoSitePath != "" && len(cfg.Domains.GeoSiteCategories) > 0 {
+		log.Infof("Loading domains from geodata for categories: %v", cfg.Domains.GeoSiteCategories)
 		domains, err := cfg.LoadDomainsFromGeodata()
 		if err != nil {
 			metrics.RecordEvent("error", fmt.Sprintf("Failed to load geodata: %v", err))
@@ -109,11 +109,11 @@ func runB4(cmd *cobra.Command, args []string) error {
 		metrics.RecordEvent("info", fmt.Sprintf("Loaded %d domains from geodata", len(domains)))
 
 		// Merge with existing SNI domains
-		cfg.SNIDomains = append(cfg.SNIDomains, domains...)
+		cfg.Domains.SNIDomains = append(cfg.Domains.SNIDomains, domains...)
 	}
 
-	if len(cfg.SNIDomains) > 0 {
-		log.Infof("Total SNI domains to match: %d", len(cfg.SNIDomains))
+	if len(cfg.Domains.SNIDomains) > 0 {
+		log.Infof("Total SNI domains to match: %d", len(cfg.Domains.SNIDomains))
 	}
 
 	// Setup iptables rules

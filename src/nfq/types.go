@@ -37,6 +37,6 @@ type Worker struct {
 	limit            int
 	matcher          *sni.SuffixSet
 	sock             *sock.Sender
-	frag             *sock.Fragmenter
+	frag             *config.Fragmentation
 	packetsProcessed uint64
 }

@@ -8,38 +8,15 @@ import (
 	"github.com/daniellavrushin/b4/config"
 	"github.com/daniellavrushin/b4/log"
 	"github.com/daniellavrushin/b4/sni"
-	"github.com/daniellavrushin/b4/sock"
 )
 
 func NewWorkerWithQueue(cfg *config.Config, qnum uint16) *Worker {
 	ctx, cancel := context.WithCancel(context.Background())
 	var m *sni.SuffixSet
-	if len(cfg.SNIDomains) > 0 {
-		m = sni.NewSuffixSet(cfg.SNIDomains)
+	if len(cfg.Domains.SNIDomains) > 0 {
+		m = sni.NewSuffixSet(cfg.Domains.SNIDomains)
 	} else {
 		m = sni.NewSuffixSet([]string{})
-	}
-
-	var strategy sock.FakeStrategy
-	switch cfg.FakeStrategy {
-	case "ttl":
-		strategy = sock.FakeStrategyTTL
-	case "randseq":
-		strategy = sock.FakeStrategyRandSeq
-	case "pastseq":
-		strategy = sock.FakeStrategyPastSeq
-	case "tcp_check":
-		strategy = sock.FakeStrategyTCPChecksum
-	default:
-		strategy = sock.FakeStrategyPastSeq
-	}
-
-	fragmenter := &sock.Fragmenter{
-		SplitPosition: cfg.FragSNIPosition,
-		ReverseOrder:  cfg.FragSNIReverse,
-		FakeSNI:       cfg.FakeSNI,
-		MiddleSplit:   cfg.FragMiddleSNI,
-		FakeStrategy:  strategy,
 	}
 
 	return &Worker{
@@ -51,7 +28,7 @@ func NewWorkerWithQueue(cfg *config.Config, qnum uint16) *Worker {
 		ttl:     5 * time.Second,
 		limit:   2048,
 		matcher: m,
-		frag:    fragmenter,
+		frag:    &cfg.Fragmentation,
 	}
 }
 

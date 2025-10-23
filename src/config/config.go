@@ -10,6 +10,7 @@ import (
 	"github.com/daniellavrushin/b4/geodat"
 	"github.com/daniellavrushin/b4/log"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 var (
@@ -18,47 +19,62 @@ var (
 )
 
 type Config struct {
-	QueueStartNum  int      `json:"queue_start_num" bson:"queue_start_num"`
-	Mark           uint     `json:"mark" bson:"mark"`
-	ConnBytesLimit int      `json:"conn_bytes_limit" bson:"conn_bytes_limit"`
-	Logging        Logging  `json:"logging" bson:"logging"`
-	SNIDomains     []string `json:"sni_domains" bson:"sni_domains"`
-	Threads        int      `json:"threads" bson:"threads"`
-	UseGSO         bool     `json:"use_gso" bson:"use_gso"`
-	UseConntrack   bool     `json:"use_conntrack" bson:"use_conntrack"`
-	SkipIpTables   bool     `json:"skip_iptables" bson:"skip_iptables"`
-	GeoSitePath    string   `json:"geosite_path" bson:"geosite_path"`
-	GeoIpPath      string   `json:"geoip_path" bson:"geoip_path"`
-	GeoCategories  []string `json:"geo_categories" bson:"geo_categories"`
-	Seg2Delay      int      `json:"seg2delay" bson:"seg2delay"`
+	QueueStartNum  int     `json:"queue_start_num" bson:"queue_start_num"`
+	Mark           uint    `json:"mark" bson:"mark"`
+	ConnBytesLimit int     `json:"conn_bytes_limit" bson:"conn_bytes_limit"`
+	Logging        Logging `json:"logging" bson:"logging"`
+	Threads        int     `json:"threads" bson:"threads"`
+	UseGSO         bool    `json:"use_gso" bson:"use_gso"`
+	UseConntrack   bool    `json:"use_conntrack" bson:"use_conntrack"`
+	SkipIpTables   bool    `json:"skip_iptables" bson:"skip_iptables"`
+	Seg2Delay      int     `json:"seg2delay" bson:"seg2delay"`
 
-	FragmentStrategy string
-	FragSNIReverse   bool
-	FragMiddleSNI    bool
-	FragSNIPosition  int
-
-	FakeSNI           bool
-	FakeTTL           uint8
-	FakeStrategy      string
-	FakeSeqOffset     int32
-	FakeSNISeqLength  int
-	FakeSNIType       int
-	FakeCustomPayload string
-
-	UDPMode           string
-	UDPFakeSeqLength  int
-	UDPFakeLen        int
-	UDPFakingStrategy string
-	UDPDPortMin       int
-	UDPDPortMax       int
-	UDPFilterQUIC     string
+	Domains       DomainsConfig `json:"domains" bson:"domains"`
+	Fragmentation Fragmentation `json:"fragmentation" bson:"fragmentation"`
+	Faking        Faking        `json:"faking" bson:"faking"`
+	UDP           UDPConfig     `json:"udp" bson:"udp"`
 
 	WebServer WebServer `json:"web_server" bson:"web_server"`
 }
 
+type Faking struct {
+	SNI           bool   `json:"sni" bson:"sni"`
+	TTL           uint8  `json:"ttl" bson:"ttl"`
+	Strategy      string `json:"strategy" bson:"strategy"`
+	SeqOffset     int32  `json:"seq_offset" bson:"seq_offset"`
+	SNISeqLength  int    `json:"sni_seq_length" bson:"sni_seq_length"`
+	SNIType       int    `json:"sni_type" bson:"sni_type"`
+	CustomPayload string `json:"custom_payload" bson:"custom_payload"`
+}
+
+type Fragmentation struct {
+	Strategy    string `json:"strategy" bson:"strategy"`
+	SNIReverse  bool   `json:"sni_reverse" bson:"sni_reverse"`
+	MiddleSNI   bool   `json:"middle_sni" bson:"middle_sni"`
+	SNIPosition int    `json:"sni_position" bson:"sni_position"`
+}
+
+type UDPConfig struct {
+	Mode           string `json:"mode" bson:"mode"`
+	FakeSeqLength  int    `json:"fake_seq_length" bson:"fake_seq_length"`
+	FakeLen        int    `json:"fake_len" bson:"fake_len"`
+	FakingStrategy string `json:"faking_strategy" bson:"faking_strategy"`
+	DPortMin       int    `json:"dport_min" bson:"dport_min"`
+	DPortMax       int    `json:"dport_max" bson:"dport_max"`
+	FilterQUIC     string `json:"filter_quic" bson:"filter_quic"`
+}
+
+type DomainsConfig struct {
+	GeoSitePath       string   `json:"geosite_path" bson:"geosite_path"`
+	GeoIpPath         string   `json:"geoip_path" bson:"geoip_path"`
+	SNIDomains        []string `json:"sni_domains" bson:"sni_domains"`
+	GeoSiteCategories []string `json:"geosite_categories" bson:"geosite_categories"`
+	GeoIpCategories   []string `json:"geoip_categories" bson:"geoip_categories"`
+}
+
 type WebServer struct {
-	Port      int `json:"port" bson:"port"`
-	IsEnabled bool
+	Port      int  `json:"port" bson:"port"`
+	IsEnabled bool `json:"-" bson:"-"`
 }
 
 type Logging struct {
@@ -81,31 +97,42 @@ var DefaultConfig = Config{
 	UseConntrack:   false,
 	UseGSO:         true,
 	SkipIpTables:   false,
-	GeoSitePath:    "",
-	GeoIpPath:      "",
-	GeoCategories:  []string{},
 	Seg2Delay:      0,
 
-	FragmentStrategy: "tcp",
-	FragSNIReverse:   true,
-	FragMiddleSNI:    true,
-	FragSNIPosition:  1,
+	Domains: DomainsConfig{
+		GeoSitePath:       "",
+		GeoIpPath:         "",
+		SNIDomains:        []string{},
+		GeoSiteCategories: []string{},
+		GeoIpCategories:   []string{},
+	},
 
-	FakeSNI:           true,
-	FakeTTL:           8,
-	FakeSNISeqLength:  1,
-	FakeSNIType:       FakePayloadDefault,
-	FakeCustomPayload: "",
-	FakeStrategy:      "pastseq",
-	FakeSeqOffset:     10000,
+	Fragmentation: Fragmentation{
+		Strategy:    "tcp",
+		SNIReverse:  true,
+		MiddleSNI:   true,
+		SNIPosition: 1,
+	},
 
-	UDPMode:           "fake",
-	UDPFakeSeqLength:  6,
-	UDPFakeLen:        64,
-	UDPFakingStrategy: "none",
-	UDPDPortMin:       0,
-	UDPDPortMax:       0,
-	UDPFilterQUIC:     "disabled",
+	Faking: Faking{
+		SNI:           true,
+		TTL:           8,
+		SNISeqLength:  1,
+		SNIType:       FakePayloadDefault,
+		CustomPayload: "",
+		Strategy:      "pastseq",
+		SeqOffset:     10000,
+	},
+
+	UDP: UDPConfig{
+		Mode:           "fake",
+		FakeSeqLength:  6,
+		FakeLen:        64,
+		FakingStrategy: "none",
+		DPortMin:       0,
+		DPortMax:       0,
+		FilterQUIC:     "disabled",
+	},
 
 	WebServer: WebServer{
 		Port:      0,
@@ -192,34 +219,35 @@ func (c *Config) BindFlags(cmd *cobra.Command) {
 	cmd.Flags().IntVar(&c.Threads, "threads", c.Threads, "Number of worker threads")
 	cmd.Flags().UintVar(&c.Mark, "mark", c.Mark, "Packet mark value")
 	cmd.Flags().IntVar(&c.ConnBytesLimit, "connbytes-limit", c.ConnBytesLimit, "Connection bytes limit")
-	cmd.Flags().StringSliceVar(&c.SNIDomains, "sni-domains", c.SNIDomains, "List of SNI domains to match")
 	cmd.Flags().IntVar(&c.Seg2Delay, "seg2delay", c.Seg2Delay, "Delay between segments in ms")
 
 	// Geodata and site filtering
-	cmd.Flags().StringVar(&c.GeoSitePath, "geosite", c.GeoSitePath, "Path to geosite file (e.g., geosite.dat)")
-	cmd.Flags().StringVar(&c.GeoIpPath, "geoip", c.GeoIpPath, "Path to geoip file (e.g., geoip.dat)")
-	cmd.Flags().StringSliceVar(&c.GeoCategories, "geo-categories", c.GeoCategories, "Geographic categories to process (e.g., youtube,facebook,amazon)")
+	cmd.Flags().StringSliceVar(&c.Domains.SNIDomains, "sni-domains", c.Domains.SNIDomains, "List of SNI domains to match")
+	cmd.Flags().StringVar(&c.Domains.GeoSitePath, "geosite", c.Domains.GeoSitePath, "Path to geosite file (e.g., geosite.dat)")
+	cmd.Flags().StringVar(&c.Domains.GeoIpPath, "geoip", c.Domains.GeoIpPath, "Path to geoip file (e.g., geoip.dat)")
+	cmd.Flags().StringSliceVar(&c.Domains.GeoSiteCategories, "geosite-categories", c.Domains.GeoSiteCategories, "Geographic categories to process (e.g., youtube,facebook,amazon)")
+	cmd.Flags().StringSliceVar(&c.Domains.GeoIpCategories, "geoip-categories", c.Domains.GeoIpCategories, "Geographic categories to process (e.g., youtube,facebook,amazon)")
 
 	// Fake SNI and TTL configuration
-	cmd.Flags().StringVar(&c.FragmentStrategy, "frag", "tcp", "Fragmentation strategy (tcp/ip/none)")
-	cmd.Flags().BoolVar(&c.FragSNIReverse, "frag-sni-reverse", c.FragSNIReverse, "Reverse fragment order")
-	cmd.Flags().BoolVar(&c.FragMiddleSNI, "frag-middle-sni", c.FragMiddleSNI, "Fragment in middle of SNI")
-	cmd.Flags().IntVar(&c.FragSNIPosition, "frag-sni-pos", c.FragSNIPosition, "SNI fragment position")
+	cmd.Flags().StringVar(&c.Fragmentation.Strategy, "frag", "tcp", "Fragmentation strategy (tcp|ip|none)")
+	cmd.Flags().BoolVar(&c.Fragmentation.SNIReverse, "frag-sni-reverse", c.Fragmentation.SNIReverse, "Reverse fragment order")
+	cmd.Flags().BoolVar(&c.Fragmentation.MiddleSNI, "frag-middle-sni", c.Fragmentation.MiddleSNI, "Fragment in middle of SNI")
+	cmd.Flags().IntVar(&c.Fragmentation.SNIPosition, "frag-sni-pos", c.Fragmentation.SNIPosition, "SNI fragment position")
 
-	cmd.Flags().StringVar(&c.FakeStrategy, "fake-strategy", c.FakeStrategy, "Faking strategy (ttl/randseq/pastseq/tcp_check/md5sum)")
-	cmd.Flags().Uint8Var(&c.FakeTTL, "fake-ttl", c.FakeTTL, "TTL for fake packets")
-	cmd.Flags().Int32Var(&c.FakeSeqOffset, "fake-seq-offset", c.FakeSeqOffset, "Sequence offset for fake packets")
-	cmd.Flags().BoolVar(&c.FakeSNI, "fake-sni", c.FakeSNI, "Enable fake SNI packets")
-	cmd.Flags().IntVar(&c.FakeSNISeqLength, "fake-sni-len", c.FakeSNISeqLength, "Length of fake SNI sequence")
-	cmd.Flags().IntVar(&c.FakeSNIType, "fake-sni-type", c.FakeSNIType, "Type of fake SNI payload (0=random, 1=custom, 2=default)")
+	cmd.Flags().StringVar(&c.Faking.Strategy, "fake-strategy", c.Faking.Strategy, "Faking strategy (ttl|randseq|pastseq|tcp_check|md5sum)")
+	cmd.Flags().Uint8Var(&c.Faking.TTL, "fake-ttl", c.Faking.TTL, "TTL for fake packets")
+	cmd.Flags().Int32Var(&c.Faking.SeqOffset, "fake-seq-offset", c.Faking.SeqOffset, "Sequence offset for fake packets")
+	cmd.Flags().BoolVar(&c.Faking.SNI, "fake-sni", c.Faking.SNI, "Enable fake SNI packets")
+	cmd.Flags().IntVar(&c.Faking.SNISeqLength, "fake-sni-len", c.Faking.SNISeqLength, "Length of fake SNI sequence")
+	cmd.Flags().IntVar(&c.Faking.SNIType, "fake-sni-type", c.Faking.SNIType, "Type of fake SNI payload (0=random, 1=custom, 2=default)")
 
-	cmd.Flags().StringVar(&c.UDPMode, "udp-mode", c.UDPMode, "UDP handling strategy (drop|fake)")
-	cmd.Flags().IntVar(&c.UDPFakeSeqLength, "udp-fake-seq-len", c.UDPFakeSeqLength, "UDP fake packet sequence length")
-	cmd.Flags().IntVar(&c.UDPFakeLen, "udp-fake-len", c.UDPFakeLen, "UDP fake packet size in bytes")
-	cmd.Flags().StringVar(&c.UDPFakingStrategy, "udp-faking-strategy", c.UDPFakingStrategy, "UDP faking strategy (none|ttl|checksum)")
-	cmd.Flags().IntVar(&c.UDPDPortMin, "udp-dport-min", c.UDPDPortMin, "Minimum UDP destination port to handle")
-	cmd.Flags().IntVar(&c.UDPDPortMax, "udp-dport-max", c.UDPDPortMax, "Maximum UDP destination port to handle")
-	cmd.Flags().StringVar(&c.UDPFilterQUIC, "udp-filter-quic", c.UDPFilterQUIC, "QUIC filtering mode (disabled|all|parse)")
+	cmd.Flags().StringVar(&c.UDP.Mode, "udp-mode", c.UDP.Mode, "UDP handling strategy (drop|fake)")
+	cmd.Flags().IntVar(&c.UDP.FakeSeqLength, "udp-fake-seq-len", c.UDP.FakeSeqLength, "UDP fake packet sequence length")
+	cmd.Flags().IntVar(&c.UDP.FakeLen, "udp-fake-len", c.UDP.FakeLen, "UDP fake packet size in bytes")
+	cmd.Flags().StringVar(&c.UDP.FakingStrategy, "udp-faking-strategy", c.UDP.FakingStrategy, "UDP faking strategy (none|ttl|checksum)")
+	cmd.Flags().IntVar(&c.UDP.DPortMin, "udp-dport-min", c.UDP.DPortMin, "Minimum UDP destination port to handle")
+	cmd.Flags().IntVar(&c.UDP.DPortMax, "udp-dport-max", c.UDP.DPortMax, "Maximum UDP destination port to handle")
+	cmd.Flags().StringVar(&c.UDP.FilterQUIC, "udp-filter-quic", c.UDP.FilterQUIC, "QUIC filtering mode (disabled|all|parse)")
 
 	// Feature flags
 	cmd.Flags().BoolVar(&c.UseGSO, "gso", c.UseGSO, "Enable Generic Segmentation Offload")
@@ -252,12 +280,52 @@ func (cfg *Config) ApplyLogLevel(level string) {
 	}
 }
 
+func (cfg *Config) ApplyCliOverrides(cmd *cobra.Command) map[string]interface{} {
+	overrides := make(map[string]interface{})
+
+	cmd.Flags().Visit(func(f *pflag.Flag) {
+		// Store the value of each flag that was explicitly set
+		switch f.Value.Type() {
+		case "int":
+			if val, err := cmd.Flags().GetInt(f.Name); err == nil {
+				overrides[f.Name] = val
+			}
+		case "uint":
+			if val, err := cmd.Flags().GetUint(f.Name); err == nil {
+				overrides[f.Name] = val
+			}
+		case "uint8":
+			if val, err := cmd.Flags().GetUint8(f.Name); err == nil {
+				overrides[f.Name] = val
+			}
+		case "int32":
+			if val, err := cmd.Flags().GetInt32(f.Name); err == nil {
+				overrides[f.Name] = val
+			}
+		case "bool":
+			if val, err := cmd.Flags().GetBool(f.Name); err == nil {
+				overrides[f.Name] = val
+			}
+		case "string":
+			if val, err := cmd.Flags().GetString(f.Name); err == nil {
+				overrides[f.Name] = val
+			}
+		case "stringSlice":
+			if val, err := cmd.Flags().GetStringSlice(f.Name); err == nil {
+				overrides[f.Name] = val
+			}
+		}
+	})
+
+	return overrides
+}
+
 func (c *Config) Validate() error {
 
 	c.WebServer.IsEnabled = c.WebServer.Port < 0 || c.WebServer.Port > 65535
 
 	// If sites are specified, geodata path must be provided
-	if len(c.GeoCategories) > 0 && c.GeoSitePath == "" {
+	if len(c.Domains.GeoSiteCategories) > 0 && c.Domains.GeoSitePath == "" {
 		return fmt.Errorf("--geosite must be specified when using --geo-categories")
 	}
 
@@ -279,5 +347,5 @@ func (c *Config) LogString() string {
 // LoadDomainsFromGeodata loads domains from geodata file for specified sites
 // and returns them as a slice
 func (c *Config) LoadDomainsFromGeodata() ([]string, error) {
-	return geodat.LoadDomainsFromSites(c.GeoSitePath, c.GeoCategories)
+	return geodat.LoadDomainsFromSites(c.Domains.GeoSitePath, c.Domains.GeoSiteCategories)
 }

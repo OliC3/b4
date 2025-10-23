@@ -13,7 +13,6 @@ type Fragmenter struct {
 	ReverseOrder  bool // Send second fragment before first
 	FakeSNI       bool // Whether to fake SNI
 	MiddleSplit   bool // Whether to split in middle of SNI
-	FakeStrategy  FakeStrategy
 }
 
 func (f *Fragmenter) FragmentPacket(original gopacket.Packet, splitPos int) ([][]byte, error) {

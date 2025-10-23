@@ -1,4 +1,3 @@
-// src/http/ws/common.go
 package ws
 
 import (
@@ -7,11 +6,9 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// Upgrader is a shared WebSocket upgrader configuration
 var Upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
-		// Allow connections from any origin
-		// In production, you might want to restrict this
+		//TODO: Allow connections from any origin - need to handle CORS  later
 		return true
 	},
 	ReadBufferSize:  1024,
