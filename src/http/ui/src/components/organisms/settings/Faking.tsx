@@ -41,7 +41,7 @@ export const FakingSettings: React.FC<FakingSettingsProps> = ({
           <SettingSwitch
             label="Enable Fake SNI"
             checked={config.faking.sni}
-            onChange={(checked) => onChange("fakeSNI", checked)}
+            onChange={(checked) => onChange("faking.sni", checked)}
             description="Send fake SNI packets"
           />
         </Grid>
@@ -50,7 +50,9 @@ export const FakingSettings: React.FC<FakingSettingsProps> = ({
             label="Fake Strategy"
             value={config.faking.strategy}
             options={FAKE_STRATEGIES}
-            onChange={(e) => onChange("fakeStrategy", e.target.value as string)}
+            onChange={(e) =>
+              onChange("faking.strategy", e.target.value as string)
+            }
             helperText="Strategy for sending fake packets"
             disabled={!config.faking.sni}
           />
@@ -60,7 +62,9 @@ export const FakingSettings: React.FC<FakingSettingsProps> = ({
             label="Fake Payload Type"
             value={config.faking.sni_type}
             options={FAKE_PAYLOAD_TYPES}
-            onChange={(e) => onChange("fakeSNIType", Number(e.target.value))}
+            onChange={(e) =>
+              onChange("faking.sni_type", Number(e.target.value))
+            }
             helperText="Type of payload to send in fake packets"
             disabled={!config.faking.sni}
           />
@@ -70,7 +74,7 @@ export const FakingSettings: React.FC<FakingSettingsProps> = ({
             label="Fake TTL"
             type="number"
             value={config.faking.ttl}
-            onChange={(e) => onChange("fakeTTL", Number(e.target.value))}
+            onChange={(e) => onChange("faking.ttl", Number(e.target.value))}
             helperText="TTL for fake packets"
             disabled={!config.faking.sni}
           />
@@ -80,7 +84,9 @@ export const FakingSettings: React.FC<FakingSettingsProps> = ({
             label="Sequence Offset"
             type="number"
             value={config.faking.seq_offset}
-            onChange={(e) => onChange("fakeSeqOffset", Number(e.target.value))}
+            onChange={(e) =>
+              onChange("faking.seq_offset", Number(e.target.value))
+            }
             helperText="Sequence number offset"
             disabled={!config.faking.sni}
           />
@@ -91,7 +97,7 @@ export const FakingSettings: React.FC<FakingSettingsProps> = ({
             type="number"
             value={config.faking.sni_seq_length}
             onChange={(e) =>
-              onChange("fakeSNISeqLength", Number(e.target.value))
+              onChange("faking.sni_seq_length", Number(e.target.value))
             }
             helperText="Length of fake SNI sequence"
             disabled={!config.faking.sni}
@@ -102,7 +108,9 @@ export const FakingSettings: React.FC<FakingSettingsProps> = ({
             <SettingTextField
               label="Custom Payload"
               value={config.faking.custom_payload}
-              onChange={(e) => onChange("fakeCustomPayload", e.target.value)}
+              onChange={(e) =>
+                onChange("faking.custom_payload", e.target.value)
+              }
               helperText="Custom payload for fake packets (hex string)"
               disabled={!config.faking.sni}
               multiline

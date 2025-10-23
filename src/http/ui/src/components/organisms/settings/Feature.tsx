@@ -25,13 +25,13 @@ export const FeatureSettings: React.FC<FeatureSettingsProps> = ({
           <SettingSwitch
             label="Generic Segmentation Offload (GSO)"
             checked={config.use_gso}
-            onChange={(checked) => onChange("useGSO", checked)}
+            onChange={(checked) => onChange("use_gso", checked)}
             description="Enable GSO for better performance"
           />
           <SettingSwitch
             label="Connection Tracking"
             checked={config.use_conntrack}
-            onChange={(checked) => onChange("useConntrack", checked)}
+            onChange={(checked) => onChange("use_conntrack", checked)}
             description="Enable connection tracking (conntrack)"
           />
         </Grid>
@@ -39,7 +39,7 @@ export const FeatureSettings: React.FC<FeatureSettingsProps> = ({
           <SettingSwitch
             label="Skip IPTables Setup"
             checked={config.skip_iptables}
-            onChange={(checked) => onChange("skipIpTables", checked)}
+            onChange={(checked) => onChange("skip_iptables", checked)}
             description="Skip automatic iptables rules configuration"
           />
         </Grid>

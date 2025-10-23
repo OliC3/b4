@@ -26,7 +26,9 @@ export const NetworkSettings: React.FC<NetworkSettingsProps> = ({
             label="Queue Start Number"
             type="number"
             value={config.queue_start_num}
-            onChange={(e) => onChange("queueStartNum", Number(e.target.value))}
+            onChange={(e) =>
+              onChange("queue_start_num", Number(e.target.value))
+            }
             helperText="Netfilter queue number to use (0-65535)"
           />
         </Grid>
@@ -53,7 +55,9 @@ export const NetworkSettings: React.FC<NetworkSettingsProps> = ({
             label="Connection Bytes Limit"
             type="number"
             value={config.conn_bytes_limit}
-            onChange={(e) => onChange("connBytesLimit", Number(e.target.value))}
+            onChange={(e) =>
+              onChange("conn_bytes_limit", Number(e.target.value))
+            }
             helperText="Connection bytes limit"
           />
         </Grid>
@@ -62,7 +66,7 @@ export const NetworkSettings: React.FC<NetworkSettingsProps> = ({
             label="Segment 2 Delay (ms)"
             type="number"
             value={config.seg2delay}
-            onChange={(e) => onChange("seg2Delay", Number(e.target.value))}
+            onChange={(e) => onChange("seg2delay", Number(e.target.value))}
             helperText="Delay between segments in milliseconds"
           />
         </Grid>

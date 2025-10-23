@@ -20,7 +20,7 @@ export const DomainSettings: React.FC<DomainSettingsProps> = ({
 
   const handleAddDomain = () => {
     if (newDomain.trim()) {
-      onChange("sni_domains", [
+      onChange("domains.sni_domains", [
         ...config.domains.sni_domains,
         newDomain.trim(),
       ]);
@@ -30,14 +30,14 @@ export const DomainSettings: React.FC<DomainSettingsProps> = ({
 
   const handleRemoveDomain = (domain: string) => {
     onChange(
-      "sni_domains",
+      "domains.sni_domains",
       config.domains.sni_domains.filter((d) => d !== domain)
     );
   };
 
   const handleAddCategory = () => {
     if (newCategory.trim()) {
-      onChange("geosite_categories", [
+      onChange("domains.geosite_categories", [
         ...config.domains.geosite_categories,
         newCategory.trim(),
       ]);
@@ -47,7 +47,7 @@ export const DomainSettings: React.FC<DomainSettingsProps> = ({
 
   const handleRemoveCategory = (category: string) => {
     onChange(
-      "geosite_categories",
+      "domains.geosite_categories",
       config.domains.geosite_categories.filter((c) => c !== category)
     );
   };
@@ -66,7 +66,7 @@ export const DomainSettings: React.FC<DomainSettingsProps> = ({
               value={newDomain}
               onChange={(e) => setNewDomain(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") {
+                if (e.key === "Enter" || e.key === "Tab" || e.key === ",") {
                   e.preventDefault();
                   handleAddDomain();
                 }
@@ -116,7 +116,7 @@ export const DomainSettings: React.FC<DomainSettingsProps> = ({
           <SettingTextField
             label="GeoSite Path"
             value={config.domains.geosite_path}
-            onChange={(e) => onChange("geosite_path", e.target.value)}
+            onChange={(e) => onChange("domains.geosite_path", e.target.value)}
             helperText="Path to geosite.dat file"
           />
         </Grid>
@@ -124,7 +124,7 @@ export const DomainSettings: React.FC<DomainSettingsProps> = ({
           <SettingTextField
             label="GeoIP Path"
             value={config.domains.geoip_path}
-            onChange={(e) => onChange("geoip_path", e.target.value)}
+            onChange={(e) => onChange("domains.geoip_path", e.target.value)}
             helperText="Path to geoip.dat file"
           />
         </Grid>
@@ -136,7 +136,7 @@ export const DomainSettings: React.FC<DomainSettingsProps> = ({
               value={newCategory}
               onChange={(e) => setNewCategory(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") {
+                if (e.key === "Enter" || e.key === "Tab" || e.key === ",") {
                   e.preventDefault();
                   handleAddCategory();
                 }

@@ -4,7 +4,7 @@ import { Description as DescriptionIcon } from "@mui/icons-material";
 import SettingSection from "../../molecules/common/B4Section";
 import SettingSelect from "../../atoms/common/B4Select";
 import SettingSwitch from "../../atoms/common/B4Switch";
-import B4Config from "../../../models/Config";
+import B4Config, { LogLevel } from "../../../models/Config";
 
 interface LoggingSettingsProps {
   config: B4Config;
@@ -12,11 +12,10 @@ interface LoggingSettingsProps {
 }
 
 const LOG_LEVELS = [
-  { value: -1, label: "Silent" },
-  { value: 0, label: "Error" },
-  { value: 1, label: "Info" },
-  { value: 2, label: "Debug" },
-  { value: 3, label: "Trace" },
+  { value: LogLevel.ERROR, label: "Error" },
+  { value: LogLevel.INFO, label: "Info" },
+  { value: LogLevel.TRACE, label: "Trace" },
+  { value: LogLevel.DEBUG, label: "Debug" },
 ];
 
 export const LoggingSettings: React.FC<LoggingSettingsProps> = ({
@@ -35,7 +34,7 @@ export const LoggingSettings: React.FC<LoggingSettingsProps> = ({
             label="Log Level"
             value={config.logging.level}
             options={LOG_LEVELS}
-            onChange={(e) => onChange("level", Number(e.target.value))}
+            onChange={(e) => onChange("logging.level", Number(e.target.value))}
             helperText="Set the verbosity of logging output"
           />
         </Grid>
@@ -43,13 +42,13 @@ export const LoggingSettings: React.FC<LoggingSettingsProps> = ({
           <SettingSwitch
             label="Instant Flush"
             checked={config.logging.instaflush}
-            onChange={(checked) => onChange("instaflush", checked)}
+            onChange={(checked) => onChange("logging.instaflush", checked)}
             description="Flush logs immediately (may impact performance)"
           />
           <SettingSwitch
             label="Syslog"
             checked={config.logging.syslog}
-            onChange={(checked) => onChange("syslog", checked)}
+            onChange={(checked) => onChange("logging.syslog", checked)}
             description="Enable syslog output"
           />
         </Grid>

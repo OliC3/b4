@@ -8,6 +8,7 @@ import {
   Snackbar,
   CircularProgress,
   Typography,
+  Grid,
 } from "@mui/material";
 import { Save as SaveIcon, Refresh as RefreshIcon } from "@mui/icons-material";
 
@@ -137,8 +138,7 @@ export default function Settings() {
       maxWidth={false}
       sx={{
         flex: 1,
-        py: 3,
-        px: 3,
+        pb: 3,
         display: "flex",
         flexDirection: "column",
         overflow: "auto",
@@ -147,7 +147,6 @@ export default function Settings() {
       {/* Action Bar */}
       <Box
         sx={{
-          mb: 3,
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
@@ -155,12 +154,12 @@ export default function Settings() {
           top: 0,
           bgcolor: colors.background.default,
           zIndex: 10,
-          py: 2,
         }}
       >
-        <Typography variant="h5" sx={{ color: colors.secondary }}>
-          Configuration Settings
-        </Typography>
+        <Alert severity="info" sx={{ mb: 3 }}>
+          Changes to network, queue, and thread settings require B<sup>4</sup> a
+          restart to take effect.
+        </Alert>
         <Stack direction="row" spacing={2}>
           <Button
             variant="outlined"
@@ -196,30 +195,22 @@ export default function Settings() {
         </Stack>
       </Box>
 
-      <Alert severity="info" sx={{ mb: 3 }}>
-        Changes to network, queue, and thread settings require a restart to take
-        effect.
-      </Alert>
-
       {/* Settings Sections */}
       <Stack spacing={3}>
-        <Stack spacing={3} direction="row" useFlexGap sx={{ flexWrap: "wrap" }}>
-          <NetworkSettings config={config} onChange={handleChange} />
-          <FeatureSettings config={config} onChange={handleChange} />
-        </Stack>
+        <Grid container spacing={3}>
+          <Grid size={{ xs: 12, lg: 6 }}>
+            <NetworkSettings config={config} onChange={handleChange} />
+          </Grid>
+          <Grid size={{ xs: 12, lg: 6 }}>
+            <FeatureSettings config={config} onChange={handleChange} />
+          </Grid>
+        </Grid>
 
         <DomainSettings config={config} onChange={handleChange} />
-
         <FragmentationSettings config={config} onChange={handleChange} />
-
         <FakingSettings config={config} onChange={handleChange} />
-
         <UDPSettings config={config} onChange={handleChange} />
-
-        <LoggingSettings
-          config={config}
-          onChange={(field, value) => handleChange(`logging.${field}`, value)}
-        />
+        <LoggingSettings config={config} onChange={handleChange} />
       </Stack>
 
       <Snackbar
