@@ -6,12 +6,24 @@ import (
 	"net/http"
 
 	"github.com/daniellavrushin/b4/config"
+	"github.com/daniellavrushin/b4/geodat"
 	"github.com/daniellavrushin/b4/log"
 	"github.com/daniellavrushin/b4/metrics"
 )
 
 func RegisterConfigApi(mux *http.ServeMux, cfg *config.Config) {
-	api := &API{cfg: cfg}
+	api := &API{
+		cfg:            cfg,
+		manualDomains:  []string{}, // Initialize empty
+		geositeDomains: make(map[string][]string),
+	}
+
+	// Load initial manual domains if any
+	if len(cfg.Domains.SNIDomains) > 0 {
+		api.manualDomains = make([]string, len(cfg.Domains.SNIDomains))
+		copy(api.manualDomains, cfg.Domains.SNIDomains)
+	}
+
 	mux.HandleFunc("/api/config", api.handleConfig)
 }
 
@@ -28,8 +40,32 @@ func (a *API) handleConfig(w http.ResponseWriter, r *http.Request) {
 
 func (a *API) getConfig(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
+	// Get all geosite domains count
+	totalGeositeDomains := 0
+	for _, domains := range a.geositeDomains {
+		totalGeositeDomains += len(domains)
+	}
+
+	// Create response with stats
+	response := ConfigResponse{
+		Config: a.cfg,
+		DomainStats: DomainStatistics{
+			ManualDomains:     len(a.manualDomains),
+			GeositeDomains:    totalGeositeDomains,
+			TotalDomains:      len(a.manualDomains) + totalGeositeDomains,
+			GeositeAvailable:  a.cfg.Domains.GeoSitePath != "",
+			CategoryBreakdown: a.getGeoCategoryBreakdown(),
+		},
+	}
+
+	// IMPORTANT: Return only manual domains in sni_domains field
+	configCopy := *a.cfg
+	configCopy.Domains.SNIDomains = a.manualDomains
+	response.Config = &configCopy
+
 	enc := json.NewEncoder(w)
-	_ = enc.Encode(a.cfg)
+	_ = enc.Encode(response)
 }
 
 func (a *API) updateConfig(w http.ResponseWriter, r *http.Request) {
@@ -48,95 +84,94 @@ func (a *API) updateConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	geositeChanged := needsGeositeReload(a.cfg, &newConfig)
+	// Store manual domains separately - these are what the user explicitly added
+	a.manualDomains = make([]string, len(newConfig.Domains.SNIDomains))
+	copy(a.manualDomains, newConfig.Domains.SNIDomains)
+	log.Infof("Updated manual domains: %d", len(a.manualDomains))
 
-	manualSNIDomains := make([]string, len(newConfig.Domains.SNIDomains))
-	copy(manualSNIDomains, newConfig.Domains.SNIDomains)
+	// Load geosite domains if needed - but DON'T merge them into SNIDomains
+	categoryStats := make(map[string]int)
+	var allGeositeDomains []string
 
 	if newConfig.Domains.GeoSitePath != "" && len(newConfig.Domains.GeoSiteCategories) > 0 {
 		log.Infof("Loading domains from geodata for categories: %v", newConfig.Domains.GeoSiteCategories)
-		domains, err := newConfig.LoadDomainsFromGeodata()
-		if err != nil {
-			log.Errorf("Failed to load geodata: %v", err)
-			m := metrics.GetMetricsCollector()
-			m.RecordEvent("error", fmt.Sprintf("Failed to load geodata: %v", err))
-			http.Error(w, fmt.Sprintf("Failed to load geodata: %v", err), http.StatusBadRequest)
-			return
-		}
-		log.Infof("Loaded %d domains from geodata", len(domains))
 
-		newConfig.Domains.SNIDomains = mergeDomains(manualSNIDomains, domains)
+		// Clear previous geosite domains
+		a.geositeDomains = make(map[string][]string)
+
+		// Load each category separately for tracking
+		for _, category := range newConfig.Domains.GeoSiteCategories {
+			domains, err := geodat.LoadDomainsFromSites(newConfig.Domains.GeoSitePath, []string{category})
+			if err != nil {
+				log.Errorf("Failed to load category %s: %v", category, err)
+				continue
+			}
+			a.geositeDomains[category] = domains
+			categoryStats[category] = len(domains)
+			log.Infof("Loaded %d domains for category: %s", len(domains), category)
+			allGeositeDomains = append(allGeositeDomains, domains...)
+		}
 
 		m := metrics.GetMetricsCollector()
-		m.RecordEvent("info", fmt.Sprintf("Loaded %d domains from geodata, total %d domains", len(domains), len(newConfig.Domains.SNIDomains)))
+		m.RecordEvent("info", fmt.Sprintf("Loaded %d domains from geodata across %d categories",
+			len(allGeositeDomains), len(newConfig.Domains.GeoSiteCategories)))
+	} else if len(newConfig.Domains.GeoSiteCategories) == 0 {
+		// Clear geosite domains if no categories selected
+		a.geositeDomains = make(map[string][]string)
+		log.Infof("Cleared all geosite domains")
 	}
 
-	if len(newConfig.Domains.SNIDomains) > 0 {
-		log.Infof("Total SNI domains to match: %d", len(newConfig.Domains.SNIDomains))
-	}
+	// Keep SNIDomains as ONLY the manual domains
+	// This ensures the config file never gets polluted with thousands of geosite domains
+	newConfig.Domains.SNIDomains = a.manualDomains
 
-	*a.cfg = newConfig
+	// Update the main config
+	a.updateMainConfig(&newConfig)
 
+	// Create a combined list for the matcher WITHOUT modifying the config
+	allDomainsForMatcher := make([]string, 0, len(a.manualDomains)+len(allGeositeDomains))
+	allDomainsForMatcher = append(allDomainsForMatcher, a.manualDomains...)
+	allDomainsForMatcher = append(allDomainsForMatcher, allGeositeDomains...)
+
+	// Update the workers with the combined list for matching
 	if globalPool != nil {
-		globalPool.UpdateConfig(&newConfig)
-		log.Infof("Config pushed to all workers (geosite reload: %v)", geositeChanged)
+		// We need to pass the combined domains to the pool for matching
+		// but keep them separate in the config
+		globalPool.UpdateConfigWithDomains(&newConfig, allDomainsForMatcher)
+		log.Infof("Config pushed to all workers (manual: %d, geosite: %d, total: %d domains)",
+			len(a.manualDomains), len(allGeositeDomains), len(allDomainsForMatcher))
 	}
 
-	log.Infof("Configuration updated via API (geosite changed: %v)", geositeChanged)
-	m := metrics.GetMetricsCollector()
-	m.RecordEvent("info", "Configuration updated")
+	// Save config to file if path is set
+	if newConfig.ConfigPath != "" {
+		if err := newConfig.SaveToFile(newConfig.ConfigPath); err != nil {
+			log.Errorf("Failed to save config: %v", err)
+		} else {
+			log.Infof("Config saved to %s", newConfig.ConfigPath)
+		}
+	}
+
+	// Prepare response with statistics
+	totalDomains := len(a.manualDomains) + len(allGeositeDomains)
+	response := map[string]interface{}{
+		"success": true,
+		"message": "Configuration updated successfully",
+		"domain_stats": DomainStatistics{
+			ManualDomains:     len(a.manualDomains),
+			GeositeDomains:    len(allGeositeDomains),
+			TotalDomains:      totalDomains,
+			CategoryBreakdown: categoryStats,
+		},
+	}
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	enc := json.NewEncoder(w)
-	_ = enc.Encode(map[string]interface{}{
-		"success":       true,
-		"message":       "Configuration updated successfully",
-		"domains_count": len(newConfig.Domains.SNIDomains),
-	})
+	_ = enc.Encode(response)
 }
 
-func needsGeositeReload(oldCfg, newCfg *config.Config) bool {
-	if oldCfg.Domains.GeoSitePath != newCfg.Domains.GeoSitePath {
-		return true
-	}
-
-	if !equalStringSlices(oldCfg.Domains.GeoSiteCategories, newCfg.Domains.GeoSiteCategories) {
-		return true
-	}
-
-	return false
-}
-
-func equalStringSlices(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
-}
-
-func mergeDomains(manual, geodata []string) []string {
-	seen := make(map[string]bool)
-	result := make([]string, 0, len(manual)+len(geodata))
-
-	for _, domain := range manual {
-		if !seen[domain] {
-			seen[domain] = true
-			result = append(result, domain)
-		}
-	}
-
-	for _, domain := range geodata {
-		if !seen[domain] {
-			seen[domain] = true
-			result = append(result, domain)
-		}
-	}
-
-	return result
+func (a *API) updateMainConfig(newCfg *config.Config) {
+	newCfg.ConfigPath = a.cfg.ConfigPath
+	newCfg.WebServer.IsEnabled = a.cfg.WebServer.IsEnabled
+	a.cfg = newCfg
 }

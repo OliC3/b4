@@ -18,6 +18,7 @@ var (
 )
 
 type Config struct {
+	ConfigPath     string  `json:"-" bson:"-"`
 	QueueStartNum  int     `json:"queue_start_num" bson:"queue_start_num"`
 	Mark           uint    `json:"mark" bson:"mark"`
 	ConnBytesLimit int     `json:"conn_bytes_limit" bson:"conn_bytes_limit"`
@@ -90,6 +91,7 @@ const (
 )
 
 var DefaultConfig = Config{
+	ConfigPath:     "",
 	QueueStartNum:  537,
 	Mark:           1 << 15,
 	Threads:        4,
@@ -214,6 +216,9 @@ func (c *Config) BindFlags(cmd *cobra.Command) {
 	if err != nil {
 		fmt.Printf("Warning: failed to load embedded config: %v\n", err)
 	}
+
+	// Config path
+	cmd.Flags().StringVar(&c.ConfigPath, "config", c.ConfigPath, "Path to config file")
 
 	// Network configuration
 	cmd.Flags().IntVar(&c.QueueStartNum, "queue-num", c.QueueStartNum, "Netfilter queue number")

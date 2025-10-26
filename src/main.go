@@ -25,7 +25,6 @@ import (
 
 var (
 	cfg         = config.DefaultConfig
-	configPath  string
 	verboseFlag string
 	showVersion bool
 	Version     = "dev"
@@ -47,7 +46,6 @@ func init() {
 	// Add verbosity flags separately since they need special handling
 	rootCmd.Flags().StringVar(&verboseFlag, "verbose", "info", "Set verbosity level (debug, trace, info, silent), default: info")
 	rootCmd.Flags().BoolVarP(&showVersion, "version", "v", false, "Show version and exit")
-	rootCmd.Flags().StringVarP(&configPath, "config", "c", configPath, "Path to a configuration file to save and load")
 }
 
 func main() {
@@ -72,8 +70,8 @@ func runB4(cmd *cobra.Command, args []string) error {
 
 	log.Infof("Starting B4 packet processor")
 
-	cfg.LoadFromFile(configPath)
-	cfg.SaveToFile(configPath)
+	cfg.LoadFromFile(cfg.ConfigPath)
+	cfg.SaveToFile(cfg.ConfigPath)
 
 	// Validate configuration
 	if err := cfg.Validate(); err != nil {
@@ -91,22 +89,34 @@ func runB4(cmd *cobra.Command, args []string) error {
 	}
 
 	// Load domains from geodata if specified
+
+	var allDomainsForMatcher []string
+	manualDomains := cfg.Domains.SNIDomains // These are the user's manual domains
+
+	// Load domains from geodata if specified
 	if cfg.Domains.GeoSitePath != "" && len(cfg.Domains.GeoSiteCategories) > 0 {
 		log.Infof("Loading domains from geodata for categories: %v", cfg.Domains.GeoSiteCategories)
-		domains, err := cfg.LoadDomainsFromGeodata()
+		geositeDomains, err := cfg.LoadDomainsFromGeodata()
 		if err != nil {
 			metrics.RecordEvent("error", fmt.Sprintf("Failed to load geodata: %v", err))
 			return fmt.Errorf("failed to load geodata domains: %w", err)
 		}
-		log.Infof("Loaded %d domains from geodata", len(domains))
-		metrics.RecordEvent("info", fmt.Sprintf("Loaded %d domains from geodata", len(domains)))
+		log.Infof("Loaded %d domains from geodata", len(geositeDomains))
+		metrics.RecordEvent("info", fmt.Sprintf("Loaded %d domains from geodata", len(geositeDomains)))
 
-		// Merge with existing SNI domains
-		cfg.Domains.SNIDomains = append(cfg.Domains.SNIDomains, domains...)
-	}
+		// Combine for matching but DON'T modify cfg.Domains.SNIDomains
+		allDomainsForMatcher = make([]string, 0, len(manualDomains)+len(geositeDomains))
+		allDomainsForMatcher = append(allDomainsForMatcher, manualDomains...)
+		allDomainsForMatcher = append(allDomainsForMatcher, geositeDomains...)
 
-	if len(cfg.Domains.SNIDomains) > 0 {
-		log.Infof("Total SNI domains to match: %d", len(cfg.Domains.SNIDomains))
+		log.Infof("Total domains for matching: %d (manual: %d, geosite: %d)",
+			len(allDomainsForMatcher), len(manualDomains), len(geositeDomains))
+	} else {
+		// No geosite categories, just use manual domains
+		allDomainsForMatcher = manualDomains
+		if len(manualDomains) > 0 {
+			log.Infof("Using %d manual SNI domains for matching", len(manualDomains))
+		}
 	}
 
 	// Setup iptables rules

@@ -91,6 +91,14 @@ func (w *Worker) UpdateConfig(newCfg *config.Config) {
 	w.rebuildMatcher()
 }
 
+func (w *Worker) UpdateConfigWithDomains(newCfg *config.Config, allDomains []string) {
+	w.cfg.Store(newCfg)
+
+	// Build matcher from the provided domain list (manual + geosite)
+	// NOT from the config's SNIDomains
+	w.rebuildMatcherWithDomains(allDomains)
+}
+
 func (w *Worker) rebuildMatcher() {
 	cfg := w.getConfig()
 	var m *sni.SuffixSet
@@ -102,8 +110,27 @@ func (w *Worker) rebuildMatcher() {
 	w.matcher.Store(m)
 }
 
+func (w *Worker) rebuildMatcherWithDomains(domains []string) {
+	var m *sni.SuffixSet
+	if len(domains) > 0 {
+		m = sni.NewSuffixSet(domains)
+		log.Tracef("Built matcher with %d domains", len(domains))
+	} else {
+		m = sni.NewSuffixSet([]string{})
+		log.Tracef("Built empty matcher")
+	}
+	w.matcher.Store(m)
+}
+
 func (p *Pool) UpdateConfig(newCfg *config.Config) {
 	for _, w := range p.workers {
 		w.UpdateConfig(newCfg)
 	}
+}
+
+func (p *Pool) UpdateConfigWithDomains(newCfg *config.Config, allDomains []string) {
+	for _, w := range p.workers {
+		w.UpdateConfigWithDomains(newCfg, allDomains)
+	}
+	log.Tracef("Updated all %d workers with %d domains for matching", len(p.workers), len(allDomains))
 }

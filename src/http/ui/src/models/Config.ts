@@ -44,6 +44,22 @@ export interface IDomainConfig {
   geosite_path: string;
   geoip_path: string;
   geosite_categories: string[];
+  geoip_categories: string[];
+}
+
+export interface IDomainStatistics {
+  manual_domains: number;
+  geosite_domains: number;
+  total_domains: number;
+  category_breakdown?: Record<string, number>;
+  geosite_available: boolean;
+}
+
+export interface ICategoryPreview {
+  category: string;
+  total_domains: number;
+  preview_count: number;
+  preview: string[];
 }
 
 export type UdpMode = "drop" | "fake";
@@ -114,6 +130,7 @@ export default class B4Config implements IB4Config {
     geosite_path: "",
     geoip_path: "",
     geosite_categories: [],
+    geoip_categories: [],
   };
 
   udp: IUdpConfig = {
