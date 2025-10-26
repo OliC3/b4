@@ -121,23 +121,16 @@ func (a *API) updateConfig(w http.ResponseWriter, r *http.Request) {
 		log.Infof("Cleared all geosite domains")
 	}
 
-	// Keep SNIDomains as ONLY the manual domains
-	// This ensures the config file never gets polluted with thousands of geosite domains
 	newConfig.Domains.SNIDomains = a.manualDomains
 
-	// Update the main config
 	a.updateMainConfig(&newConfig)
 
-	// Create a combined list for the matcher WITHOUT modifying the config
 	allDomainsForMatcher := make([]string, 0, len(a.manualDomains)+len(allGeositeDomains))
 	allDomainsForMatcher = append(allDomainsForMatcher, a.manualDomains...)
 	allDomainsForMatcher = append(allDomainsForMatcher, allGeositeDomains...)
 
-	// Update the workers with the combined list for matching
 	if globalPool != nil {
-		// We need to pass the combined domains to the pool for matching
-		// but keep them separate in the config
-		globalPool.UpdateConfigWithDomains(&newConfig, allDomainsForMatcher)
+		globalPool.UpdateConfig(&newConfig, allDomainsForMatcher)
 		log.Infof("Config pushed to all workers (manual: %d, geosite: %d, total: %d domains)",
 			len(a.manualDomains), len(allGeositeDomains), len(allDomainsForMatcher))
 	}

@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import { useNavigate, useLocation, useParams } from "react-router-dom";
 import {
   Container,
   Box,
@@ -28,7 +29,6 @@ import {
   Security as SecurityIcon,
   Storage as StorageIcon,
   Description as LogIcon,
-  CheckCircle as CheckIcon,
   Warning as WarningIcon,
 } from "@mui/icons-material";
 
@@ -66,10 +66,11 @@ function TabPanel({ children, value, index, ...other }: TabPanelProps) {
   );
 }
 
-// Settings categories
+// Settings categories with route paths
 const SETTING_CATEGORIES = [
   {
     id: 0,
+    path: "core",
     label: "Core",
     icon: <SettingsIcon />,
     description: "Essential network and system configuration",
@@ -77,6 +78,7 @@ const SETTING_CATEGORIES = [
   },
   {
     id: 1,
+    path: "domains",
     label: "Domains",
     icon: <NetworkIcon />,
     description: "Domain filtering and geodata configuration",
@@ -84,6 +86,7 @@ const SETTING_CATEGORIES = [
   },
   {
     id: 2,
+    path: "dpi",
     label: "DPI Bypass",
     icon: <SecurityIcon />,
     description: "Fragmentation and faking strategies",
@@ -91,6 +94,7 @@ const SETTING_CATEGORIES = [
   },
   {
     id: 3,
+    path: "proto",
     label: "Protocols",
     icon: <StorageIcon />,
     description: "UDP and protocol-specific settings",
@@ -98,6 +102,7 @@ const SETTING_CATEGORIES = [
   },
   {
     id: 4,
+    path: "logging",
     label: "Logging",
     icon: <LogIcon />,
     description: "Logging and debugging configuration",
@@ -110,8 +115,34 @@ export default function Settings() {
   const [originalConfig, setOriginalConfig] = useState<B4Config | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [currentTab, setCurrentTab] = useState(0);
   const [showResetDialog, setShowResetDialog] = useState(false);
+
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Determine current tab based on URL
+  const currentTabPath = location.pathname.split("/settings/")[1] || "core";
+  const currentTab = SETTING_CATEGORIES.findIndex(
+    (cat) => cat.path === currentTabPath
+  );
+
+  // Handle tab change
+  const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
+    const category = SETTING_CATEGORIES[newValue];
+    if (category) {
+      navigate(`/settings/${category.path}`);
+    }
+  };
+
+  // Navigate to default tab if no specific tab is in URL
+  useEffect(() => {
+    if (
+      location.pathname === "/settings" ||
+      location.pathname === "/settings/"
+    ) {
+      navigate("/settings/core", { replace: true });
+    }
+  }, [location.pathname, navigate]);
 
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
@@ -266,6 +297,8 @@ export default function Settings() {
     );
   }
 
+  const validTab = currentTab >= 0 ? currentTab : 0;
+
   return (
     <Container
       maxWidth={false}
@@ -367,8 +400,8 @@ export default function Settings() {
 
           {/* Tabs */}
           <Tabs
-            value={currentTab}
-            onChange={(_, newValue) => setCurrentTab(newValue)}
+            value={validTab}
+            onChange={handleTabChange}
             variant="scrollable"
             scrollButtons="auto"
             sx={{
@@ -416,7 +449,7 @@ export default function Settings() {
       {/* Tab Content */}
       <Box sx={{ flex: 1, overflow: "auto", pb: 2 }}>
         {/* Core Settings */}
-        <TabPanel value={currentTab} index={0}>
+        <TabPanel value={validTab} index={0}>
           <Stack spacing={3}>
             {categoryHasChanges[0] && (
               <Alert severity="warning" icon={<WarningIcon />}>
@@ -429,12 +462,12 @@ export default function Settings() {
         </TabPanel>
 
         {/* Domain Settings */}
-        <TabPanel value={currentTab} index={1}>
+        <TabPanel value={validTab} index={1}>
           <DomainSettings config={config} onChange={handleChange} />
         </TabPanel>
 
         {/* DPI Bypass Settings */}
-        <TabPanel value={currentTab} index={2}>
+        <TabPanel value={validTab} index={2}>
           <Stack spacing={3}>
             <FragmentationSettings config={config} onChange={handleChange} />
             <FakingSettings config={config} onChange={handleChange} />
@@ -442,12 +475,12 @@ export default function Settings() {
         </TabPanel>
 
         {/* Protocol Settings */}
-        <TabPanel value={currentTab} index={3}>
+        <TabPanel value={validTab} index={3}>
           <UDPSettings config={config} onChange={handleChange} />
         </TabPanel>
 
         {/* Logging Settings */}
-        <TabPanel value={currentTab} index={4}>
+        <TabPanel value={validTab} index={4}>
           <LoggingSettings config={config} onChange={handleChange} />
         </TabPanel>
       </Box>

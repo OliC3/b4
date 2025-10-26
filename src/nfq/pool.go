@@ -10,7 +10,7 @@ import (
 	"github.com/daniellavrushin/b4/sni"
 )
 
-func NewWorkerWithQueue(cfg *config.Config, qnum uint16) *Worker {
+func NewWorkerWithQueue(cfg *config.Config, domains *[]string, qnum uint16) *Worker {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	w := &Worker{
@@ -23,12 +23,12 @@ func NewWorkerWithQueue(cfg *config.Config, qnum uint16) *Worker {
 	}
 
 	w.cfg.Store(cfg)
-	w.rebuildMatcher()
+	w.rebuildMatcher(*domains)
 
 	return w
 }
 
-func NewPool(cfg *config.Config) *Pool {
+func NewPool(cfg *config.Config, domains *[]string) *Pool {
 	threads := cfg.Threads
 	start := uint16(cfg.QueueStartNum)
 	if threads < 1 {
@@ -36,7 +36,7 @@ func NewPool(cfg *config.Config) *Pool {
 	}
 	ws := make([]*Worker, 0, threads)
 	for i := 0; i < threads; i++ {
-		ws = append(ws, NewWorkerWithQueue(cfg, start+uint16(i)))
+		ws = append(ws, NewWorkerWithQueue(cfg, domains, start+uint16(i)))
 	}
 	return &Pool{workers: ws}
 }
@@ -86,31 +86,12 @@ func (w *Worker) getMatcher() *sni.SuffixSet {
 	return w.matcher.Load().(*sni.SuffixSet)
 }
 
-func (w *Worker) UpdateConfig(newCfg *config.Config) {
+func (w *Worker) UpdateConfig(newCfg *config.Config, allDomains []string) {
 	w.cfg.Store(newCfg)
-	w.rebuildMatcher()
+	w.rebuildMatcher(allDomains)
 }
 
-func (w *Worker) UpdateConfigWithDomains(newCfg *config.Config, allDomains []string) {
-	w.cfg.Store(newCfg)
-
-	// Build matcher from the provided domain list (manual + geosite)
-	// NOT from the config's SNIDomains
-	w.rebuildMatcherWithDomains(allDomains)
-}
-
-func (w *Worker) rebuildMatcher() {
-	cfg := w.getConfig()
-	var m *sni.SuffixSet
-	if len(cfg.Domains.SNIDomains) > 0 {
-		m = sni.NewSuffixSet(cfg.Domains.SNIDomains)
-	} else {
-		m = sni.NewSuffixSet([]string{})
-	}
-	w.matcher.Store(m)
-}
-
-func (w *Worker) rebuildMatcherWithDomains(domains []string) {
+func (w *Worker) rebuildMatcher(domains []string) {
 	var m *sni.SuffixSet
 	if len(domains) > 0 {
 		m = sni.NewSuffixSet(domains)
@@ -122,15 +103,9 @@ func (w *Worker) rebuildMatcherWithDomains(domains []string) {
 	w.matcher.Store(m)
 }
 
-func (p *Pool) UpdateConfig(newCfg *config.Config) {
+func (p *Pool) UpdateConfig(newCfg *config.Config, allDomains []string) {
 	for _, w := range p.workers {
-		w.UpdateConfig(newCfg)
-	}
-}
-
-func (p *Pool) UpdateConfigWithDomains(newCfg *config.Config, allDomains []string) {
-	for _, w := range p.workers {
-		w.UpdateConfigWithDomains(newCfg, allDomains)
+		w.UpdateConfig(newCfg, allDomains)
 	}
 	log.Tracef("Updated all %d workers with %d domains for matching", len(p.workers), len(allDomains))
 }

@@ -1,5 +1,12 @@
 import React from "react";
 import {
+  Routes,
+  Route,
+  Navigate,
+  useNavigate,
+  useLocation,
+} from "react-router-dom";
+import {
   AppBar,
   Box,
   CssBaseline,
@@ -17,7 +24,6 @@ import {
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import SettingsIcon from "@mui/icons-material/Settings";
-import DashboardIcon from "@mui/icons-material/Dashboard";
 import LanguageIcon from "@mui/icons-material/Language";
 import SpeedIcon from "@mui/icons-material/Speed";
 import AssessmentIcon from "@mui/icons-material/Assessment";
@@ -31,11 +37,42 @@ import Version from "./components/molecules/Version";
 
 const DRAWER_WIDTH = 240;
 
+interface NavItem {
+  path: string;
+  label: string;
+  icon: React.ReactNode;
+}
+
+const navItems: NavItem[] = [
+  { path: "/dashboard", label: "Dashboard", icon: <SpeedIcon /> },
+  { path: "/domains", label: "Domains", icon: <LanguageIcon /> },
+  { path: "/logs", label: "Logs", icon: <AssessmentIcon /> },
+  { path: "/settings", label: "Settings", icon: <SettingsIcon /> },
+];
+
 export default function App() {
   const [drawerOpen, setDrawerOpen] = React.useState(true);
-  const [currentView, setCurrentView] = React.useState<
-    "dashboard" | "logs" | "domains" | "settings"
-  >("dashboard"); // Changed default to dashboard
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Get the current page title based on the route
+  const getPageTitle = () => {
+    const path = location.pathname;
+    if (path.startsWith("/dashboard")) return "System Dashboard";
+    if (path.startsWith("/domains")) return "Domain Connections";
+    if (path.startsWith("/logs")) return "Log Viewer";
+    if (path.startsWith("/settings")) return "Settings";
+    return "B4";
+  };
+
+  // Check if a nav item is selected based on the current path
+  const isNavItemSelected = (navPath: string) => {
+    // Special handling for settings - it's selected for any settings subpath
+    if (navPath === "/settings") {
+      return location.pathname.startsWith("/settings");
+    }
+    return location.pathname === navPath;
+  };
 
   return (
     <ThemeProvider theme={theme}>
@@ -59,89 +96,27 @@ export default function App() {
           </Toolbar>
           <Divider sx={{ borderColor: colors.border.default }} />
           <List>
-            {/* Dashboard - New First Item */}
-            <ListItem disablePadding>
-              <ListItemButton
-                selected={currentView === "dashboard"}
-                onClick={() => setCurrentView("dashboard")}
-                sx={{
-                  "&.Mui-selected": {
-                    backgroundColor: colors.accent.primary,
-                    "&:hover": {
-                      backgroundColor: colors.accent.primaryHover,
+            {navItems.map((item) => (
+              <ListItem key={item.path} disablePadding>
+                <ListItemButton
+                  selected={isNavItemSelected(item.path)}
+                  onClick={() => navigate(item.path)}
+                  sx={{
+                    "&.Mui-selected": {
+                      backgroundColor: colors.accent.primary,
+                      "&:hover": {
+                        backgroundColor: colors.accent.primaryHover,
+                      },
                     },
-                  },
-                }}
-              >
-                <ListItemIcon sx={{ color: "inherit" }}>
-                  <SpeedIcon />
-                </ListItemIcon>
-                <ListItemText primary="Dashboard" />
-              </ListItemButton>
-            </ListItem>
-
-            {/* Domains */}
-            <ListItem disablePadding>
-              <ListItemButton
-                selected={currentView === "domains"}
-                onClick={() => setCurrentView("domains")}
-                sx={{
-                  "&.Mui-selected": {
-                    backgroundColor: colors.accent.primary,
-                    "&:hover": {
-                      backgroundColor: colors.accent.primaryHover,
-                    },
-                  },
-                }}
-              >
-                <ListItemIcon sx={{ color: "inherit" }}>
-                  <LanguageIcon />
-                </ListItemIcon>
-                <ListItemText primary="Domains" />
-              </ListItemButton>
-            </ListItem>
-
-            {/* Logs */}
-            <ListItem disablePadding>
-              <ListItemButton
-                selected={currentView === "logs"}
-                onClick={() => setCurrentView("logs")}
-                sx={{
-                  "&.Mui-selected": {
-                    backgroundColor: colors.accent.primary,
-                    "&:hover": {
-                      backgroundColor: colors.accent.primaryHover,
-                    },
-                  },
-                }}
-              >
-                <ListItemIcon sx={{ color: "inherit" }}>
-                  <AssessmentIcon />
-                </ListItemIcon>
-                <ListItemText primary="Logs" />
-              </ListItemButton>
-            </ListItem>
-
-            {/* Settings */}
-            <ListItem disablePadding>
-              <ListItemButton
-                selected={currentView === "settings"}
-                onClick={() => setCurrentView("settings")}
-                sx={{
-                  "&.Mui-selected": {
-                    backgroundColor: colors.accent.primary,
-                    "&:hover": {
-                      backgroundColor: colors.accent.primaryHover,
-                    },
-                  },
-                }}
-              >
-                <ListItemIcon sx={{ color: "inherit" }}>
-                  <SettingsIcon />
-                </ListItemIcon>
-                <ListItemText primary="Settings" />
-              </ListItemButton>
-            </ListItem>
+                  }}
+                >
+                  <ListItemIcon sx={{ color: "inherit" }}>
+                    {item.icon}
+                  </ListItemIcon>
+                  <ListItemText primary={item.label} />
+                </ListItemButton>
+              </ListItem>
+            ))}
           </List>
           <Box sx={{ flexGrow: 1 }} />
           <Version />
@@ -174,27 +149,21 @@ export default function App() {
                 <MenuIcon />
               </IconButton>
               <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 600 }}>
-                {currentView === "dashboard"
-                  ? "System Dashboard"
-                  : currentView === "logs"
-                  ? "Log Viewer"
-                  : currentView === "domains"
-                  ? "Domain Connections"
-                  : "Settings"}
+                {getPageTitle()}
               </Typography>
             </Toolbar>
           </AppBar>
 
-          {/* Content Area */}
-          {currentView === "dashboard" ? (
-            <Dashboard />
-          ) : currentView === "logs" ? (
-            <Logs />
-          ) : currentView === "domains" ? (
-            <Domains />
-          ) : (
-            <Settings />
-          )}
+          {/* Content Area with Routing */}
+          <Routes>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/domains" element={<Domains />} />
+            <Route path="/logs" element={<Logs />} />
+            <Route path="/settings/*" element={<Settings />} />
+            {/* Catch all route - redirect to dashboard */}
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
         </Box>
       </Box>
     </ThemeProvider>

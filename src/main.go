@@ -90,10 +90,9 @@ func runB4(cmd *cobra.Command, args []string) error {
 
 	// Load domains from geodata if specified
 
-	var allDomainsForMatcher []string
+	var allDomains []string
 	manualDomains := cfg.Domains.SNIDomains // These are the user's manual domains
 
-	// Load domains from geodata if specified
 	if cfg.Domains.GeoSitePath != "" && len(cfg.Domains.GeoSiteCategories) > 0 {
 		log.Infof("Loading domains from geodata for categories: %v", cfg.Domains.GeoSiteCategories)
 		geositeDomains, err := cfg.LoadDomainsFromGeodata()
@@ -104,16 +103,16 @@ func runB4(cmd *cobra.Command, args []string) error {
 		log.Infof("Loaded %d domains from geodata", len(geositeDomains))
 		metrics.RecordEvent("info", fmt.Sprintf("Loaded %d domains from geodata", len(geositeDomains)))
 
-		// Combine for matching but DON'T modify cfg.Domains.SNIDomains
-		allDomainsForMatcher = make([]string, 0, len(manualDomains)+len(geositeDomains))
-		allDomainsForMatcher = append(allDomainsForMatcher, manualDomains...)
-		allDomainsForMatcher = append(allDomainsForMatcher, geositeDomains...)
+		// Combine for matching
+		allDomains = make([]string, 0, len(manualDomains)+len(geositeDomains))
+		allDomains = append(allDomains, manualDomains...)
+		allDomains = append(allDomains, geositeDomains...)
 
 		log.Infof("Total domains for matching: %d (manual: %d, geosite: %d)",
-			len(allDomainsForMatcher), len(manualDomains), len(geositeDomains))
+			len(allDomains), len(manualDomains), len(geositeDomains))
 	} else {
 		// No geosite categories, just use manual domains
-		allDomainsForMatcher = manualDomains
+		allDomains = manualDomains
 		if len(manualDomains) > 0 {
 			log.Infof("Using %d manual SNI domains for matching", len(manualDomains))
 		}
@@ -138,7 +137,7 @@ func runB4(cmd *cobra.Command, args []string) error {
 
 	// Start netfilter queue pool
 	log.Infof("Starting netfilter queue pool (queue: %d, threads: %d)", cfg.QueueStartNum, cfg.Threads)
-	pool := nfq.NewPool(&cfg)
+	pool := nfq.NewPool(&cfg, &allDomains)
 	if err := pool.Start(); err != nil {
 		metrics.RecordEvent("error", fmt.Sprintf("NFQueue start failed: %v", err))
 		metrics.NFQueueStatus = "error"
