@@ -37,7 +37,17 @@ B4 is a `netfilter` queue-based packet processor designed to bypass DPI systems 
 
 ## Installation
 
-`comming soon`
+- To install B4
+
+```bash
+wget -O /tmp/b4install.sh https://raw.githubusercontent.com/DanielLavrushin/b4/main/install.sh && chmod +x /tmp/b4install.sh && /tmp/b4install.sh
+```
+
+To remove B4
+
+```bash
+/tmp/b4install.sh --remove
+```
 
 ## Quick Start
 
