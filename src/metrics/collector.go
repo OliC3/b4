@@ -7,7 +7,6 @@ import (
 	"time"
 )
 
-// MetricsCollector collects and stores metrics for the dashboard
 type MetricsCollector struct {
 	TotalConnections    uint64
 	ActiveFlows         uint64
@@ -80,7 +79,6 @@ var (
 	metricsOnce      sync.Once
 )
 
-// GetMetricsCollector returns the singleton metrics collector
 func GetMetricsCollector() *MetricsCollector {
 	metricsOnce.Do(func() {
 		metricsCollector = &MetricsCollector{
@@ -98,14 +96,10 @@ func GetMetricsCollector() *MetricsCollector {
 			lastUpdate:        time.Now(),
 		}
 
-		// Start the metrics update goroutine
 		go metricsCollector.updateLoop()
 	})
 	return metricsCollector
 }
-
-// All the methods from handler/metrics.go go here...
-// (I'll include the key ones below)
 
 func (m *MetricsCollector) updateLoop() {
 	ticker := time.NewTicker(1 * time.Second)
@@ -280,11 +274,19 @@ func (m *MetricsCollector) GetSnapshot() *MetricsCollector {
 		CurrentPPS:          m.CurrentPPS,
 	}
 
-	snapshot.ConnectionRate = make([]TimeSeriesPoint, len(m.ConnectionRate))
-	copy(snapshot.ConnectionRate, m.ConnectionRate)
+	if len(m.ConnectionRate) > 0 {
+		snapshot.ConnectionRate = make([]TimeSeriesPoint, len(m.ConnectionRate))
+		copy(snapshot.ConnectionRate, m.ConnectionRate)
+	} else {
+		snapshot.ConnectionRate = make([]TimeSeriesPoint, 0)
+	}
 
-	snapshot.PacketRate = make([]TimeSeriesPoint, len(m.PacketRate))
-	copy(snapshot.PacketRate, m.PacketRate)
+	if len(m.PacketRate) > 0 {
+		snapshot.PacketRate = make([]TimeSeriesPoint, len(m.PacketRate))
+		copy(snapshot.PacketRate, m.PacketRate)
+	} else {
+		snapshot.PacketRate = make([]TimeSeriesPoint, 0)
+	}
 
 	snapshot.TopDomains = make(map[string]uint64)
 	for k, v := range m.TopDomains {
@@ -301,14 +303,26 @@ func (m *MetricsCollector) GetSnapshot() *MetricsCollector {
 		snapshot.GeoDist[k] = v
 	}
 
-	snapshot.WorkerStatus = make([]WorkerHealth, len(m.WorkerStatus))
-	copy(snapshot.WorkerStatus, m.WorkerStatus)
+	if len(m.WorkerStatus) > 0 {
+		snapshot.WorkerStatus = make([]WorkerHealth, len(m.WorkerStatus))
+		copy(snapshot.WorkerStatus, m.WorkerStatus)
+	} else {
+		snapshot.WorkerStatus = make([]WorkerHealth, 0)
+	}
 
-	snapshot.RecentConnections = make([]ConnectionLog, len(m.RecentConnections))
-	copy(snapshot.RecentConnections, m.RecentConnections)
+	if len(m.RecentConnections) > 0 {
+		snapshot.RecentConnections = make([]ConnectionLog, len(m.RecentConnections))
+		copy(snapshot.RecentConnections, m.RecentConnections)
+	} else {
+		snapshot.RecentConnections = make([]ConnectionLog, 0)
+	}
 
-	snapshot.RecentEvents = make([]SystemEvent, len(m.RecentEvents))
-	copy(snapshot.RecentEvents, m.RecentEvents)
+	if len(m.RecentEvents) > 0 {
+		snapshot.RecentEvents = make([]SystemEvent, len(m.RecentEvents))
+		copy(snapshot.RecentEvents, m.RecentEvents)
+	} else {
+		snapshot.RecentEvents = make([]SystemEvent, 0)
+	}
 
 	return snapshot
 }

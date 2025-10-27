@@ -67,22 +67,17 @@ export interface Metrics {
   current_pps: number;
 }
 
-// Helper to safely convert numbers that might be 64-bit on backend
 const safeNumber = (val: any, defaultValue: number = 0): number => {
   if (val === null || val === undefined) return defaultValue;
-  // Handle potential 64-bit integer issues
   const num = Number(val);
   if (isNaN(num) || !isFinite(num)) return defaultValue;
-  // Cap at JavaScript's max safe integer if needed
   if (num > Number.MAX_SAFE_INTEGER) return Number.MAX_SAFE_INTEGER;
   if (num < Number.MIN_SAFE_INTEGER) return Number.MIN_SAFE_INTEGER;
   return num;
 };
 
-// Helper to ensure metrics have all required fields with defaults
 const normalizeMetrics = (data: any): Metrics => {
   if (!data || typeof data !== "object") {
-    // Return complete default metrics if data is invalid
     return {
       total_connections: 0,
       active_flows: 0,
@@ -235,7 +230,6 @@ export default function Dashboard() {
         } catch (error) {
           console.error("Failed to parse metrics:", error);
           console.error("Raw data:", event.data);
-          // Set default metrics on parse error
           setMetrics(normalizeMetrics(null));
         }
       };
