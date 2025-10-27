@@ -1,16 +1,14 @@
 package handler
 
 import (
-	"sync"
+	"net/http"
 
 	"github.com/daniellavrushin/b4/config"
 )
 
 type API struct {
-	cfg *config.Config
-
-	// Runtime state management
-	mu             sync.RWMutex
+	cfg            *config.Config
+	mux            *http.ServeMux
 	manualDomains  []string            // Track manually added domains
 	geositeDomains map[string][]string // Track geosite category -> domains mapping
 }
@@ -56,4 +54,18 @@ type ConfigUpdateResponse struct {
 	Message     string           `json:"message"`
 	DomainStats DomainStatistics `json:"domain_stats"`
 	Warnings    []string         `json:"warnings,omitempty"`
+}
+
+// AddDomainRequest represents the request body for adding a domain
+type AddDomainRequest struct {
+	Domain string `json:"domain"`
+}
+
+// AddDomainResponse represents the response for adding a domain
+type AddDomainResponse struct {
+	Success       bool     `json:"success"`
+	Message       string   `json:"message"`
+	Domain        string   `json:"domain"`
+	TotalDomains  int      `json:"total_domains"`
+	ManualDomains []string `json:"manual_domains,omitempty"`
 }

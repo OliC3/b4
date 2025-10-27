@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/daniellavrushin/b4/config"
 	"github.com/daniellavrushin/b4/metrics"
 )
 
@@ -18,10 +17,9 @@ func GetMetricsCollector() *metrics.MetricsCollector {
 }
 
 // RegisterMetricsApi registers the metrics API endpoints
-func RegisterMetricsApi(mux *http.ServeMux, cfg *config.Config) {
-	api := &API{cfg: cfg}
-	mux.HandleFunc("/api/metrics", api.getMetrics)
-	mux.HandleFunc("/api/metrics/summary", api.getMetricsSummary)
+func (api *API) RegisterMetricsApi() {
+	api.mux.HandleFunc("/api/metrics", api.getMetrics)
+	api.mux.HandleFunc("/api/metrics/summary", api.getMetricsSummary)
 }
 
 func (a *API) getMetrics(w http.ResponseWriter, r *http.Request) {

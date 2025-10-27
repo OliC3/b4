@@ -16,11 +16,26 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemText,
+  ListItemIcon,
+  Radio,
+  Alert,
+  Snackbar,
 } from "@mui/material";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import TcpIcon from "@mui/icons-material/SyncAlt";
 import UdpIcon from "@mui/icons-material/TrendingFlat";
+import AddIcon from "@mui/icons-material/Add";
+import DomainIcon from "@mui/icons-material/Language";
 
 import { colors } from "../../Theme";
 
@@ -32,6 +47,13 @@ interface ParsedLog {
   source: string;
   destination: string;
   raw: string;
+}
+
+interface DomainModalState {
+  open: boolean;
+  domain: string;
+  variants: string[];
+  selected: string;
 }
 
 function parseLogLine(line: string): ParsedLog | null {
@@ -56,6 +78,19 @@ function parseLogLine(line: string): ParsedLog | null {
   };
 }
 
+// Generate domain variants from most specific to least specific
+function generateDomainVariants(domain: string): string[] {
+  const parts = domain.split(".");
+  const variants: string[] = [];
+
+  // Generate from full domain to TLD+1 (e.g., example.com)
+  for (let i = 0; i < parts.length - 1; i++) {
+    variants.push(parts.slice(i).join("."));
+  }
+
+  return variants;
+}
+
 const STORAGE_KEY = "b4_domains_lines";
 const MAX_STORED_LINES = 1000;
 
@@ -78,6 +113,21 @@ export default function Domains() {
   const [filter, setFilter] = React.useState("");
   const [autoScroll, setAutoScroll] = React.useState(true);
   const tableRef = React.useRef<HTMLDivElement | null>(null);
+
+  // Modal state
+  const [modalState, setModalState] = React.useState<DomainModalState>({
+    open: false,
+    domain: "",
+    variants: [],
+    selected: "",
+  });
+
+  // Snackbar state for notifications
+  const [snackbar, setSnackbar] = React.useState({
+    open: false,
+    message: "",
+    severity: "success" as "success" | "error",
+  });
 
   // Persist lines to localStorage whenever they change
   React.useEffect(() => {
@@ -176,6 +226,64 @@ export default function Domains() {
     if (el) {
       const isAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 50;
       setAutoScroll(isAtBottom);
+    }
+  };
+
+  const handleDomainClick = (domain: string) => {
+    const variants = generateDomainVariants(domain);
+    setModalState({
+      open: true,
+      domain,
+      variants,
+      selected: variants[0] || domain,
+    });
+  };
+
+  const handleModalClose = () => {
+    setModalState({
+      open: false,
+      domain: "",
+      variants: [],
+      selected: "",
+    });
+  };
+
+  const handleAddDomain = async () => {
+    if (!modalState.selected) return;
+
+    try {
+      const response = await fetch("/api/geosite/domain", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          domain: modalState.selected,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setSnackbar({
+          open: true,
+          message: `Successfully added "${modalState.selected}" to manual domains`,
+          severity: "success",
+        });
+        handleModalClose();
+      } else {
+        const error = await response.json();
+        setSnackbar({
+          open: true,
+          message: `Failed to add domain: ${error.message}`,
+          severity: "error",
+        });
+      }
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: `Error adding domain: ${error}`,
+        severity: "error",
+      });
     }
   };
 
@@ -467,9 +575,18 @@ export default function Domains() {
                         color: "text.primary",
                         fontWeight: 500,
                         borderBottom: `1px solid ${colors.border.light}`,
+                        cursor: "pointer",
+                        "&:hover": {
+                          bgcolor: colors.accent.primary,
+                          color: colors.secondary,
+                        },
                       }}
+                      onClick={() => handleDomainClick(log.domain)}
                     >
-                      {log.domain}
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <Typography>{log.domain}</Typography>
+                        <AddIcon sx={{ fontSize: 16, opacity: 0.7 }} />
+                      </Stack>
                     </TableCell>
                     <TableCell
                       sx={{
@@ -498,6 +615,118 @@ export default function Domains() {
           </Table>
         </TableContainer>
       </Paper>
+
+      {/* Domain Selection Modal */}
+      <Dialog
+        open={modalState.open}
+        onClose={handleModalClose}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            bgcolor: colors.background.paper,
+            border: `1px solid ${colors.border.default}`,
+          },
+        }}
+      >
+        <DialogTitle sx={{ borderBottom: `1px solid ${colors.border.light}` }}>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <DomainIcon sx={{ color: colors.primary }} />
+            <Typography>Add Domain to Manual List</Typography>
+          </Stack>
+        </DialogTitle>
+        <DialogContent sx={{ mt: 2 }}>
+          <Alert severity="info" sx={{ mb: 2 }}>
+            Select which domain pattern to add to the manual domains list. More
+            specific patterns will only match exact subdomains, while broader
+            patterns will match all subdomains.
+          </Alert>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+            Original domain: <strong>{modalState.domain}</strong>
+          </Typography>
+          <List>
+            {modalState.variants.map((variant, index) => (
+              <ListItem key={variant} disablePadding>
+                <ListItemButton
+                  onClick={() =>
+                    setModalState((prev) => ({ ...prev, selected: variant }))
+                  }
+                  selected={modalState.selected === variant}
+                  sx={{
+                    borderRadius: 1,
+                    mb: 0.5,
+                    "&.Mui-selected": {
+                      bgcolor: colors.accent.primary,
+                      "&:hover": {
+                        bgcolor: colors.accent.primaryHover,
+                      },
+                    },
+                  }}
+                >
+                  <ListItemIcon>
+                    <Radio
+                      checked={modalState.selected === variant}
+                      sx={{
+                        color: colors.border.default,
+                        "&.Mui-checked": {
+                          color: colors.primary,
+                        },
+                      }}
+                    />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={variant}
+                    secondary={
+                      index === 0
+                        ? "Most specific - exact match only"
+                        : index === modalState.variants.length - 1
+                        ? "Broadest - matches all subdomains"
+                        : "Intermediate specificity"
+                    }
+                  />
+                </ListItemButton>
+              </ListItem>
+            ))}
+          </List>
+        </DialogContent>
+        <DialogActions
+          sx={{ borderTop: `1px solid ${colors.border.light}`, p: 2 }}
+        >
+          <Button onClick={handleModalClose} color="inherit">
+            Cancel
+          </Button>
+          <Button
+            onClick={handleAddDomain}
+            variant="contained"
+            startIcon={<AddIcon />}
+            disabled={!modalState.selected}
+            sx={{
+              bgcolor: colors.primary,
+              "&:hover": {
+                bgcolor: colors.secondary,
+              },
+            }}
+          >
+            Add Domain
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+      >
+        <Alert
+          onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+          severity={snackbar.severity}
+          sx={{ width: "100%" }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 }

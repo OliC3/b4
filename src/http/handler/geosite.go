@@ -5,15 +5,14 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/daniellavrushin/b4/config"
 	"github.com/daniellavrushin/b4/geodat"
 	"github.com/daniellavrushin/b4/log"
 )
 
-func RegisterGeositeApi(mux *http.ServeMux, cfg *config.Config) {
-	api := &API{cfg: cfg}
-	mux.HandleFunc("/api/geosite", api.handleGeoSite)
-	mux.HandleFunc("/api/geosite/category", api.previewGeoCategory)
+func (api *API) RegisterGeositeApi() {
+	api.mux.HandleFunc("/api/geosite", api.handleGeoSite)
+	api.mux.HandleFunc("/api/geosite/category", api.previewGeoCategory)
+	api.mux.HandleFunc("/api/geosite/domain", api.addGeositeDomain)
 }
 
 func (a *API) handleGeoSite(w http.ResponseWriter, r *http.Request) {
@@ -23,6 +22,91 @@ func (a *API) handleGeoSite(w http.ResponseWriter, r *http.Request) {
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
+}
+
+func (a *API) addGeositeDomain(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req AddDomainRequest
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&req); err != nil {
+		log.Errorf("Failed to decode add domain request: %v", err)
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	// Validate domain
+	if req.Domain == "" {
+		http.Error(w, "Domain cannot be empty", http.StatusBadRequest)
+		return
+	}
+
+	// Check if domain already exists in manual domains
+	for _, existingDomain := range a.manualDomains {
+		if existingDomain == req.Domain {
+			response := AddDomainResponse{
+				Success:      false,
+				Message:      fmt.Sprintf("Domain '%s' already exists in manual domains", req.Domain),
+				Domain:       req.Domain,
+				TotalDomains: len(a.manualDomains),
+			}
+			w.Header().Set("Content-Type", "application/json; charset=utf-8")
+			w.WriteHeader(http.StatusConflict)
+			json.NewEncoder(w).Encode(response)
+			return
+		}
+	}
+
+	// Add domain to manual domains
+	a.manualDomains = append(a.manualDomains, req.Domain)
+	log.Infof("Added domain '%s' to manual domains list", req.Domain)
+
+	// Update the config with new manual domains
+	a.cfg.Domains.SNIDomains = make([]string, len(a.manualDomains))
+	copy(a.cfg.Domains.SNIDomains, a.manualDomains)
+
+	// Prepare all domains for the matcher (manual + geosite)
+	allGeositeDomains := []string{}
+	for _, domains := range a.geositeDomains {
+		allGeositeDomains = append(allGeositeDomains, domains...)
+	}
+
+	allDomainsForMatcher := make([]string, 0, len(a.manualDomains)+len(allGeositeDomains))
+	allDomainsForMatcher = append(allDomainsForMatcher, a.manualDomains...)
+	allDomainsForMatcher = append(allDomainsForMatcher, allGeositeDomains...)
+
+	// Update the NFQ pool with new configuration
+	if globalPool != nil {
+		globalPool.UpdateConfig(a.cfg, allDomainsForMatcher)
+		log.Infof("Updated NFQ pool with new domain (manual: %d, geosite: %d, total: %d)",
+			len(a.manualDomains), len(allGeositeDomains), len(allDomainsForMatcher))
+	}
+
+	// Save config to file if path is set
+	if a.cfg.ConfigPath != "" {
+		if err := a.cfg.SaveToFile(a.cfg.ConfigPath); err != nil {
+			log.Errorf("Failed to save config after adding domain: %v", err)
+			// Don't return error to client, domain was added successfully
+		} else {
+			log.Infof("Config saved to %s after adding domain", a.cfg.ConfigPath)
+		}
+	}
+
+	// Send success response
+	response := AddDomainResponse{
+		Success:       true,
+		Message:       fmt.Sprintf("Successfully added domain '%s'", req.Domain),
+		Domain:        req.Domain,
+		TotalDomains:  len(a.manualDomains),
+		ManualDomains: a.manualDomains,
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
 }
 
 func (a *API) getGeositeTags(w http.ResponseWriter) {

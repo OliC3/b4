@@ -62,6 +62,7 @@ export const DomainSettings: React.FC<DomainSettingsProps> = ({
   const [newCategory, setNewCategory] = useState("");
   const [availableCategories, setAvailableCategories] = useState<string[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(false);
+
   const [previewDialog, setPreviewDialog] = useState<{
     open: boolean;
     category: string;
@@ -75,7 +76,7 @@ export const DomainSettings: React.FC<DomainSettingsProps> = ({
     if (config.domains.geosite_path) {
       loadAvailableCategories();
     }
-  }, [config.domains.geosite_path]);
+  }, []);
 
   const loadAvailableCategories = async () => {
     setLoadingCategories(true);
@@ -118,7 +119,6 @@ export const DomainSettings: React.FC<DomainSettingsProps> = ({
       setNewCategory("");
     }
   };
-
   const handleRemoveCategory = (category: string) => {
     onChange(
       "domains.geosite_categories",
@@ -323,7 +323,7 @@ export const DomainSettings: React.FC<DomainSettingsProps> = ({
                       label="Add Category"
                       value={newCategory}
                       options={availableCategories}
-                      onChange={(value) => setNewCategory(value)}
+                      onChange={setNewCategory}
                       onSelect={handleAddCategory}
                       loading={loadingCategories}
                       placeholder="Select or type category"
@@ -444,31 +444,40 @@ export const DomainSettings: React.FC<DomainSettingsProps> = ({
       >
         <DialogTitle>Category Preview: {previewDialog.category}</DialogTitle>
         <DialogContent>
-          {previewDialog.loading ? (
-            <Box sx={{ p: 2 }}>
-              <Skeleton variant="text" />
-              <Skeleton variant="text" />
-              <Skeleton variant="text" />
-            </Box>
-          ) : previewDialog.data ? (
-            <>
-              <Alert severity="info" sx={{ mb: 2 }}>
-                Total domains in category: {previewDialog.data.total_domains}
-                {previewDialog.data.total_domains >
-                  previewDialog.data.preview_count &&
-                  ` (showing first ${previewDialog.data.preview_count})`}
-              </Alert>
-              <List dense sx={{ maxHeight: 300, overflow: "auto" }}>
-                {previewDialog.data.preview.map((domain) => (
-                  <ListItem key={domain}>
-                    <ListItemText primary={domain} />
-                  </ListItem>
-                ))}
-              </List>
-            </>
-          ) : (
-            <Alert severity="error">Failed to load category preview</Alert>
-          )}
+          {(() => {
+            if (previewDialog.loading) {
+              return (
+                <Box sx={{ p: 2 }}>
+                  <Skeleton variant="text" />
+                  <Skeleton variant="text" />
+                  <Skeleton variant="text" />
+                </Box>
+              );
+            } else if (previewDialog.data) {
+              return (
+                <>
+                  <Alert severity="info" sx={{ mb: 2 }}>
+                    Total domains in category:{" "}
+                    {previewDialog.data.total_domains}
+                    {previewDialog.data.total_domains >
+                      previewDialog.data.preview_count &&
+                      ` (showing first ${previewDialog.data.preview_count})`}
+                  </Alert>
+                  <List dense sx={{ maxHeight: 300, overflow: "auto" }}>
+                    {previewDialog.data.preview.map((domain) => (
+                      <ListItem key={domain}>
+                        <ListItemText primary={domain} />
+                      </ListItem>
+                    ))}
+                  </List>
+                </>
+              );
+            } else {
+              return (
+                <Alert severity="error">Failed to load category preview</Alert>
+              );
+            }
+          })()}
         </DialogContent>
         <DialogActions>
           <Button

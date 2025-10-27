@@ -11,20 +11,15 @@ import (
 	"github.com/daniellavrushin/b4/metrics"
 )
 
-func RegisterConfigApi(mux *http.ServeMux, cfg *config.Config) {
-	api := &API{
-		cfg:            cfg,
-		manualDomains:  []string{}, // Initialize empty
-		geositeDomains: make(map[string][]string),
-	}
+func (api *API) RegisterConfigApi() {
 
 	// Load initial manual domains if any
-	if len(cfg.Domains.SNIDomains) > 0 {
-		api.manualDomains = make([]string, len(cfg.Domains.SNIDomains))
-		copy(api.manualDomains, cfg.Domains.SNIDomains)
+	if len(api.cfg.Domains.SNIDomains) > 0 {
+		api.manualDomains = make([]string, len(api.cfg.Domains.SNIDomains))
+		copy(api.manualDomains, api.cfg.Domains.SNIDomains)
 	}
 
-	mux.HandleFunc("/api/config", api.handleConfig)
+	api.mux.HandleFunc("/api/config", api.handleConfig)
 }
 
 func (a *API) handleConfig(w http.ResponseWriter, r *http.Request) {

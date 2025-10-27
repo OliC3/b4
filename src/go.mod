@@ -8,8 +8,6 @@ require (
 	github.com/josharian/native v1.0.0 // indirect
 	github.com/mdlayher/netlink v1.6.0 // indirect
 	github.com/mdlayher/socket v0.1.1 // indirect
-	go.uber.org/multierr v1.10.0 // indirect
-	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/net v0.42.0 // indirect
 	golang.org/x/sync v0.8.0 // indirect
 )

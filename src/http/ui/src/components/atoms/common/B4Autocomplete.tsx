@@ -1,11 +1,5 @@
 import React, { useState } from "react";
-import {
-  TextField,
-  Autocomplete,
-  CircularProgress,
-  IconButton,
-  Box,
-} from "@mui/material";
+import { Autocomplete, CircularProgress, IconButton, Box } from "@mui/material";
 import { Add as AddIcon } from "@mui/icons-material";
 import B4TextField from "./B4TextField";
 import { colors } from "../../../Theme";
@@ -33,12 +27,9 @@ const SettingAutocomplete: React.FC<SettingAutocompleteProps> = ({
   helperText,
   disabled = false,
 }) => {
-  const [inputValue, setInputValue] = useState("");
-
   const handleAdd = () => {
-    if (inputValue.trim() && onSelect) {
-      onSelect(inputValue.trim());
-      setInputValue("");
+    if (value.trim() && onSelect) {
+      onSelect(value.trim());
       onChange("");
     }
   };
@@ -48,10 +39,16 @@ const SettingAutocomplete: React.FC<SettingAutocompleteProps> = ({
       <Autocomplete
         fullWidth
         value={value}
-        inputValue={inputValue}
-        onInputChange={(_, newValue) => {
-          setInputValue(newValue);
-          onChange(newValue);
+        inputValue={value}
+        onChange={(_, newValue) => {
+          if (newValue && onSelect) {
+            onSelect(newValue);
+          }
+        }}
+        onInputChange={(_, newValue, reason) => {
+          if (reason === "input") {
+            onChange(newValue);
+          }
         }}
         options={options}
         loading={loading}
@@ -64,25 +61,27 @@ const SettingAutocomplete: React.FC<SettingAutocompleteProps> = ({
             placeholder={placeholder}
             helperText={helperText}
             onKeyDown={(e) => {
-              if ((e.key === "Enter" || e.key === "Tab") && inputValue.trim()) {
+              if ((e.key === "Enter" || e.key === "Tab") && value.trim()) {
                 e.preventDefault();
                 handleAdd();
               }
             }}
-            InputProps={{
-              ...params.InputProps,
-              endAdornment: (
-                <>
-                  {loading ? (
-                    <CircularProgress color="inherit" size={20} />
-                  ) : null}
-                  {params.InputProps.endAdornment}
-                </>
-              ),
-              sx: {
-                bgcolor: colors.background.paper,
-                "&:hover": {
+            slotProps={{
+              input: {
+                ...params.InputProps,
+                endAdornment: (
+                  <>
+                    {loading ? (
+                      <CircularProgress color="inherit" size={20} />
+                    ) : null}
+                    {params.InputProps.endAdornment}
+                  </>
+                ),
+                sx: {
                   bgcolor: colors.background.paper,
+                  "&:hover": {
+                    bgcolor: colors.background.paper,
+                  },
                 },
               },
             }}
@@ -111,7 +110,7 @@ const SettingAutocomplete: React.FC<SettingAutocompleteProps> = ({
       {onSelect && (
         <IconButton
           onClick={handleAdd}
-          disabled={!inputValue.trim() || disabled}
+          disabled={!value.trim() || disabled}
           sx={{
             bgcolor: colors.accent.secondary,
             color: colors.secondary,
@@ -119,8 +118,8 @@ const SettingAutocomplete: React.FC<SettingAutocompleteProps> = ({
               bgcolor: colors.accent.secondaryHover,
             },
             "&:disabled": {
-              bgcolor: colors.background.paper,
-              color: colors.text.primary,
+              bgcolor: colors.accent.secondaryHover,
+              color: colors.accent.secondary,
             },
           }}
         >
