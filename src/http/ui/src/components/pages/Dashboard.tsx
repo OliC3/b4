@@ -67,6 +67,147 @@ export interface Metrics {
   current_pps: number;
 }
 
+// Helper to safely convert numbers that might be 64-bit on backend
+const safeNumber = (val: any, defaultValue: number = 0): number => {
+  if (val === null || val === undefined) return defaultValue;
+  // Handle potential 64-bit integer issues
+  const num = Number(val);
+  if (isNaN(num) || !isFinite(num)) return defaultValue;
+  // Cap at JavaScript's max safe integer if needed
+  if (num > Number.MAX_SAFE_INTEGER) return Number.MAX_SAFE_INTEGER;
+  if (num < Number.MIN_SAFE_INTEGER) return Number.MIN_SAFE_INTEGER;
+  return num;
+};
+
+// Helper to ensure metrics have all required fields with defaults
+const normalizeMetrics = (data: any): Metrics => {
+  if (!data || typeof data !== "object") {
+    // Return complete default metrics if data is invalid
+    return {
+      total_connections: 0,
+      active_flows: 0,
+      packets_processed: 0,
+      bytes_processed: 0,
+      tcp_connections: 0,
+      udp_connections: 0,
+      targeted_connections: 0,
+      connection_rate: [],
+      packet_rate: [],
+      top_domains: {},
+      protocol_dist: {},
+      geo_dist: {},
+      start_time: new Date().toISOString(),
+      uptime: "0s",
+      cpu_usage: 0,
+      memory_usage: {
+        allocated: 0,
+        total_allocated: 0,
+        system: 0,
+        num_gc: 0,
+        heap_alloc: 0,
+        heap_inuse: 0,
+        percent: 0,
+      },
+      worker_status: [],
+      nfqueue_status: "unknown",
+      iptables_status: "unknown",
+      recent_connections: [],
+      recent_events: [],
+      current_cps: 0,
+      current_pps: 0,
+    };
+  }
+
+  return {
+    total_connections: safeNumber(data.total_connections),
+    active_flows: safeNumber(data.active_flows),
+    packets_processed: safeNumber(data.packets_processed),
+    bytes_processed: safeNumber(data.bytes_processed),
+    tcp_connections: safeNumber(data.tcp_connections),
+    udp_connections: safeNumber(data.udp_connections),
+    targeted_connections: safeNumber(data.targeted_connections),
+    connection_rate: Array.isArray(data.connection_rate)
+      ? data.connection_rate.map((item: any) => ({
+          timestamp: safeNumber(item?.timestamp),
+          value: safeNumber(item?.value),
+        }))
+      : [],
+    packet_rate: Array.isArray(data.packet_rate)
+      ? data.packet_rate.map((item: any) => ({
+          timestamp: safeNumber(item?.timestamp),
+          value: safeNumber(item?.value),
+        }))
+      : [],
+    top_domains:
+      data.top_domains && typeof data.top_domains === "object"
+        ? Object.fromEntries(
+            Object.entries(data.top_domains).map(([k, v]) => [
+              String(k),
+              safeNumber(v),
+            ])
+          )
+        : {},
+    protocol_dist:
+      data.protocol_dist && typeof data.protocol_dist === "object"
+        ? Object.fromEntries(
+            Object.entries(data.protocol_dist).map(([k, v]) => [
+              String(k),
+              safeNumber(v),
+            ])
+          )
+        : {},
+    geo_dist:
+      data.geo_dist && typeof data.geo_dist === "object"
+        ? Object.fromEntries(
+            Object.entries(data.geo_dist).map(([k, v]) => [
+              String(k),
+              safeNumber(v),
+            ])
+          )
+        : {},
+    start_time: String(data.start_time || new Date().toISOString()),
+    uptime: String(data.uptime || "0s"),
+    cpu_usage: safeNumber(data.cpu_usage),
+    memory_usage: {
+      allocated: safeNumber(data?.memory_usage?.allocated),
+      total_allocated: safeNumber(data?.memory_usage?.total_allocated),
+      system: safeNumber(data?.memory_usage?.system),
+      num_gc: safeNumber(data?.memory_usage?.num_gc),
+      heap_alloc: safeNumber(data?.memory_usage?.heap_alloc),
+      heap_inuse: safeNumber(data?.memory_usage?.heap_inuse),
+      percent: safeNumber(data?.memory_usage?.percent),
+    },
+    worker_status: Array.isArray(data.worker_status)
+      ? data.worker_status.map((w: any) => ({
+          id: safeNumber(w?.id),
+          status: String(w?.status || "unknown"),
+          processed: safeNumber(w?.processed),
+        }))
+      : [],
+    nfqueue_status: String(data.nfqueue_status || "unknown"),
+    iptables_status: String(data.iptables_status || "unknown"),
+    recent_connections: Array.isArray(data.recent_connections)
+      ? data.recent_connections.map((conn: any) => ({
+          timestamp: String(conn?.timestamp || ""),
+          protocol: String(conn?.protocol || ""),
+          domain: String(conn?.domain || ""),
+          source: String(conn?.source || ""),
+          destination: String(conn?.destination || ""),
+          is_target: Boolean(conn?.is_target),
+        }))
+      : [],
+    recent_events: Array.isArray(data.recent_events)
+      ? data.recent_events.map((evt: any) => ({
+          timestamp: String(evt?.timestamp || ""),
+          level: String(evt?.level || ""),
+          message: String(evt?.message || ""),
+        }))
+      : [],
+    current_cps: safeNumber(data.current_cps),
+    current_pps: safeNumber(data.current_pps),
+  };
+};
+
 export default function Dashboard() {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [connected, setConnected] = useState(false);
@@ -89,9 +230,13 @@ export default function Dashboard() {
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          setMetrics(data);
+          const normalizedData = normalizeMetrics(data);
+          setMetrics(normalizedData);
         } catch (error) {
           console.error("Failed to parse metrics:", error);
+          console.error("Raw data:", event.data);
+          // Set default metrics on parse error
+          setMetrics(normalizeMetrics(null));
         }
       };
 

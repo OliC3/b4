@@ -54,11 +54,11 @@ jobs:
         working-directory: src/http/ui
         run: |
           pnpm install --frozen-lockfile
-          pnpm build
+          VITE_APP_VERSION=${{ env.VERSION }} pnpm build
 
       - name: build b4
         run: |
-          make all
+          make all VERSION=${{ env.VERSION }}
 
       - name: list built files
         run: ls -al out out/assets

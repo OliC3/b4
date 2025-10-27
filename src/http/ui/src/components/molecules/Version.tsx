@@ -2,6 +2,9 @@ import { Box, Link, Typography } from "@mui/material";
 import { colors } from "../../Theme";
 import GitHubIcon from "@mui/icons-material/GitHub";
 
+// Get version from environment variable or fallback to default
+const APP_VERSION = import.meta.env.VITE_APP_VERSION || "dev";
+
 export default function Version() {
   return (
     <Box
@@ -29,7 +32,7 @@ export default function Version() {
             }}
           />
         </Link>
-        Version 1.0.0
+        Version {APP_VERSION}
       </Typography>
     </Box>
   );
