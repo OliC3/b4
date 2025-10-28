@@ -35,7 +35,7 @@ func udpChecksumIPv4(pkt []byte) {
 	binary.BigEndian.PutUint16(pkt[udpo+6:udpo+8], c)
 }
 
-func BuildFakeUDPFromOriginal(orig []byte, fakeLen int, ttl uint8) ([]byte, bool) {
+func BuildFakeUDPFromOriginalV4(orig []byte, fakeLen int, ttl uint8) ([]byte, bool) {
 	if len(orig) < 20 || orig[0]>>4 != 4 {
 		return nil, false
 	}

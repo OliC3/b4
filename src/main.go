@@ -105,6 +105,7 @@ func runB4(cmd *cobra.Command, args []string) error {
 	// Load domains from geodata if specified
 
 	var allDomains []string
+
 	manualDomains := cfg.Domains.SNIDomains // These are the user's manual domains
 
 	if cfg.Domains.GeoSitePath != "" && len(cfg.Domains.GeoSiteCategories) > 0 {

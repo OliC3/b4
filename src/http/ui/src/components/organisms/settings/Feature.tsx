@@ -37,6 +37,18 @@ export const FeatureSettings: React.FC<FeatureSettingsProps> = ({
         </Grid>
         <Grid size={{ xs: 12, md: 6 }}>
           <SettingSwitch
+            label="Enable IPv4 Support"
+            checked={config.ipv4}
+            onChange={(checked) => onChange("ipv4", checked)}
+            description="Enable IPv4 support"
+          />
+          <SettingSwitch
+            label="Enable IPv6 Support"
+            checked={config.ipv6}
+            onChange={(checked) => onChange("ipv6", checked)}
+            description="Enable IPv6 support"
+          />
+          <SettingSwitch
             label="Skip IPTables Setup"
             checked={config.skip_iptables}
             onChange={(checked) => onChange("skip_iptables", checked)}

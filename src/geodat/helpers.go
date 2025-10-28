@@ -1,4 +1,3 @@
-// path: src/geodat/helpers.go
 package geodat
 
 import (

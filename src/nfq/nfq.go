@@ -196,7 +196,11 @@ func (w *Worker) Start() error {
 						log.Infof("SNI TCP%v: %s %s:%d -> %s:%d", target, host, src.String(), sport, dst.String(), dport)
 
 						if matched {
-							w.dropAndInjectTCP(cfg, raw, dst, onlyOnce)
+							if v == 4 {
+								w.dropAndInjectTCP(cfg, raw, dst, onlyOnce)
+							} else {
+								w.dropAndInjectTCPv6(cfg, raw, dst, onlyOnce)
+							}
 							_ = q.SetVerdict(id, nfqueue.NfDrop)
 						} else {
 							_ = q.SetVerdict(id, nfqueue.NfAccept)
@@ -262,7 +266,11 @@ func (w *Worker) Start() error {
 							return 0
 						}
 						if cfg.UDP.Mode == "fake" {
-							w.dropAndInjectQUIC(cfg, raw, dst)
+							if v == 4 {
+								w.dropAndInjectQUIC(cfg, raw, dst)
+							} else {
+								w.dropAndInjectQUICV6(cfg, raw, dst)
+							}
 							_ = q.SetVerdict(id, nfqueue.NfDrop)
 							return 0
 						}
@@ -299,7 +307,7 @@ func (w *Worker) dropAndInjectQUIC(cfg *config.Config, raw []byte, dst net.IP) {
 	}
 	if cfg.UDP.FakeSeqLength > 0 {
 		for i := 0; i < cfg.UDP.FakeSeqLength; i++ {
-			fake, ok := sock.BuildFakeUDPFromOriginal(raw, cfg.UDP.FakeLen, cfg.Faking.TTL)
+			fake, ok := sock.BuildFakeUDPFromOriginalV4(raw, cfg.UDP.FakeLen, cfg.Faking.TTL)
 			if ok {
 				if cfg.UDP.FakingStrategy == "checksum" {
 					ipHdrLen := int((fake[0] & 0x0F) * 4)
@@ -536,7 +544,7 @@ func (w *Worker) sendFakeSNISequence(cfg *config.Config, original []byte, dst ne
 		return
 	}
 
-	fake := sock.BuildFakeSNIPacket(original, cfg)
+	fake := sock.BuildFakeSNIPacketV4(original, cfg)
 	ipHdrLen := int((fake[0] & 0x0F) * 4)
 	tcpHdrLen := int((fake[ipHdrLen+12] >> 4) * 4)
 

@@ -192,7 +192,7 @@ func (m Manifest) RevertSysctls() {
 }
 
 func hasBinary(name string) bool {
-	_, err := run("sh", "-c", "command -v "+name)
+	_, err := exec.LookPath(name)
 	return err == nil
 }
 

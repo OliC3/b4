@@ -93,14 +93,16 @@ export interface IB4Config {
 }
 
 export default class B4Config implements IB4Config {
-  queue_start_num: number = 537;
-  threads: number = 4;
-  mark: number = 32768;
-  conn_bytes_limit: number = 19;
-  seg2delay: number = 0;
-  use_gso: boolean = true;
-  use_conntrack: boolean = false;
-  skip_iptables: boolean = false;
+  queue_start_num = 537;
+  threads = 4;
+  mark = 32768;
+  conn_bytes_limit = 19;
+  seg2delay = 0;
+  use_gso = true;
+  use_conntrack = false;
+  skip_iptables = false;
+  ipv4 = true;
+  ipv6 = false;
 
   logging: ILogging = {
     level: LogLevel.INFO,
