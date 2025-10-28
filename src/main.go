@@ -24,12 +24,13 @@ import (
 )
 
 var (
-	cfg         = config.DefaultConfig
-	verboseFlag string
-	showVersion bool
-	Version     = "dev"
-	Commit      = "none"
-	Date        = "unknown"
+	cfg           = config.DefaultConfig
+	verboseFlag   string
+	showVersion   bool
+	clearIptables bool
+	Version       = "dev"
+	Commit        = "none"
+	Date          = "unknown"
 )
 
 var rootCmd = &cobra.Command{
@@ -46,6 +47,7 @@ func init() {
 	// Add verbosity flags separately since they need special handling
 	rootCmd.Flags().StringVar(&verboseFlag, "verbose", "info", "Set verbosity level (debug, trace, info, silent), default: info")
 	rootCmd.Flags().BoolVarP(&showVersion, "version", "v", false, "Show version and exit")
+	rootCmd.Flags().BoolVar(&clearIptables, "clear-iptables", false, "Perform only iptables cleanup and exit")
 }
 
 func main() {
@@ -66,6 +68,18 @@ func runB4(cmd *cobra.Command, args []string) error {
 	// Initialize logging first thing
 	if err := initLogging(&cfg); err != nil {
 		return fmt.Errorf("logging initialization failed: %w", err)
+	}
+
+	if clearIptables {
+		// Initialize logging first thing
+		if err := initLogging(&cfg); err != nil {
+			return fmt.Errorf("logging initialization failed: %w", err)
+		}
+
+		log.Infof("Clearing iptables rules as requested (--clear-iptables)")
+		iptables.ClearRules(&cfg)
+		log.Infof("IPTables rules cleared successfully")
+		return nil
 	}
 
 	log.Infof("Starting B4 packet processor")

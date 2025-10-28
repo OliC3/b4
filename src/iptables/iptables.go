@@ -3,6 +3,7 @@ package iptables
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"os"
 	"os/exec"
 	"strconv"
@@ -200,16 +201,16 @@ func loadKernelModules() {
 	_, _ = run("sh", "-c", "modprobe xt_NFQUEUE --first-time >/dev/null 2>&1 || true")
 }
 
-func buildManifest(cfg *config.Config) Manifest {
+func buildManifest(cfg *config.Config) (Manifest, error) {
 	var ipts []string
-	if hasBinary("iptables") {
+	if cfg.IPv4Enabled && hasBinary("iptables") {
 		ipts = append(ipts, "iptables")
 	}
-	if hasBinary("ip6tables") {
+	if cfg.IPv6Enabled && hasBinary("ip6tables") {
 		ipts = append(ipts, "ip6tables")
 	}
 	if len(ipts) == 0 {
-		ipts = []string{"iptables"}
+		return Manifest{}, errors.New("no valid iptables binaries found")
 	}
 	queueNum := cfg.QueueStartNum
 	threads := cfg.Threads
@@ -255,7 +256,7 @@ func buildManifest(cfg *config.Config) Manifest {
 		{Name: "net.netfilter.nf_conntrack_tcp_be_liberal", Desired: "1", Revert: "0"},
 	}
 
-	return Manifest{Chains: chains, Rules: rules, Sysctls: sysctls}
+	return Manifest{Chains: chains, Rules: rules, Sysctls: sysctls}, nil
 }
 
 func AddRules(cfg *config.Config) error {
@@ -264,7 +265,10 @@ func AddRules(cfg *config.Config) error {
 	}
 	log.Infof("IPTABLES: adding rules")
 	loadKernelModules()
-	m := buildManifest(cfg)
+	m, err := buildManifest(cfg)
+	if err != nil {
+		return err
+	}
 	result := m.Apply()
 
 	if log.Level(log.CurLevel.Load()) >= log.LevelTrace {
@@ -288,7 +292,10 @@ func ClearRules(cfg *config.Config) error {
 	if len(ipts) == 0 {
 		ipts = []string{"iptables"}
 	}
-	m := buildManifest(cfg)
+	m, err := buildManifest(cfg)
+	if err != nil {
+		return err
+	}
 	m.RemoveRules()
 	time.Sleep(30 * time.Millisecond)
 	m.RemoveChains()

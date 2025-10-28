@@ -28,6 +28,8 @@ type Config struct {
 	UseConntrack   bool    `json:"use_conntrack" bson:"use_conntrack"`
 	SkipIpTables   bool    `json:"skip_iptables" bson:"skip_iptables"`
 	Seg2Delay      int     `json:"seg2delay" bson:"seg2delay"`
+	IPv4Enabled    bool    `json:"ipv4" bson:"ipv4"`
+	IPv6Enabled    bool    `json:"ipv6" bson:"ipv6"`
 
 	Domains       DomainsConfig `json:"domains" bson:"domains"`
 	Fragmentation Fragmentation `json:"fragmentation" bson:"fragmentation"`
@@ -100,6 +102,8 @@ var DefaultConfig = Config{
 	UseGSO:         true,
 	SkipIpTables:   false,
 	Seg2Delay:      0,
+	IPv4Enabled:    true,
+	IPv6Enabled:    false,
 
 	Domains: DomainsConfig{
 		GeoSitePath:       "",
@@ -260,6 +264,8 @@ func (c *Config) BindFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVar(&c.UseGSO, "gso", c.UseGSO, "Enable Generic Segmentation Offload")
 	cmd.Flags().BoolVar(&c.UseConntrack, "conntrack", c.UseConntrack, "Enable connection tracking")
 	cmd.Flags().BoolVar(&c.SkipIpTables, "skip-iptables", c.SkipIpTables, "Skip iptables rules setup")
+	cmd.Flags().BoolVar(&c.IPv4Enabled, "ipv4", c.IPv4Enabled, "Enable IPv4 processing")
+	cmd.Flags().BoolVar(&c.IPv6Enabled, "ipv6", c.IPv6Enabled, "Enable IPv6 processing")
 
 	// Logging configuration
 	cmd.Flags().BoolVarP(&c.Logging.Instaflush, "instaflush", "i", c.Logging.Instaflush, "Flush logs immediately")
