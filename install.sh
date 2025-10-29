@@ -974,32 +974,35 @@ print_web_interface_info() {
     echo "======================================="
     echo ""
 
-    # Get local IP address (POSIX compliant methods)
-    local_ip=""
+    # Get LAN IP address (for routers - look for 192.168.x.x or 10.x.x.x)
+    lan_ip=""
 
-    # Method 1: Try ip command (common on modern systems)
+    # Method 1: Try ip command and filter for private ranges
     if command_exists ip; then
-        local_ip=$(ip route get 1 2>/dev/null | grep -oP 'src \K\S+' || true)
-        # Fallback for systems without grep -P
-        if [ -z "$local_ip" ]; then
-            local_ip=$(ip route get 1 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="src") print $(i+1)}' | head -n1)
-        fi
+        lan_ip=$(ip -4 addr show 2>/dev/null | grep -oE 'inet (192\.168\.[0-9]{1,3}\.[0-9]{1,3}|10\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}|172\.(1[6-9]|2[0-9]|3[0-1])\.[0-9]{1,3}\.[0-9]{1,3})' | awk '{print $2}' | head -n1)
     fi
 
-    # Method 2: Try hostname -I (if available)
-    if [ -z "$local_ip" ] && command_exists hostname; then
-        local_ip=$(hostname -I 2>/dev/null | awk '{print $1}')
+    # Method 2: Try ifconfig for private ranges
+    if [ -z "$lan_ip" ] && command_exists ifconfig; then
+        lan_ip=$(ifconfig 2>/dev/null | grep -oE 'inet (addr:)?(192\.168\.[0-9]{1,3}\.[0-9]{1,3}|10\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}|172\.(1[6-9]|2[0-9]|3[0-1])\.[0-9]{1,3}\.[0-9]{1,3})' | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' | head -n1)
     fi
 
-    # Method 3: Parse ifconfig (fallback for older systems)
-    if [ -z "$local_ip" ] && command_exists ifconfig; then
-        local_ip=$(ifconfig 2>/dev/null | grep 'inet ' | grep -v '127.0.0.1' | awk '{print $2}' | sed 's/addr://' | head -n1)
+    # Method 3: Check common router interfaces (br-lan, br0, eth0)
+    if [ -z "$lan_ip" ]; then
+        for iface in br-lan br0 eth0 lan; do
+            if command_exists ip; then
+                lan_ip=$(ip -4 addr show "$iface" 2>/dev/null | grep -oE 'inet [0-9\.]+' | awk '{print $2}')
+            elif command_exists ifconfig; then
+                lan_ip=$(ifconfig "$iface" 2>/dev/null | grep -oE 'inet (addr:)?[0-9\.]+' | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}')
+            fi
+            [ -n "$lan_ip" ] && break
+        done
     fi
 
-    # Print local access
-    if [ -n "$local_ip" ]; then
-        print_info "Local network access:"
-        printf "  ${GREEN}http://%s:%s${NC}\n" "$local_ip" "$web_port"
+    # Print local/LAN access
+    if [ -n "$lan_ip" ]; then
+        print_info "Local network access (LAN):"
+        printf "  ${GREEN}http://%s:%s${NC}\n" "$lan_ip" "$web_port"
         echo ""
     fi
 
@@ -1018,17 +1021,18 @@ print_web_interface_info() {
             wget -qO- --timeout=3 icanhazip.com 2>/dev/null || true)
     fi
 
-    # Print external access if available
-    if [ -n "$external_ip" ]; then
-        print_info "External access (if port ${web_port} is forwarded):"
+    # Print external access if available and different from LAN
+    if [ -n "$external_ip" ] && [ "$external_ip" != "$lan_ip" ]; then
+        print_info "External access (WAN, if port ${web_port} is forwarded):"
         printf "  ${GREEN}http://%s:%s${NC}\n" "$external_ip" "$web_port"
         print_warning "Note: Ensure port ${web_port} is open in your firewall"
-    else
-        print_warning "Could not determine external IP address"
+    elif [ -n "$external_ip" ]; then
+        print_info "External access (WAN):"
+        printf "  ${GREEN}http://%s:%s${NC}\n" "$external_ip" "$web_port"
     fi
 
+    echo ""
 }
-
 # Main installation process
 main_install() {
     echo ""
