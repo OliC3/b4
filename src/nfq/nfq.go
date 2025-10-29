@@ -94,14 +94,14 @@ func (w *Worker) Start() error {
 			raw := *a.Payload
 
 			v := raw[0] >> 4
-			if v != 4 && v != 6 {
+			if v != IPv4 && v != IPv6 {
 				_ = q.SetVerdict(id, nfqueue.NfAccept)
 				return 0
 			}
 			var proto uint8
 			var src, dst net.IP
 			var ihl int
-			if v == 4 {
+			if v == IPv4 {
 				if len(raw) < 20 {
 					_ = q.SetVerdict(id, nfqueue.NfAccept)
 					return 0
@@ -115,11 +115,11 @@ func (w *Worker) Start() error {
 				src = net.IP(raw[12:16])
 				dst = net.IP(raw[16:20])
 			} else {
-				if len(raw) < 40 {
+				if len(raw) < IPv6HeaderLen {
 					_ = q.SetVerdict(id, nfqueue.NfAccept)
 					return 0
 				}
-				ihl = 40
+				ihl = IPv6HeaderLen
 				nextHeader := raw[6]
 				offset := 40
 
@@ -145,9 +145,9 @@ func (w *Worker) Start() error {
 				dst = net.IP(raw[24:40])
 			}
 
-			if proto == 6 && len(raw) >= ihl+20 {
+			if proto == IPv6 && len(raw) >= ihl+TCPHeaderMinLen {
 				tcp := raw[ihl:]
-				if len(tcp) < 20 {
+				if len(tcp) < TCPHeaderMinLen {
 					_ = q.SetVerdict(id, nfqueue.NfAccept)
 					return 0
 				}
@@ -160,7 +160,7 @@ func (w *Worker) Start() error {
 				sport := binary.BigEndian.Uint16(tcp[0:2])
 				dport := binary.BigEndian.Uint16(tcp[2:4])
 
-				if dport == 443 && len(payload) > 0 {
+				if dport == HTTPSPort && len(payload) > 0 {
 					k := fmt.Sprintf("%s:%d>%s:%d", src.String(), sport, dst.String(), dport)
 
 					// Check flow state first
@@ -593,7 +593,7 @@ func (w *Worker) sendFakeSNISequence(cfg *config.Config, original []byte, dst ne
 // locateSNI returns start and end (relative to payload start) of the SNI hostname bytes.
 func locateSNI(payload []byte) (start, end int, ok bool) {
 	// TLS record header: ContentType(1)=0x16, Version(2), Length(2)
-	if len(payload) < 5 || payload[0] != 0x16 {
+	if len(payload) < 5 || payload[0] != TLSHandshakeType {
 		return 0, 0, false
 	}
 	recLen := int(binary.BigEndian.Uint16(payload[3:5]))
@@ -604,7 +604,7 @@ func locateSNI(payload []byte) (start, end int, ok bool) {
 	p := 5 // handshake starts right after record header
 
 	// Handshake header: HandshakeType(1)=client_hello(1), Length(3)
-	if p+4 > len(payload) || payload[p] != 0x01 {
+	if p+4 > len(payload) || payload[p] != TLSClientHello {
 		return 0, 0, false
 	}
 	hsLen := int(payload[p+1])<<16 | int(payload[p+2])<<8 | int(payload[p+3])

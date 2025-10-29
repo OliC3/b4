@@ -11,7 +11,6 @@ func ParseQUICClientHelloSNI(payload []byte) (string, bool) {
 		return "", false
 	}
 	dcid := quic.ParseDCID(payload)
-	defer quic.ClearDCID(dcid)
 
 	plain, ok := quic.DecryptInitial(dcid, payload)
 	if !ok {

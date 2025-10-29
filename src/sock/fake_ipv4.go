@@ -74,14 +74,18 @@ func BuildFakeSNIPacketV4(original []byte, cfg *config.Config) []byte {
 }
 
 func FixIPv4Checksum(ip []byte) {
+	if len(ip) < 20 {
+		return
+	}
+
 	ip[10], ip[11] = 0, 0
+	ihl := int((ip[0] & 0x0F) * 4)
 	var sum uint32
-	for i := 0; i+1 < len(ip); i += 2 {
+
+	for i := 0; i < ihl; i += 2 {
 		sum += uint32(binary.BigEndian.Uint16(ip[i : i+2]))
 	}
-	if len(ip)%2 == 1 {
-		sum += uint32(ip[len(ip)-1]) << 8
-	}
+
 	for sum > 0xffff {
 		sum = (sum >> 16) + (sum & 0xffff)
 	}

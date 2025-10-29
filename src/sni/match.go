@@ -24,23 +24,25 @@ func NewSuffixSet(domains []string) *SuffixSet {
 }
 
 func (s *SuffixSet) Match(host string) bool {
-	if s == nil || len(s.m) == 0 {
+	if s == nil || len(s.m) == 0 || host == "" {
 		return false
 	}
 
-	host = strings.ToLower(host)
-	if host == "" {
-		return false
-	}
-	if _, ok := s.m[host]; ok {
+	lower := strings.ToLower(host)
+	if _, ok := s.m[lower]; ok {
 		return true
 	}
-	for i := 0; i < len(host); i++ {
-		if host[i] == '.' {
-			if _, ok := s.m[host[i+1:]]; ok {
-				return true
-			}
+
+	for {
+		idx := strings.IndexByte(lower, '.')
+		if idx == -1 {
+			break
+		}
+		lower = lower[idx+1:]
+		if _, ok := s.m[lower]; ok {
+			return true
 		}
 	}
+
 	return false
 }

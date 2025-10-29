@@ -2,6 +2,7 @@ package ws
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"net/http"
 	"sync"
@@ -128,7 +129,7 @@ func HandleLogsWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	h.reg <- c
 	go c.writePump()
-	c.readPump(h)
+	c.readPump(h, r.Context())
 }
 
 func (h *LogHub) Stop() {
@@ -177,24 +178,25 @@ func (c *logClient) writePump() {
 	}
 }
 
-func (c *logClient) readPump(h *LogHub) {
+func (c *logClient) readPump(h *LogHub, ctx context.Context) {
 	defer func() {
 		h.unreg <- c
 		c.ws.Close()
 	}()
 
-	c.ws.SetReadDeadline(time.Now().Add(60 * time.Second))
-	c.ws.SetPongHandler(func(string) error {
-		c.ws.SetReadDeadline(time.Now().Add(60 * time.Second))
-		return nil
-	})
-
-	for {
-		if _, _, err := c.ws.ReadMessage(); err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Tracef("WebSocket error: %v", err)
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for {
+			if _, _, err := c.ws.ReadMessage(); err != nil {
+				return
 			}
-			break
 		}
+	}()
+
+	select {
+	case <-done:
+	case <-ctx.Done():
+		c.ws.Close()
 	}
 }
