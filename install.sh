@@ -1001,6 +1001,7 @@ print_web_interface_info() {
         print_info "Local network access (LAN):"
         printf "        ${GREEN}http://%s:%s${NC}\n" "$lan_ip" "$web_port"
         printf "        (remember to start the service first)\n"
+        echo ""
     fi
 
     # Get external IP
