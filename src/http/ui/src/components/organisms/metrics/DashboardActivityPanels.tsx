@@ -14,10 +14,11 @@ import { formatNumber } from "../../../utils";
 import { colors } from "../../../Theme";
 import TcpIcon from "@mui/icons-material/SyncAlt";
 import UdpIcon from "@mui/icons-material/TrendingFlat";
+import { ProtocolChip } from "../../atoms/common/ProtocolChip";
 
 interface Connection {
   timestamp: string;
-  protocol: string;
+  protocol: "TCP" | "UDP";
   domain: string;
   source: string;
   destination: string;
@@ -111,25 +112,7 @@ export const DashboardActivityPanels: React.FC<
                 <ListItemText
                   primary={
                     <Stack direction="row" spacing={1} alignItems="center">
-                      <Chip
-                        label={conn.protocol}
-                        size="small"
-                        icon={
-                          conn.protocol === "TCP" ? (
-                            <TcpIcon color="primary" />
-                          ) : (
-                            <UdpIcon color="secondary" />
-                          )
-                        }
-                        sx={{
-                          bgcolor: colors.accent.primary,
-                          color:
-                            conn.protocol === "TCP"
-                              ? colors.primary
-                              : colors.secondary,
-                          fontWeight: 600,
-                        }}
-                      />
+                      <ProtocolChip protocol={conn.protocol} />
                       <Typography
                         variant="body2"
                         sx={{ color: colors.text.primary }}
