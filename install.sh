@@ -1175,6 +1175,99 @@ main_install() {
 
 }
 
+# Perform update - stops service, updates, and restarts
+perform_update() {
+    QUIET_MODE=1 # Force quiet mode during updates
+
+    echo ""
+    echo "======================================="
+    echo "     B4 Update Process"
+    echo "======================================="
+    echo ""
+
+    # Detect service manager
+    SERVICE_MANAGER=""
+    RESTART_CMD=""
+
+    if [ -f "/etc/systemd/system/b4.service" ] && command_exists systemctl; then
+        SERVICE_MANAGER="systemd"
+        RESTART_CMD="systemctl restart b4"
+    elif [ -f "/opt/etc/init.d/S99b4" ]; then
+        SERVICE_MANAGER="entware"
+        RESTART_CMD="/opt/etc/init.d/S99b4 restart"
+    elif [ -f "/etc/init.d/b4" ]; then
+        SERVICE_MANAGER="init"
+        RESTART_CMD="/etc/init.d/b4 restart"
+    else
+        print_error "No service manager detected. Cannot perform automatic update."
+        exit 1
+    fi
+
+    print_info "Detected service manager: $SERVICE_MANAGER"
+
+    # Extract geosite settings from config if available
+    GEOSITE_SRC=""
+    GEOSITE_DST=""
+    if [ -f "$CONFIG_FILE" ] && command_exists jq; then
+        GEOSITE_SRC=$(jq -r '.domains.geosite_url // empty' "$CONFIG_FILE" 2>/dev/null)
+        GEOSITE_DST=$(jq -r '.domains.geosite_path // empty' "$CONFIG_FILE" 2>/dev/null | xargs dirname 2>/dev/null)
+    fi
+
+    # Stop the service
+    print_info "Stopping b4 service..."
+    case "$SERVICE_MANAGER" in
+    systemd)
+        systemctl stop b4 2>/dev/null || true
+        ;;
+    entware)
+        /opt/etc/init.d/S99b4 stop 2>/dev/null || true
+        ;;
+    init)
+        /etc/init.d/b4 stop 2>/dev/null || true
+        ;;
+    esac
+
+    sleep 2
+    print_success "Service stopped"
+
+    # Perform the update (call main_install with quiet mode)
+    print_info "Installing latest version..."
+    main_install "$@"
+
+    # Start the service
+    print_info "Starting b4 service..."
+    case "$SERVICE_MANAGER" in
+    systemd)
+        systemctl start b4
+        ;;
+    entware)
+        /opt/etc/init.d/S99b4 start
+        ;;
+    init)
+        /etc/init.d/b4 start
+        ;;
+    esac
+
+    sleep 2
+
+    # Verify service is running
+    if case "$SERVICE_MANAGER" in
+        systemd) systemctl is-active --quiet b4 ;;
+        entware | init) ps | grep -v grep | grep -q "b4$\|b4[[:space:]]" ;;
+        esac then
+        print_success "Service started successfully"
+        echo ""
+        echo "======================================="
+        echo "     Update Complete!"
+        echo "======================================="
+        echo ""
+    else
+        print_error "Service may not have started correctly"
+        print_info "Check logs: journalctl -u b4 -f (systemd) or /var/log/b4.log"
+        exit 1
+    fi
+}
+
 # Main function - parse arguments
 main() {
     # Check for remove flag first
@@ -1185,29 +1278,35 @@ main() {
             remove_b4
             exit 0
             ;;
+        --update | -u)
+            check_root
+            perform_update "$@"
+            exit 0
+            ;;
         --help | -h)
             echo "Usage: $0 [OPTIONS] [VERSION]"
             echo ""
             echo "Options:"
-            echo "  --remove, -r     Uninstall b4 from the system"
-            echo "  --help, -h       Show this help message"
-            echo "  --quiet, -q      Suppress output except for errors"
-            echo "  --geosite-src URL  Specify geosite.dat source URL"
-            echo "  --geosite-dst DIR    Specify directory to save geosite.dat"
-            echo "  VERSION          Install specific version (e.g., v1.4.0)"
+            echo "  --remove, -r      Uninstall b4 from the system"
+            echo "  --update, -u      Update b4 to latest version"
+            echo "  --help, -h        Show this help message"
+            echo "  --quiet, -q       Suppress output except for errors"
+            echo "  --geosite-src URL Specify geosite.dat source URL"
+            echo "  --geosite-dst DIR Specify directory to save geosite.dat"
+            echo "  VERSION           Install specific version (e.g., v1.4.0)"
             echo ""
             echo "Examples:"
-            echo "  $0               Install latest version"
-            echo "  $0 v1.4.0        Install version 1.4.0"
-            echo "  $0 --remove      Uninstall b4"
+            echo "  $0                Install latest version"
+            echo "  $0 v1.4.0         Install version 1.4.0"
+            echo "  $0 --update       Update to latest version"
+            echo "  $0 --remove       Uninstall b4"
             exit 0
             ;;
         esac
     done
 
-    # No remove flag found, proceed with installation
+    # No remove/update flag found, proceed with installation
     main_install "$@"
 }
-
 # Run main function
 main "$@"

@@ -173,46 +173,24 @@ func (api *API) handleUpdate(w http.ResponseWriter, r *http.Request) {
 	serviceManager := detectServiceManager()
 	log.Infof("Update requested via web UI (service manager: %s, version: %s)", serviceManager, req.Version)
 
-	var response UpdateResponse
-	response.ServiceManager = serviceManager
-
 	// Check if we can perform updates
 	if serviceManager == "standalone" {
-		response.Success = false
-		response.Message = "Cannot update: B4 is not running as a service. Please update manually."
+		response := UpdateResponse{
+			Success:        false,
+			Message:        "Cannot update: B4 is not running as a service. Please update manually.",
+			ServiceManager: serviceManager,
+		}
 		setJsonHeader(w)
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(response)
 		return
 	}
 
-	// Prepare update command based on service manager
-	var updateCmd string
-	switch serviceManager {
-	case "entware":
-		log.Infof("Preparing update command for Entware service manager")
-		// Use the built-in update command in the init script
-		updateCmd = "/opt/etc/init.d/S99b4 update"
-		response.UpdateCommand = updateCmd
-
-	case "systemd", "init":
-		log.Infof("Preparing update command for service manager: %s", serviceManager)
-		// For systemd and standard init, we'll download and run the installer
-		// The installer will handle stopping/starting the service
-		updateCmd = "wget -O /tmp/b4install.sh https://raw.githubusercontent.com/DanielLavrushin/b4/main/install.sh && chmod +x /tmp/b4install.sh && /tmp/b4install.sh -q"
-		response.UpdateCommand = updateCmd
-
-	default:
-		response.Success = false
-		response.Message = "Unknown service manager"
-		setJsonHeader(w)
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(response)
-		return
+	response := UpdateResponse{
+		Success:        true,
+		Message:        "Update initiated. The service will restart automatically.",
+		ServiceManager: serviceManager,
 	}
-
-	response.Success = true
-	response.Message = "Update initiated. The service will restart automatically."
 
 	// Send response immediately before triggering update
 	setJsonHeader(w)
@@ -224,33 +202,42 @@ func (api *API) handleUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Trigger update in a goroutine with a small delay
-	// This allows the HTTP response to be sent before the service stops
 	go func() {
 		time.Sleep(500 * time.Millisecond)
-		log.Infof("Executing update command: %s", updateCmd)
+		log.Infof("Initiating update process...")
 
-		var cmd *exec.Cmd
-		switch serviceManager {
-		case "entware":
-			cmd = exec.Command("/opt/etc/init.d/S99b4", "update")
-		case "systemd", "init":
-			// Use sh to execute the compound command
-			cmd = exec.Command("sh", "-c", updateCmd)
+		// Download the installer script
+		installerPath := "/tmp/b4install_update.sh"
+		installerURL := "https://raw.githubusercontent.com/DanielLavrushin/b4/main/install.sh"
+
+		// Download installer
+		downloadCmd := exec.Command("wget", "-O", installerPath, installerURL)
+		if output, err := downloadCmd.CombinedOutput(); err != nil {
+			log.Errorf("Failed to download installer: %v\nOutput: %s", err, string(output))
+			return
 		}
 
-		if cmd != nil {
-			// Set up command to run independently
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
+		// Make executable
+		if err := os.Chmod(installerPath, 0755); err != nil {
+			log.Errorf("Failed to make installer executable: %v", err)
+			return
+		}
 
-			// Start the command but don't wait for it
-			// The update process will kill this process anyway
-			if err := cmd.Start(); err != nil {
-				log.Errorf("Update command failed to start: %v", err)
-			} else {
-				log.Infof("Update command started successfully (PID: %d)", cmd.Process.Pid)
-				// Don't wait for the command - let it run independently
-			}
+		log.Infof("Installer downloaded, starting update process...")
+		log.Infof("Service will stop now - this is expected")
+
+		// Execute the update
+		// The --update flag will handle: stop service -> update -> start service
+		cmd := exec.Command(installerPath, "--update", "--quiet")
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+
+		// Start the update process - it will kill this process when it stops the service
+		if err := cmd.Start(); err != nil {
+			log.Errorf("Update command failed to start: %v", err)
+		} else {
+			log.Infof("Update process started (PID: %d)", cmd.Process.Pid)
+			// Note: We won't reach here for long as the service will be stopped
 		}
 	}()
 }
