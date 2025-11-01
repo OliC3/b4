@@ -150,7 +150,7 @@ func (w *Worker) Start() error {
 				dst = net.IP(raw[24:40])
 			}
 
-			if proto == IPv6 && len(raw) >= ihl+TCPHeaderMinLen {
+			if proto == 6 && len(raw) >= ihl+TCPHeaderMinLen {
 				tcp := raw[ihl:]
 				if len(tcp) < TCPHeaderMinLen {
 					_ = q.SetVerdict(id, nfqueue.NfAccept)
@@ -187,11 +187,30 @@ func (w *Worker) Start() error {
 						return 0
 					}
 
-					// If we already processed SNI for this flow, fast accept
-					if st.sniProcessed {
-						w.mu.Unlock()
+					if st.sniProcessed && st.sniFound {
+						// Fragment first 3 packets after SNI detection
+						if st.packetCount <= 4 { // SNI packet + 3 more
+							w.mu.Unlock()
 
-						// For already processed flows, just accept without re-processing
+							// Continue fragmenting (but no fake SNI after first packet)
+							if v == 4 {
+								w.dropAndInjectTCP(cfg, raw, dst, false)
+							} else {
+								w.dropAndInjectTCPv6(cfg, raw, dst, false)
+							}
+							_ = q.SetVerdict(id, nfqueue.NfDrop)
+							return 0
+						} else {
+							// After 4 packets, just accept normally (for video performance)
+							w.mu.Unlock()
+							_ = q.SetVerdict(id, nfqueue.NfAccept)
+							return 0
+						}
+					}
+
+					// If already processed but not matched, just accept
+					if st.sniProcessed && !st.sniFound {
+						w.mu.Unlock()
 						_ = q.SetVerdict(id, nfqueue.NfAccept)
 						return 0
 					}
@@ -207,11 +226,13 @@ func (w *Worker) Start() error {
 						if matched {
 							target = labelTarget
 						}
+
 						// Mark this flow as processed
 						w.mu.Lock()
 						if st, exists := w.flows[k]; exists {
 							st.sniProcessed = true
-							st.sniFound = matched // Store match result
+							st.sniFound = matched
+							st.packetCount = 1 // Reset to 1 since this is our first fragmented packet
 						}
 						w.mu.Unlock()
 
