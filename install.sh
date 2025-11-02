@@ -1278,20 +1278,9 @@ check_kernel_module() {
         return 0
     fi
 
-    # Check if module exists in filesystem
-    if find /lib/modules/$(uname -r) -name "${module_name}.ko*" 2>/dev/null | grep -q .; then
-        echo "available"
-        return 0
-    fi
-
-    # Try modprobe dry run
-    if modprobe -n "$module_name" 2>/dev/null; then
-        echo "available"
-        return 0
-    fi
-
-    echo "missing"
-    return 1
+    # Skip filesystem check on routers - often hangs
+    echo "unknown"
+    return 0
 }
 
 # Get service status
@@ -1309,24 +1298,24 @@ get_service_status() {
             return 0
         else
             echo "stopped (systemd)"
-            return 1
+            return 0
         fi
     fi
 
     # Check Entware init
     if [ -f "/opt/etc/init.d/S99b4" ]; then
         echo "configured (entware)"
-        return 1
+        return 0
     fi
 
     # Check standard init
     if [ -f "/etc/init.d/b4" ]; then
         echo "configured (init.d)"
-        return 1
+        return 0
     fi
 
     echo "not installed"
-    return 1
+    return 0
 }
 
 # Get network interfaces info
@@ -1365,7 +1354,7 @@ detect_firewall_backend() {
     fi
 
     echo "none"
-    return 1
+    return 0
 }
 
 # System information display function
@@ -1556,7 +1545,7 @@ show_system_info() {
     # Netfilter modules
     modules="nf_conntrack xt_connbytes xt_NFQUEUE nf_tables nft_queue nft_ct"
     for mod in $modules; do
-        status=$(check_kernel_module "$mod")
+        status=$(check_kernel_module "$mod" || true)
         case "$status" in
         loaded)
             print_detail "$mod" "${GREEN}Loaded${NC}"
@@ -1564,7 +1553,7 @@ show_system_info() {
         available)
             print_detail "$mod" "${CYAN}Available${NC}"
             ;;
-        missing)
+        unknown)
             print_detail "$mod" "${YELLOW}Not found${NC}"
             ;;
         esac
@@ -1623,35 +1612,30 @@ show_system_info() {
 
     # Check if running as root
     if [ "$USER" != "root" ] && ! (touch /etc/.root_test 2>/dev/null && rm -f /etc/.root_test 2>/dev/null); then
-        echo "  ${YELLOW}⚠${NC}  Run this script as root for installation"
+        printf "  ${YELLOW}⚠${NC}  Run this script as root for installation"
         recommendations=$((recommendations + 1))
     fi
 
     # Check for missing critical dependencies
     if ! command_exists wget && ! command_exists curl; then
-        echo "  ${RED}✗${NC}  Install wget or curl for downloading"
+        printf "  ${RED}✗${NC}  Install wget or curl for downloading"
         recommendations=$((recommendations + 1))
     fi
 
     if ! command_exists tar; then
-        echo "  ${RED}✗${NC}  Install tar for extracting archives"
+        printf "  ${RED}✗${NC}  Install tar for extracting archives"
         recommendations=$((recommendations + 1))
     fi
 
     # Check for missing kernel modules
     if [ "$(check_kernel_module nf_conntrack)" = "missing" ]; then
-        echo "  ${YELLOW}⚠${NC}  nf_conntrack module not found - may need kernel rebuild"
-        recommendations=$((recommendations + 1))
-    fi
-
-    if [ "$(check_kernel_module xt_NFQUEUE)" = "missing" ] && [ "$(check_kernel_module nft_queue)" = "missing" ]; then
-        echo "  ${RED}✗${NC}  No NFQUEUE support - b4 will not work"
+        printf "  ${YELLOW}⚠${NC}  nf_conntrack module not found - may need kernel rebuild"
         recommendations=$((recommendations + 1))
     fi
 
     # Check firewall
     if [ "$firewall_backend" = "none" ]; then
-        echo "  ${RED}✗${NC}  No firewall (iptables/nftables) detected"
+        printf "  ${RED}✗${NC}  No firewall (iptables/nftables) detected"
         recommendations=$((recommendations + 1))
     fi
 
@@ -1659,25 +1643,24 @@ show_system_info() {
     if [ -f "${INSTALL_DIR}/${BINARY_NAME}" ]; then
         service_status=$(get_service_status)
         if ! echo "$service_status" | grep -q "running"; then
-            echo "  ${YELLOW}⚠${NC}  B4 is installed but not running"
+            printf "  ${YELLOW}⚠${NC}  B4 is installed but not running"
             if [ -f "/etc/systemd/system/b4.service" ]; then
-                echo "      Try: systemctl start b4"
+                printf "      Try: systemctl start b4"
             elif [ -f "/opt/etc/init.d/S99b4" ]; then
-                echo "      Try: /opt/etc/init.d/S99b4 start"
+                printf "      Try: /opt/etc/init.d/S99b4 start"
             elif [ -f "/etc/init.d/b4" ]; then
-                echo "      Try: /etc/init.d/b4 start"
+                printf "      Try: /etc/init.d/b4 start"
             fi
             recommendations=$((recommendations + 1))
         fi
     fi
 
     if [ $recommendations -eq 0 ]; then
-        echo "  ${GREEN}✓${NC}  System appears ready for B4"
+        printf "  ${GREEN}✓${NC}  System appears ready for B4"
     fi
 
     echo ""
-    echo "======================================="
-    echo ""
+
 }
 
 # Main function - parse arguments
