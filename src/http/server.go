@@ -72,7 +72,7 @@ func registerWebSocketEndpoints(mux *stdhttp.ServeMux) {
 	// WebSocket endpoint for real-time metrics
 	mux.HandleFunc("/api/ws/metrics", ws.HandleMetricsWebSocket)
 
-	log.Infof("WebSocket endpoints registered: /api/ws/logs, /api/ws/metrics")
+	log.Tracef("WebSocket endpoints registered: /api/ws/logs, /api/ws/metrics")
 }
 
 // registerAPIEndpoints registers all REST API handlers
@@ -81,7 +81,7 @@ func registerAPIEndpoints(mux *stdhttp.ServeMux, cfg *config.Config) {
 	api := handler.NewAPIHandler(cfg)
 	api.RegisterEndpoints(mux, cfg)
 
-	log.Infof("REST API endpoints registered")
+	log.Tracef("REST API endpoints registered")
 }
 
 func LogWriter() io.Writer {

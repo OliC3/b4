@@ -229,6 +229,7 @@ export default function Dashboard() {
         try {
           const data = JSON.parse(event.data);
           const normalizedData = normalizeMetrics(data);
+          console.log("Received metrics:", normalizedData);
           setMetrics(normalizedData);
         } catch (error) {
           console.error("Failed to parse metrics:", error);

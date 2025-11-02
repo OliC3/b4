@@ -103,7 +103,7 @@ func (n *NFTablesManager) Apply() error {
 		return fmt.Errorf("nft binary not found")
 	}
 
-	log.Infof("NFTABLES: adding rules")
+	log.Tracef("NFTABLES: adding rules")
 	loadKernelModules()
 
 	// Create table
@@ -184,7 +184,7 @@ func (n *NFTablesManager) Clear() error {
 		return nil
 	}
 
-	log.Infof("NFTABLES: clearing rules")
+	log.Tracef("NFTABLES: clearing rules")
 
 	// Flush and delete the table (this removes all chains and rules)
 	if n.tableExists() {

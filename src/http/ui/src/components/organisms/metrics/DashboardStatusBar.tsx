@@ -36,11 +36,11 @@ export const DashboardStatusBar: React.FC<DashboardStatusBarProps> = ({
           status="active"
         />
         <StatusBadge
-          label={`Tables: ${metrics.tables_status}`}
+          label={`firewall: ${metrics.tables_status}`}
           status="active"
         />
         <StatusBadge
-          label={`Workers: ${metrics.worker_status.length} threads`}
+          label={`${metrics.worker_status.length} threads`}
           status={metrics.worker_status.length > 0 ? "active" : "error"}
         />
         <StatusBadge

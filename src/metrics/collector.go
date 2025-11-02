@@ -245,6 +245,23 @@ func (m *MetricsCollector) UpdateWorkerStatus(workers []WorkerHealth) {
 	m.WorkerStatus = workers
 }
 
+// UpdateSingleWorker updates a single worker's status without overwriting the entire array
+func (m *MetricsCollector) UpdateSingleWorker(workerID int, status string, processed uint64) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	// Ensure WorkerStatus has enough capacity
+	for len(m.WorkerStatus) <= workerID {
+		m.WorkerStatus = append(m.WorkerStatus, WorkerHealth{})
+	}
+
+	m.WorkerStatus[workerID] = WorkerHealth{
+		ID:        workerID,
+		Status:    status,
+		Processed: processed,
+	}
+}
+
 func (m *MetricsCollector) CloseConnection() {
 	m.mu.Lock()
 	defer m.mu.Unlock()

@@ -20,7 +20,7 @@ func HandleMetricsWebSocket(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
-	log.Infof("Metrics WebSocket client connected from %s", r.RemoteAddr)
+	log.Tracef("Metrics WebSocket client connected from %s", r.RemoteAddr)
 
 	// Send metrics every second
 	ticker := time.NewTicker(1 * time.Second)

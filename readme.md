@@ -75,7 +75,7 @@ The B4 installer script (`b4install.sh`) supports various flags for different us
 ./b4install.sh
 
 # Install specific version
-./b4install.sh v1.4.0
+./b4install.sh v1.8.0
 
 # Quiet mode (minimal output)
 ./b4install.sh --quiet
@@ -112,7 +112,7 @@ The `--update` flag performs an automatic update:
 
 ```bash
 # Interactive uninstall (asks about config)
-./b4install.sh --remove
+wget -O ~/b4install.sh https://raw.githubusercontent.com/DanielLavrushin/b4/main/install.sh && chmod +x ~/b4install.sh && ~/b4install.sh --remove
 
 # The uninstaller:
 # - Stops all B4 processes

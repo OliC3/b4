@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/daniellavrushin/b4/config"
+	"github.com/daniellavrushin/b4/http/handler"
 	"github.com/daniellavrushin/b4/log"
 )
 
@@ -16,7 +17,9 @@ func AddRules(cfg *config.Config) error {
 	}
 
 	backend := detectFirewallBackend()
-	log.Infof("Detected firewall backend: %s", backend)
+	log.Tracef("Detected firewall backend: %s", backend)
+	metrics := handler.GetMetricsCollector()
+	metrics.TablesStatus = backend
 
 	if backend == "nftables" {
 		nft := NewNFTablesManager(cfg)

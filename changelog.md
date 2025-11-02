@@ -1,9 +1,10 @@
 # B4 - Bye Bye Big Bro
 
-## [1.8.0] - 2025-11-x
+## [1.8.0] - 2025-11-01
 
 - ADDED: `nftables` support.
 - CHANGED: `--skip-iptables` and `--clear-iptables` renamed to `--skip-tables` and `--clear-tables`.
+- IMPROVED: TCP flow handling by fragmenting packets after SNI detection.
 
 ## [1.7.0] - 2025-10-31
 

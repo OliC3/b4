@@ -144,16 +144,15 @@ func runB4(cmd *cobra.Command, args []string) error {
 
 	// Setup iptables/nftables rules
 	if !cfg.SkipTables {
-		log.Infof("Clearing existing iptables/nftables rules")
+		log.Tracef("Clearing existing iptables/nftables rules")
 		tables.ClearRules(&cfg)
 
-		log.Infof("Adding tables rules")
+		log.Tracef("Adding tables rules")
 		if err := tables.AddRules(&cfg); err != nil {
 			metrics.RecordEvent("error", fmt.Sprintf("Failed to add tables rules: %v", err))
 			return fmt.Errorf("failed to add tables rules: %w", err)
 		}
 		metrics.RecordEvent("info", "Tables rules configured successfully")
-		metrics.TablesStatus = "active"
 	} else {
 		log.Infof("Skipping tables setup (--skip-tables)")
 		metrics.TablesStatus = "skipped"
@@ -177,17 +176,6 @@ func runB4(cmd *cobra.Command, args []string) error {
 		metrics.RecordEvent("error", fmt.Sprintf("Failed to start web server: %v", err))
 		return log.Errorf("failed to start web server: %w", err)
 	}
-
-	// Initialize worker status
-	workers := make([]handler.WorkerHealth, cfg.Threads)
-	for i := 0; i < cfg.Threads; i++ {
-		workers[i] = handler.WorkerHealth{
-			ID:        i,
-			Status:    "active",
-			Processed: 0,
-		}
-	}
-	metrics.UpdateWorkerStatus(workers)
 
 	log.Infof("B4 is running. Press Ctrl+C to stop")
 	metrics.RecordEvent("info", "B4 is fully operational")

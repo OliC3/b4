@@ -60,20 +60,9 @@ func (w *Worker) Start() error {
 
 	w.wg.Add(1)
 
-	if cfg.WebServer.IsEnabled {
-		mtcs := metrics.GetMetricsCollector()
-		workers := make([]metrics.WorkerHealth, 1)
-		workers[0] = metrics.WorkerHealth{
-			ID:        int(w.qnum - uint16(cfg.QueueStartNum)),
-			Status:    "active",
-			Processed: 0,
-		}
-		mtcs.UpdateWorkerStatus(workers)
-	}
-
 	go func() {
 		pid := os.Getpid()
-		log.Infof("NFQ bound pid=%d queue=%d", pid, w.qnum)
+		log.Tracef("NFQ bound pid=%d queue=%d", pid, w.qnum)
 		defer w.wg.Done()
 		_ = q.RegisterWithErrorFunc(w.ctx, func(a nfqueue.Attribute) int {
 			cfg := w.getConfig()
@@ -774,15 +763,10 @@ func (w *Worker) gc(cfg *config.Config) {
 			w.mu.Unlock()
 
 			if cfg.WebServer.IsEnabled {
-				// Update worker metrics
 				mtcs := metrics.GetMetricsCollector()
+				workerID := int(w.qnum - uint16(cfg.QueueStartNum))
 				processed := atomic.LoadUint64(&w.packetsProcessed)
-				workers := []metrics.WorkerHealth{{
-					ID:        int(w.qnum - uint16(cfg.QueueStartNum)),
-					Status:    "active",
-					Processed: processed,
-				}}
-				mtcs.UpdateWorkerStatus(workers)
+				mtcs.UpdateSingleWorker(workerID, "active", processed)
 			}
 		}
 	}

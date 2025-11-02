@@ -11,11 +11,7 @@
       "mode": "auto",
       "program": "${workspaceFolder}/src",
       "asRoot": true,
-      "args": [
-        "--verbose=info",
-        "--web-port=7000",
-        "-c=${workspaceFolder}/../b4config.json"
-      ],
+      "args": ["--config=${workspaceFolder}/out/linux-amd64/b4config.json"],
       "console": "integratedTerminal"
     }
   ]
