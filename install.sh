@@ -1598,7 +1598,7 @@ show_system_info() {
     # Dependencies Check
     print_header "Dependencies"
 
-    deps="wget curl tar jq sha256sum"
+    deps="wget curl tar jq sha256sum nohup"
     for dep in $deps; do
         if command_exists "$dep"; then
             print_detail "$dep" "${GREEN}Available${NC}"

@@ -104,38 +104,6 @@ export const RestartDialog: React.FC<RestartDialogProps> = ({
                   Expected downtime: 5-10 seconds
                 </Typography>
               </Alert>
-
-              <Box
-                sx={{
-                  mt: 2,
-                  p: 2,
-                  bgcolor: colors.background.default,
-                  borderRadius: 1,
-                  border: `1px solid ${colors.border.default}`,
-                }}
-              >
-                <Typography
-                  variant="caption"
-                  sx={{
-                    color: colors.secondary,
-                    fontWeight: 600,
-                    textTransform: "uppercase",
-                  }}
-                >
-                  What happens during restart
-                </Typography>
-                <Stack spacing={1} sx={{ mt: 1 }}>
-                  <Typography variant="body2">
-                    • Current configuration will be preserved
-                  </Typography>
-                  <Typography variant="body2">
-                    • All active connections will be temporarily closed
-                  </Typography>
-                  <Typography variant="body2">
-                    • Interface will reload automatically when ready
-                  </Typography>
-                </Stack>
-              </Box>
             </DialogContent>
 
             <Divider sx={{ borderColor: colors.border.default }} />

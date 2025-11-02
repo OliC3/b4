@@ -18,6 +18,8 @@ import {
   Skeleton,
   Paper,
   Tooltip,
+  Divider,
+  Stack,
 } from "@mui/material";
 import {
   Language as LanguageIcon,
@@ -442,9 +444,38 @@ export const DomainSettings: React.FC<DomainSettingsProps> = ({
         }
         maxWidth="sm"
         fullWidth
+        PaperProps={{
+          sx: {
+            bgcolor: colors.background.paper,
+            border: `2px solid ${colors.border.default}`,
+            borderRadius: 4,
+          },
+        }}
       >
-        <DialogTitle>Category Preview: {previewDialog.category}</DialogTitle>
-        <DialogContent>
+        <DialogTitle
+          sx={{
+            bgcolor: colors.background.dark,
+            color: colors.text.primary,
+            borderBottom: `1px solid ${colors.border.default}`,
+          }}
+        >
+          <Stack direction="row" alignItems="center" spacing={2}>
+            <Box
+              sx={{
+                p: 1.5,
+                borderRadius: 2,
+                bgcolor: colors.accent.secondary,
+                color: colors.secondary,
+                display: "flex",
+                alignItems: "center",
+              }}
+            >
+              <CategoryIcon />
+            </Box>
+            <Box>Category Preview: {previewDialog.category.toUpperCase()}</Box>
+          </Stack>
+        </DialogTitle>
+        <DialogContent sx={{ mt: 2 }}>
           {(() => {
             if (previewDialog.loading) {
               return (
@@ -457,7 +488,20 @@ export const DomainSettings: React.FC<DomainSettingsProps> = ({
             } else if (previewDialog.data) {
               return (
                 <>
-                  <Alert severity="info" sx={{ mb: 2 }}>
+                  <Alert
+                    severity="info"
+                    icon={<InfoIcon />}
+                    sx={{
+                      bgcolor: colors.background.default,
+                      border: `1px solid ${colors.border.default}`,
+                      "& .MuiAlert-icon": {
+                        color: colors.secondary,
+                      },
+                      "& .MuiAlert-message": {
+                        mt: 0.3,
+                      },
+                    }}
+                  >
                     Total domains in category:{" "}
                     {previewDialog.data.total_domains}
                     {previewDialog.data.total_domains >
@@ -480,11 +524,19 @@ export const DomainSettings: React.FC<DomainSettingsProps> = ({
             }
           })()}
         </DialogContent>
-        <DialogActions>
+        <Divider sx={{ borderColor: colors.border.default }} />
+        <DialogActions sx={{ p: 2 }}>
           <Button
+            variant="contained"
             onClick={() =>
               setPreviewDialog({ open: false, category: "", loading: false })
             }
+            sx={{
+              bgcolor: colors.primary,
+              "&:hover": {
+                bgcolor: colors.secondary,
+              },
+            }}
           >
             Close
           </Button>
