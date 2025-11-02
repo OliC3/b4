@@ -318,18 +318,19 @@ export const DomainSettings: React.FC<DomainSettingsProps> = ({
                   />
                 </Grid>
                 <Grid size={{ xs: 12, md: 6 }}>
-                  {config.domains.geosite_path && (
-                    <SettingAutocomplete
-                      label="Add Category"
-                      value={newCategory}
-                      options={availableCategories}
-                      onChange={setNewCategory}
-                      onSelect={handleAddCategory}
-                      loading={loadingCategories}
-                      placeholder="Select or type category"
-                      helperText={`${availableCategories.length} categories available`}
-                    />
-                  )}
+                  {config.domains.geosite_path &&
+                    availableCategories.length > 0 && (
+                      <SettingAutocomplete
+                        label="Add Category"
+                        value={newCategory}
+                        options={availableCategories}
+                        onChange={setNewCategory}
+                        onSelect={handleAddCategory}
+                        loading={loadingCategories}
+                        placeholder="Select or type category"
+                        helperText={`${availableCategories.length} categories available`}
+                      />
+                    )}
                 </Grid>
               </Grid>
 

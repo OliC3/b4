@@ -133,6 +133,25 @@ export default function Domains() {
     clearPersistedLines();
   };
 
+  const handleHotkeysDown = (e: KeyboardEvent) => {
+    if ((e.ctrlKey && e.key === "x") || e.key === "Delete") {
+      // Ctrl+X to clear logs
+      e.preventDefault();
+      handleReset();
+    } else if (e.key === "p" || e.key === "Pause") {
+      // P or Pause to toggle pause
+      e.preventDefault();
+      setPaused((prev) => !prev);
+    }
+  };
+
+  useEffect(() => {
+    window.addEventListener("keydown", handleHotkeysDown);
+    return () => {
+      window.removeEventListener("keydown", handleHotkeysDown);
+    };
+  }, [handleHotkeysDown]);
+
   return (
     <Container
       maxWidth={false}

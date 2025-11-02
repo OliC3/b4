@@ -1,5 +1,10 @@
 # B4 - Bye Bye Big Bro
 
+## [1.9.0] - 2025-11-01
+
+- ADDED: Hotkeys to the `/domains` and `/logs` page. Press `ctrl+x` or `Delete` keys to clear the entries. Press `p` or `Pause` to pause the stram.
+- Parse regex entries from the geosite files.
+
 ## [1.8.0] - 2025-11-01
 
 - ADDED: `nftables` support.

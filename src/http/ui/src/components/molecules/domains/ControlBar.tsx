@@ -9,7 +9,7 @@ import {
   Typography,
   IconButton,
 } from "@mui/material";
-import RefreshIcon from "@mui/icons-material/Refresh";
+import RefreshIcon from "@mui/icons-material/DeleteForever";
 import { colors } from "../../../Theme";
 
 interface DomainsControlBarProps {

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   Box,
   Container,
@@ -64,6 +64,25 @@ export default function Logs() {
     const f = filter.trim().toLowerCase();
     return f ? lines.filter((l) => l.toLowerCase().includes(f)) : lines;
   }, [lines, filter]);
+
+  const handleHotkeysDown = (e: KeyboardEvent) => {
+    if ((e.ctrlKey && e.key === "x") || e.key === "Delete") {
+      // Ctrl+X to clear logs
+      e.preventDefault();
+      setLines([]);
+    } else if (e.key === "p" || e.key === "Pause") {
+      // P or Pause to toggle pause
+      e.preventDefault();
+      setPaused((prev) => !prev);
+    }
+  };
+
+  useEffect(() => {
+    window.addEventListener("keydown", handleHotkeysDown);
+    return () => {
+      window.removeEventListener("keydown", handleHotkeysDown);
+    };
+  }, [handleHotkeysDown]);
 
   return (
     <Container

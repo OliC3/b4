@@ -39,8 +39,8 @@ func extractDomainValue(d *v2data.Domain) string {
 		// Plain/keyword match - just the value
 		return d.Value
 	case v2data.Domain_Regex:
-		// Skip regex patterns - they need special handling
-		return ""
+		// regex patterns - they need special handling
+		return "regexp:" + d.Value
 	case v2data.Domain_Full:
 		// Full domain match
 		return d.Value
