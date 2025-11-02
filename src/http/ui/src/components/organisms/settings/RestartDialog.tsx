@@ -57,7 +57,7 @@ export const RestartDialog: React.FC<RestartDialogProps> = ({
         // Auto-close and reload after success
         setTimeout(() => {
           window.location.reload();
-        }, 2000);
+        }, 5000);
       } else {
         setState("error");
         setMessage("Service restart timed out. Please check manually.");
