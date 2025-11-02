@@ -3,6 +3,7 @@ package tables
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -209,16 +210,19 @@ func (manager *IPTablesManager) buildManifest() (Manifest, error) {
 			Rule{manager: manager, IPT: ipt, Table: "mangle", Chain: chainName, Action: "I", Spec: []string{"-m", "mark", "--mark", markAccept, "-j", "RETURN"}},
 		)
 
+		tcpConnbytesRange := fmt.Sprintf("0:%d", cfg.ConnBytesLimit)
+		udpConnbytesRange := fmt.Sprintf("0:%d", cfg.UDP.ConnBytesLimit)
+
 		tcpSpec := append(
 			[]string{"-p", "tcp", "--dport", "443",
 				"-m", "connbytes", "--connbytes-dir", "original",
-				"--connbytes-mode", "packets", "--connbytes", "0:19"},
+				"--connbytes-mode", "packets", "--connbytes", tcpConnbytesRange},
 			manager.buildNFQSpec(queueNum, threads)...,
 		)
 		udpSpec := append(
 			[]string{"-p", "udp",
 				"-m", "connbytes", "--connbytes-dir", "original",
-				"--connbytes-mode", "packets", "--connbytes", "0:8"},
+				"--connbytes-mode", "packets", "--connbytes", udpConnbytesRange},
 			manager.buildNFQSpec(queueNum, threads)...,
 		)
 

@@ -52,22 +52,33 @@ export const NetworkSettings: React.FC<NetworkSettingsProps> = ({
         </Grid>
         <Grid size={{ xs: 12, md: 6 }}>
           <SettingTextField
-            label="Connection Bytes Limit"
-            type="number"
-            value={config.conn_bytes_limit}
-            onChange={(e) =>
-              onChange("conn_bytes_limit", Number(e.target.value))
-            }
-            helperText="Connection bytes limit"
-          />
-        </Grid>
-        <Grid size={{ xs: 12, md: 6 }}>
-          <SettingTextField
             label="Segment 2 Delay (ms)"
             type="number"
             value={config.seg2delay}
             onChange={(e) => onChange("seg2delay", Number(e.target.value))}
             helperText="Delay between segments in milliseconds"
+          />
+        </Grid>
+        <Grid size={{ xs: 12, md: 6 }}>
+          <SettingTextField
+            label="TCP Connection Bytes Limit"
+            type="number"
+            value={config.conn_bytes_limit}
+            onChange={(e) =>
+              onChange("conn_bytes_limit", Number(e.target.value))
+            }
+            helperText="Connection bytes limit for TCP (default 19)"
+          />
+        </Grid>
+        <Grid size={{ xs: 12, md: 6 }}>
+          <SettingTextField
+            label="UDP Connection Bytes Limit"
+            type="number"
+            value={config.udp.conn_bytes_limit}
+            onChange={(e) =>
+              onChange("udp.conn_bytes_limit", Number(e.target.value))
+            }
+            helperText="Connection bytes limit for UDP (default 8)"
           />
         </Grid>
       </Grid>

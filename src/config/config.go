@@ -63,6 +63,7 @@ type UDPConfig struct {
 	DPortMax       int    `json:"dport_max" bson:"dport_max"`
 	FilterQUIC     string `json:"filter_quic" bson:"filter_quic"`
 	FilterSTUN     bool   `json:"filter_stun" bson:"filter_stun"`
+	ConnBytesLimit int    `json:"conn_bytes_limit" bson:"conn_bytes_limit"`
 }
 
 type DomainsConfig struct {
@@ -135,6 +136,7 @@ var DefaultConfig = Config{
 		DPortMax:       0,
 		FilterQUIC:     "disabled",
 		FilterSTUN:     true,
+		ConnBytesLimit: 8,
 	},
 
 	WebServer: WebServer{
@@ -223,8 +225,8 @@ func (c *Config) BindFlags(cmd *cobra.Command) {
 	// Network configuration
 	cmd.Flags().IntVar(&c.QueueStartNum, "queue-num", c.QueueStartNum, "Netfilter queue number")
 	cmd.Flags().IntVar(&c.Threads, "threads", c.Threads, "Number of worker threads")
-	cmd.Flags().UintVar(&c.Mark, "mark", c.Mark, "Packet mark value")
-	cmd.Flags().IntVar(&c.ConnBytesLimit, "connbytes-limit", c.ConnBytesLimit, "Connection bytes limit")
+	cmd.Flags().UintVar(&c.Mark, "mark", c.Mark, "Packet mark value (default 32768)")
+	cmd.Flags().IntVar(&c.ConnBytesLimit, "connbytes-limit", c.ConnBytesLimit, "Connection bytes limit (default 19)")
 	cmd.Flags().IntVar(&c.Seg2Delay, "seg2delay", c.Seg2Delay, "Delay between segments in ms")
 
 	// Geodata and site filtering
@@ -255,6 +257,7 @@ func (c *Config) BindFlags(cmd *cobra.Command) {
 	cmd.Flags().IntVar(&c.UDP.DPortMax, "udp-dport-max", c.UDP.DPortMax, "Maximum UDP destination port to handle")
 	cmd.Flags().StringVar(&c.UDP.FilterQUIC, "udp-filter-quic", c.UDP.FilterQUIC, "QUIC filtering mode (disabled|all|parse)")
 	cmd.Flags().BoolVar(&c.UDP.FilterSTUN, "udp-filter-stun", c.UDP.FilterSTUN, "STUN filtering mode (disabled|all|parse)")
+	cmd.Flags().IntVar(&c.UDP.ConnBytesLimit, "udp-conn-bytes-limit", c.UDP.ConnBytesLimit, "UDP connection bytes limit (default 8)")
 
 	// Feature flags
 	cmd.Flags().BoolVar(&c.SkipTables, "skip-tables", c.SkipTables, "Skip iptables/nftables rules setup")

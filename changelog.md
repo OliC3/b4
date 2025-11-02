@@ -1,9 +1,10 @@
 # B4 - Bye Bye Big Bro
 
-## [1.9.0] - 2025-11-01
+## [1.9.0] - 2025-11-02
 
 - ADDED: Hotkeys to the `/domains` and `/logs` page. Press `ctrl+x` or `Delete` keys to clear the entries. Press `p` or `Pause` to pause the stram.
 - ADDED: Parse regex entries from the geosite files.
+- ADDED: Connection bytes limit configuration for TCP and UDP in network settings
 - FIXED: Wrong total number of total domains in the settings.
 
 ## [1.8.0] - 2025-11-01

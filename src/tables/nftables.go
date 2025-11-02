@@ -99,6 +99,7 @@ func (n *NFTablesManager) buildNFQueueAction() string {
 }
 
 func (n *NFTablesManager) Apply() error {
+	cfg := n.cfg
 	if !hasBinary("nft") {
 		return fmt.Errorf("nft binary not found")
 	}
@@ -111,8 +112,6 @@ func (n *NFTablesManager) Apply() error {
 		return err
 	}
 
-	// Create base chains that hook into netfilter
-	// Use mangle - 1 priority (typically 149) to match youtubeUnblock
 	if err := n.createChain("postrouting", "postrouting", 149, "accept"); err != nil {
 		return err
 	}
@@ -140,17 +139,16 @@ func (n *NFTablesManager) Apply() error {
 		return err
 	}
 
-	// TCP rule - match youtubeUnblock exactly
-	// Note: youtubeUnblock uses < 20 for nftables but 0:19 for iptables
-	tcpRuleArgs := []string{"tcp", "dport", "443", "ct", "original", "packets", "<", "20", "counter"}
+	tcpLimit := fmt.Sprintf("%d", cfg.ConnBytesLimit+1)
+	udpLimit := fmt.Sprintf("%d", cfg.UDP.ConnBytesLimit+1)
+
+	tcpRuleArgs := []string{"tcp", "dport", "443", "ct", "original", "packets", "<", tcpLimit, "counter"}
 	tcpRuleArgs = append(tcpRuleArgs, strings.Fields(n.buildNFQueueAction())...)
 	if err := n.addRuleArgs(nftChainName, tcpRuleArgs...); err != nil {
 		return err
 	}
 
-	// UDP rule - ALL UDP TRAFFIC, not just port 443!
-	// This is critical - youtubeUnblock doesn't filter UDP by port
-	udpRuleArgs := []string{"meta", "l4proto", "udp", "ct", "original", "packets", "<", "9", "counter"}
+	udpRuleArgs := []string{"meta", "l4proto", "udp", "ct", "original", "packets", "<", udpLimit, "counter"}
 	udpRuleArgs = append(udpRuleArgs, strings.Fields(n.buildNFQueueAction())...)
 	if err := n.addRuleArgs(nftChainName, udpRuleArgs...); err != nil {
 		return err

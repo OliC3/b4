@@ -75,6 +75,7 @@ export interface IUdpConfig {
   dport_min: number;
   dport_max: number;
   filter_quic: UdpFilterQuicMode;
+  conn_bytes_limit: number;
 }
 
 export interface IB4Config {
@@ -143,5 +144,6 @@ export default class B4Config implements IB4Config {
     dport_min: 0,
     dport_max: 0,
     filter_quic: "parse",
+    conn_bytes_limit: 8,
   };
 }
