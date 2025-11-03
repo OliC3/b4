@@ -304,7 +304,7 @@ func (w *Worker) Start() error {
 							return 0
 						}
 						if cfg.UDP.Mode == "fake" {
-							if v == 4 {
+							if v == IPv4 {
 								w.dropAndInjectQUIC(cfg, raw, dst)
 							} else {
 								w.dropAndInjectQUICV6(cfg, raw, dst)

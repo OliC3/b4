@@ -907,7 +907,7 @@ update_config_geosite_path() {
         print_warning "Config file not found: $CONFIG_FILE"
         print_info "You'll need to manually add geosite_path to your config"
         print_info "Set domains.geosite_path to: $geosite_file"
-        return 1
+        return 0
     fi
 
     # Try to update with jq if available
@@ -922,7 +922,7 @@ update_config_geosite_path() {
             mv "$temp_file" "$CONFIG_FILE" || {
                 print_error "Failed to update config file"
                 rm -f "$temp_file"
-                return 1
+                return 0
             }
             print_success "Config updated with geosite path: $geosite_file"
             print_success "Config updated with geosite URL: $geosite_url"
@@ -930,7 +930,7 @@ update_config_geosite_path() {
         else
             print_error "Failed to parse config with jq"
             rm -f "$temp_file"
-            return 1
+            return 0
         fi
     else
         print_warning "jq not found - cannot automatically update config"
@@ -940,7 +940,7 @@ update_config_geosite_path() {
         print_info "  }"
         echo ""
         print_info "Or remember to update Geosite Path in the B4 Web UI by accessing Settings -> Domains."
-        return 1
+        return 0
     fi
 }
 
@@ -1007,8 +1007,10 @@ setup_geosite() {
             update_config_geosite_path "$geosite_file"
 
             print_success "Geosite setup completed!"
+            return 0
         else
             print_error "Failed to download geosite file"
+            return 1
         fi
         ;;
     *)
@@ -1017,6 +1019,7 @@ setup_geosite() {
     esac
 
     echo ""
+    return 0
 }
 
 # Print web interface access information
