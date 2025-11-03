@@ -37,3 +37,4 @@ src/b4
 *.bin
 
 out/
+vendor/

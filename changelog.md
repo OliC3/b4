@@ -1,5 +1,10 @@
 # B4 - Bye Bye Big Bro
 
+## [1.10.0] - 2025-11-02
+
+- ADDED: Automatic `iptables`/`nftables` rules restoration. B4 now automatically detects this and restores itself without requiring a manual restart.
+- ADDED: New `--tables-monitor-interval` setting to control how often B4 checks if its rules are still active (default: `10` seconds). Set to `0` to disable automatic monitoring.
+
 ## [1.9.2] - 2025-11-02
 
 - IMPROVED: Increase TTL and buffer limit for flow state management.

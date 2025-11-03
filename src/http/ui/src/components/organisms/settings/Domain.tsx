@@ -250,514 +250,520 @@ export const DomainSettings: React.FC<DomainSettingsProps> = ({
             </Grid>
           </Grid>
         </SettingSection>
-        {config.domains.geosite_path && availableCategories.length > 0 && (
-          <SettingSection
-            title="Domain Filtering Configuration"
-            description="Configure domain matching for DPI bypass and blocking"
-            icon={<LanguageIcon />}
-          >
-            {/* Statistics Dashboard */}
-            {stats && (
-              <Paper
-                elevation={0}
-                sx={{
-                  p: 2,
-                  mb: 3,
-                  bgcolor: colors.background.paper,
-                  border: `1px solid ${colors.border.default}`,
-                }}
+        <SettingSection
+          title="Domain Filtering Configuration"
+          description="Configure domain matching for DPI bypass and blocking"
+          icon={<LanguageIcon />}
+        >
+          {/* Statistics Dashboard */}
+          {stats && (
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2,
+                mb: 3,
+                bgcolor: colors.background.paper,
+                border: `1px solid ${colors.border.default}`,
+              }}
+            >
+              <Typography
+                variant="subtitle2"
+                color="text.secondary"
+                gutterBottom
               >
-                <Typography
-                  variant="subtitle2"
-                  color="text.secondary"
-                  gutterBottom
-                >
-                  Overall Domain Statistics
-                </Typography>
-                <Grid container spacing={2}>
-                  <Grid size={{ xs: 12, sm: 4 }}>
-                    <Box sx={{ textAlign: "center" }}>
-                      <Typography variant="h4" color="primary">
-                        {bypassTotal}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        DPI Bypass
-                      </Typography>
-                    </Box>
-                  </Grid>
-                  <Grid size={{ xs: 12, sm: 4 }}>
-                    <Box sx={{ textAlign: "center" }}>
-                      <Typography variant="h4" color="error">
-                        {blockTotal}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Blocked
-                      </Typography>
-                    </Box>
-                  </Grid>
-                  <Grid size={{ xs: 12, sm: 4 }}>
-                    <Box sx={{ textAlign: "center" }}>
-                      <Typography variant="h4" color="secondary">
-                        {bypassTotal + blockTotal}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Total Configured
-                      </Typography>
-                    </Box>
-                  </Grid>
-                </Grid>
-              </Paper>
-            )}
-
-            <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 0 }}>
-              <Tabs
-                value={tabValue}
-                onChange={(_, newValue) => setTabValue(newValue)}
-                sx={{
-                  borderBottom: `1px solid ${colors.border.light}`,
-                  "& .MuiTab-root": {
-                    color: colors.text.secondary,
-                    textTransform: "none",
-                    minHeight: 48,
-                    "&.Mui-selected": {
-                      color: colors.secondary,
-                    },
-                  },
-                  "& .MuiTabs-indicator": {
-                    bgcolor: colors.secondary,
-                  },
-                }}
-              >
-                <Tab
-                  icon={<SecurityIcon />}
-                  iconPosition="start"
-                  label={
-                    <Box
-                      sx={{ display: "flex", alignItems: "center", gap: 2.5 }}
-                    >
-                      <span>Bypass Domains</span>
-                      {bypassTotal > 0 && (
-                        <Badge
-                          badgeContent={bypassTotal}
-                          color="primary"
-                          max={999}
-                        />
-                      )}
-                    </Box>
-                  }
-                />
-                <Tab
-                  icon={<BlockIcon />}
-                  iconPosition="start"
-                  label={
-                    <Box
-                      sx={{ display: "flex", alignItems: "center", gap: 2.5 }}
-                    >
-                      <span>Block Domains</span>
-                      {blockTotal > 0 && (
-                        <Badge
-                          badgeContent={blockTotal}
-                          color="error"
-                          max={999}
-                        />
-                      )}
-                    </Box>
-                  }
-                />
-              </Tabs>
-            </Box>
-            {/* DPI Bypass Tab */}
-            <TabPanel value={tabValue} index={0}>
-              <Alert severity="info" sx={{ mb: 2 }}>
-                Domains in this list will use DPI bypass techniques
-                (fragmentation, faking) when matched.
-              </Alert>
-
+                Overall Domain Statistics
+              </Typography>
               <Grid container spacing={2}>
-                {/* Manual Bypass Domains */}
-                <Grid size={{ sm: 12, md: 6 }}>
-                  <Box sx={{ mb: 2 }}>
-                    <Typography
-                      variant="h6"
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 1,
-                        mb: 2,
-                      }}
-                    >
-                      <DomainIcon /> Manual Bypass Domains
-                      <Tooltip title="Add specific domains to bypass DPI. These take priority over GeoSite categories.">
-                        <InfoIcon fontSize="small" color="action" />
-                      </Tooltip>
+                <Grid size={{ xs: 12, sm: 4 }}>
+                  <Box sx={{ textAlign: "center" }}>
+                    <Typography variant="h4" color="primary">
+                      {bypassTotal}
                     </Typography>
-                    <Box
-                      sx={{ display: "flex", gap: 1, alignItems: "flex-start" }}
-                    >
-                      <SettingTextField
-                        label="Add Bypass Domain"
-                        value={newBypassDomain}
-                        onChange={(e) => setNewBypassDomain(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (
-                            e.key === "Enter" ||
-                            e.key === "Tab" ||
-                            e.key === ","
-                          ) {
-                            e.preventDefault();
-                            handleAddBypassDomain();
-                          }
-                        }}
-                        helperText="e.g., youtube.com, *.google.com"
-                        placeholder="example.com"
+                    <Typography variant="caption" color="text.secondary">
+                      DPI Bypass
+                    </Typography>
+                  </Box>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 4 }}>
+                  <Box sx={{ textAlign: "center" }}>
+                    <Typography variant="h4" color="error">
+                      {blockTotal}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Blocked
+                    </Typography>
+                  </Box>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 4 }}>
+                  <Box sx={{ textAlign: "center" }}>
+                    <Typography variant="h4" color="secondary">
+                      {bypassTotal + blockTotal}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Total Configured
+                    </Typography>
+                  </Box>
+                </Grid>
+              </Grid>
+            </Paper>
+          )}
+
+          <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 0 }}>
+            <Tabs
+              value={tabValue}
+              onChange={(_, newValue) => setTabValue(newValue)}
+              sx={{
+                borderBottom: `1px solid ${colors.border.light}`,
+                "& .MuiTab-root": {
+                  color: colors.text.secondary,
+                  textTransform: "none",
+                  minHeight: 48,
+                  "&.Mui-selected": {
+                    color: colors.secondary,
+                  },
+                },
+                "& .MuiTabs-indicator": {
+                  bgcolor: colors.secondary,
+                },
+              }}
+            >
+              <Tab
+                icon={<SecurityIcon />}
+                iconPosition="start"
+                label={
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 2.5 }}>
+                    <span>Bypass Domains</span>
+                    {bypassTotal > 0 && (
+                      <Badge
+                        badgeContent={bypassTotal}
+                        color="primary"
+                        max={999}
                       />
-                      <IconButton
-                        onClick={handleAddBypassDomain}
-                        sx={{
-                          bgcolor: colors.accent.secondary,
-                          color: colors.secondary,
-                          "&:hover": {
-                            bgcolor: colors.accent.secondaryHover,
-                          },
-                        }}
-                      >
-                        <AddIcon />
-                      </IconButton>
-                    </Box>
-                    <Box
+                    )}
+                  </Box>
+                }
+              />
+              <Tab
+                icon={<BlockIcon />}
+                iconPosition="start"
+                label={
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 2.5 }}>
+                    <span>Block Domains</span>
+                    {blockTotal > 0 && (
+                      <Badge
+                        badgeContent={blockTotal}
+                        color="error"
+                        max={999}
+                      />
+                    )}
+                  </Box>
+                }
+              />
+            </Tabs>
+          </Box>
+          {/* DPI Bypass Tab */}
+          <TabPanel value={tabValue} index={0}>
+            <Alert severity="info" sx={{ mb: 2 }}>
+              Domains in this list will use DPI bypass techniques
+              (fragmentation, faking) when matched.
+            </Alert>
+
+            <Grid container spacing={2}>
+              {/* Manual Bypass Domains */}
+              <Grid size={{ sm: 12, md: 6 }}>
+                <Box sx={{ mb: 2 }}>
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1,
+                      mb: 2,
+                    }}
+                  >
+                    <DomainIcon /> Manual Bypass Domains
+                    <Tooltip title="Add specific domains to bypass DPI. These take priority over GeoSite categories.">
+                      <InfoIcon fontSize="small" color="action" />
+                    </Tooltip>
+                  </Typography>
+                  <Box
+                    sx={{ display: "flex", gap: 1, alignItems: "flex-start" }}
+                  >
+                    <SettingTextField
+                      label="Add Bypass Domain"
+                      value={newBypassDomain}
+                      onChange={(e) => setNewBypassDomain(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (
+                          e.key === "Enter" ||
+                          e.key === "Tab" ||
+                          e.key === ","
+                        ) {
+                          e.preventDefault();
+                          handleAddBypassDomain();
+                        }
+                      }}
+                      helperText="e.g., youtube.com, *.google.com"
+                      placeholder="example.com"
+                    />
+                    <IconButton
+                      onClick={handleAddBypassDomain}
                       sx={{
-                        mt: 2,
-                        display: "flex",
-                        flexWrap: "wrap",
-                        gap: 1,
-                        maxHeight: 200,
-                        overflowY: "auto",
-                        p: 1,
-                        border:
-                          config.domains.sni_domains.length > 0
-                            ? `1px solid ${colors.border.default}`
-                            : "none",
-                        borderRadius: 1,
+                        bgcolor: colors.accent.secondary,
+                        color: colors.secondary,
+                        "&:hover": {
+                          bgcolor: colors.accent.secondaryHover,
+                        },
                       }}
                     >
-                      {config.domains.sni_domains.length === 0 ? (
-                        <Typography variant="body2" color="text.secondary">
-                          No bypass domains added
-                        </Typography>
-                      ) : (
-                        config.domains.sni_domains.map((domain) => (
-                          <Chip
-                            key={domain}
-                            label={domain}
-                            onDelete={() => handleRemoveBypassDomain(domain)}
-                            size="small"
-                            sx={{
-                              bgcolor: colors.accent.primary,
+                      <AddIcon />
+                    </IconButton>
+                  </Box>
+                  <Box
+                    sx={{
+                      mt: 2,
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: 1,
+                      maxHeight: 200,
+                      overflowY: "auto",
+                      p: 1,
+                      border:
+                        config.domains.sni_domains.length > 0
+                          ? `1px solid ${colors.border.default}`
+                          : "none",
+                      borderRadius: 1,
+                    }}
+                  >
+                    {config.domains.sni_domains.length === 0 ? (
+                      <Typography variant="body2" color="text.secondary">
+                        No bypass domains added
+                      </Typography>
+                    ) : (
+                      config.domains.sni_domains.map((domain) => (
+                        <Chip
+                          key={domain}
+                          label={domain}
+                          onDelete={() => handleRemoveBypassDomain(domain)}
+                          size="small"
+                          sx={{
+                            bgcolor: colors.accent.primary,
+                            color: colors.secondary,
+                            "& .MuiChip-deleteIcon": {
                               color: colors.secondary,
-                              "& .MuiChip-deleteIcon": {
-                                color: colors.secondary,
-                              },
-                            }}
-                          />
-                        ))
-                      )}
-                    </Box>
-                  </Box>
-                </Grid>
-
-                {/* Bypass GeoSite Categories */}
-                <Grid size={{ sm: 12, md: 6 }}>
-                  <Box sx={{ mb: 2 }}>
-                    <Typography
-                      variant="h6"
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 1,
-                        mb: 2,
-                      }}
-                    >
-                      <CategoryIcon /> Bypass GeoSite Categories
-                      <Tooltip title="Load predefined domain lists from GeoSite database for DPI bypass">
-                        <InfoIcon fontSize="small" color="action" />
-                      </Tooltip>
-                    </Typography>
-
-                    {config.domains.geosite_path &&
-                      availableCategories.length > 0 && (
-                        <SettingAutocomplete
-                          label="Add Bypass Category"
-                          value={newBypassCategory}
-                          options={availableCategories}
-                          onChange={setNewBypassCategory}
-                          onSelect={handleAddBypassCategory}
-                          loading={loadingCategories}
-                          placeholder="Select or type category"
-                          helperText={`${availableCategories.length} categories available`}
-                        />
-                      )}
-
-                    {config.domains.geosite_categories.length > 0 && (
-                      <Box sx={{ mt: 3 }}>
-                        <Typography variant="subtitle2" gutterBottom>
-                          Active Bypass Categories
-                        </Typography>
-                        <Box
-                          sx={{
-                            display: "flex",
-                            flexWrap: "wrap",
-                            gap: 1,
-                            p: 2,
-                            border: `1px solid ${colors.border.default}`,
-                            borderRadius: 1,
-                            bgcolor: colors.background.paper,
+                            },
                           }}
-                        >
-                          {config.domains.geosite_categories.map((category) => (
-                            <Chip
-                              key={category}
-                              label={
-                                <Box
-                                  sx={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: 0.5,
-                                  }}
-                                >
-                                  <span>{category}</span>
-                                  {stats?.category_breakdown?.[category] && (
-                                    <Typography
-                                      component="span"
-                                      variant="caption"
-                                      sx={{
-                                        cursor: "pointer",
-                                        bgcolor: "action.selected",
-                                        px: 0.5,
-                                        borderRadius: 0.5,
-                                      }}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        previewCategory(category);
-                                      }}
-                                    >
-                                      {stats.category_breakdown[category]}
-                                    </Typography>
-                                  )}
-                                </Box>
-                              }
-                              onDelete={() =>
-                                handleRemoveBypassCategory(category)
-                              }
-                              sx={{
-                                bgcolor: colors.accent.primary,
-                                color: colors.secondary,
-                                "& .MuiChip-deleteIcon": {
-                                  color: colors.secondary,
-                                },
-                              }}
-                            />
-                          ))}
-                        </Box>
-                      </Box>
+                        />
+                      ))
                     )}
                   </Box>
-                </Grid>
+                </Box>
               </Grid>
-            </TabPanel>
-            {/* Block List Tab */}
-            <TabPanel value={tabValue} index={1}>
-              <Alert severity="warning" sx={{ mb: 2 }}>
-                <strong>Warning:</strong> This feature is under development and
-                does not work yet.
-              </Alert>
-              <Alert severity="info" sx={{ mb: 2 }}>
-                Domains in this list will be completely blocked - all packets
-                will be dropped.
-              </Alert>
 
-              <Grid container spacing={3}>
-                {/* Manual Block Domains */}
-                <Grid size={{ sm: 12, md: 6 }}>
-                  <Box sx={{ mb: 2 }}>
-                    <Typography
-                      variant="h6"
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 1,
-                        mb: 2,
-                      }}
-                    >
-                      <BlockIcon /> Manual Block Domains
-                      <Tooltip title="Add specific domains to block completely. No packets will pass through.">
-                        <InfoIcon fontSize="small" color="action" />
-                      </Tooltip>
-                    </Typography>
-                    <Box
-                      sx={{ display: "flex", gap: 1, alignItems: "flex-start" }}
-                    >
-                      <SettingTextField
-                        label="Add Block Domain"
-                        value={newBlockDomain}
-                        onChange={(e) => setNewBlockDomain(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (
-                            e.key === "Enter" ||
-                            e.key === "Tab" ||
-                            e.key === ","
-                          ) {
-                            e.preventDefault();
-                            handleAddBlockDomain();
-                          }
-                        }}
-                        helperText="e.g., ads.example.com, tracker.com"
-                        placeholder="blocked-site.com"
-                      />
-                      <IconButton
-                        onClick={handleAddBlockDomain}
+              {config.domains.geosite_path &&
+                availableCategories.length > 0 && (
+                  <Grid size={{ sm: 12, md: 6 }}>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography
+                        variant="h6"
                         sx={{
-                          bgcolor: "error.main",
-                          color: "white",
-                          "&:hover": {
-                            bgcolor: "error.dark",
-                          },
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 1,
+                          mb: 2,
                         }}
                       >
-                        <AddIcon />
-                      </IconButton>
-                    </Box>
-                    <Box
-                      sx={{
-                        mt: 2,
-                        display: "flex",
-                        flexWrap: "wrap",
-                        gap: 1,
-                        maxHeight: 200,
-                        overflowY: "auto",
-                        p: 1,
-                        border:
-                          blockDomains.length > 0
-                            ? `1px solid ${colors.border.default}`
-                            : "none",
-                        borderRadius: 1,
-                      }}
-                    >
-                      {blockDomains.length === 0 ? (
-                        <Typography variant="body2" color="text.secondary">
-                          No block domains added
-                        </Typography>
-                      ) : (
-                        blockDomains.map((domain) => (
-                          <Chip
-                            key={domain}
-                            label={domain}
-                            onDelete={() => handleRemoveBlockDomain(domain)}
-                            size="small"
-                            color="error"
+                        <CategoryIcon /> Bypass GeoSite Categories
+                        <Tooltip title="Load predefined domain lists from GeoSite database for DPI bypass">
+                          <InfoIcon fontSize="small" color="action" />
+                        </Tooltip>
+                      </Typography>
+
+                      {config.domains.geosite_path &&
+                        availableCategories.length > 0 && (
+                          <SettingAutocomplete
+                            label="Add Bypass Category"
+                            value={newBypassCategory}
+                            options={availableCategories}
+                            onChange={setNewBypassCategory}
+                            onSelect={handleAddBypassCategory}
+                            loading={loadingCategories}
+                            placeholder="Select or type category"
+                            helperText={`${availableCategories.length} categories available`}
                           />
-                        ))
-                      )}
-                    </Box>
-                  </Box>
-                </Grid>
+                        )}
 
-                {/* Block GeoSite Categories */}
-                <Grid size={{ sm: 12, md: 6 }}>
-                  <Box sx={{ mb: 2 }}>
-                    <Typography
-                      variant="h6"
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 1,
-                        mb: 2,
-                      }}
-                    >
-                      <CategoryIcon /> Block GeoSite Categories
-                      <Tooltip title="Load predefined domain lists from GeoSite database to block">
-                        <InfoIcon fontSize="small" color="action" />
-                      </Tooltip>
-                    </Typography>
-
-                    {config.domains.geosite_path &&
-                      availableCategories.length > 0 && (
-                        <SettingAutocomplete
-                          label="Add Block Category"
-                          value={newBlockCategory}
-                          options={availableCategories}
-                          onChange={setNewBlockCategory}
-                          onSelect={handleAddBlockCategory}
-                          loading={loadingCategories}
-                          placeholder="Select category to block"
-                          helperText={`${availableCategories.length} categories available`}
-                        />
-                      )}
-
-                    {blockCategories.length > 0 && (
-                      <Box sx={{ mt: 3 }}>
-                        <Typography variant="subtitle2" gutterBottom>
-                          Active Block Categories
-                        </Typography>
-                        <Box
-                          sx={{
-                            display: "flex",
-                            flexWrap: "wrap",
-                            gap: 1,
-                            p: 2,
-                            border: `1px solid ${colors.border.default}`,
-                            borderRadius: 1,
-                            bgcolor: colors.background.paper,
-                          }}
-                        >
-                          {blockCategories.map((category) => (
-                            <Chip
-                              key={category}
-                              label={
-                                <Box
-                                  sx={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: 0.5,
-                                  }}
-                                >
-                                  <span>{category}</span>
-                                  {stats?.block_category_breakdown?.[
-                                    category
-                                  ] && (
-                                    <Typography
-                                      component="span"
-                                      variant="caption"
+                      {config.domains.geosite_categories.length > 0 && (
+                        <Box sx={{ mt: 3 }}>
+                          <Typography variant="subtitle2" gutterBottom>
+                            Active Bypass Categories
+                          </Typography>
+                          <Box
+                            sx={{
+                              display: "flex",
+                              flexWrap: "wrap",
+                              gap: 1,
+                              p: 2,
+                              border: `1px solid ${colors.border.default}`,
+                              borderRadius: 1,
+                              bgcolor: colors.background.paper,
+                            }}
+                          >
+                            {config.domains.geosite_categories.map(
+                              (category) => (
+                                <Chip
+                                  key={category}
+                                  label={
+                                    <Box
                                       sx={{
-                                        cursor: "pointer",
-                                        bgcolor: "action.selected",
-                                        px: 0.5,
-                                        borderRadius: 0.5,
-                                      }}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        previewCategory(category);
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 0.5,
                                       }}
                                     >
-                                      {stats.block_category_breakdown[category]}
-                                    </Typography>
-                                  )}
-                                </Box>
-                              }
-                              onDelete={() =>
-                                handleRemoveBlockCategory(category)
-                              }
-                              color="error"
-                            />
-                          ))}
+                                      <span>{category}</span>
+                                      {stats?.category_breakdown?.[
+                                        category
+                                      ] && (
+                                        <Typography
+                                          component="span"
+                                          variant="caption"
+                                          sx={{
+                                            cursor: "pointer",
+                                            bgcolor: "action.selected",
+                                            px: 0.5,
+                                            borderRadius: 0.5,
+                                          }}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            previewCategory(category);
+                                          }}
+                                        >
+                                          {stats.category_breakdown[category]}
+                                        </Typography>
+                                      )}
+                                    </Box>
+                                  }
+                                  onDelete={() =>
+                                    handleRemoveBypassCategory(category)
+                                  }
+                                  sx={{
+                                    bgcolor: colors.accent.primary,
+                                    color: colors.secondary,
+                                    "& .MuiChip-deleteIcon": {
+                                      color: colors.secondary,
+                                    },
+                                  }}
+                                />
+                              )
+                            )}
+                          </Box>
                         </Box>
-                      </Box>
+                      )}
+                    </Box>
+                  </Grid>
+                )}
+            </Grid>
+          </TabPanel>
+          {/* Block List Tab */}
+          <TabPanel value={tabValue} index={1}>
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              <strong>Warning:</strong> This feature is under development and
+              does not work yet.
+            </Alert>
+            <Alert severity="info" sx={{ mb: 2 }}>
+              Domains in this list will be completely blocked - all packets will
+              be dropped.
+            </Alert>
+
+            <Grid container spacing={3}>
+              {/* Manual Block Domains */}
+              <Grid size={{ sm: 12, md: 6 }}>
+                <Box sx={{ mb: 2 }}>
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1,
+                      mb: 2,
+                    }}
+                  >
+                    <BlockIcon /> Manual Block Domains
+                    <Tooltip title="Add specific domains to block completely. No packets will pass through.">
+                      <InfoIcon fontSize="small" color="action" />
+                    </Tooltip>
+                  </Typography>
+                  <Box
+                    sx={{ display: "flex", gap: 1, alignItems: "flex-start" }}
+                  >
+                    <SettingTextField
+                      label="Add Block Domain"
+                      value={newBlockDomain}
+                      onChange={(e) => setNewBlockDomain(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (
+                          e.key === "Enter" ||
+                          e.key === "Tab" ||
+                          e.key === ","
+                        ) {
+                          e.preventDefault();
+                          handleAddBlockDomain();
+                        }
+                      }}
+                      helperText="e.g., ads.example.com, tracker.com"
+                      placeholder="blocked-site.com"
+                    />
+                    <IconButton
+                      onClick={handleAddBlockDomain}
+                      sx={{
+                        bgcolor: "error.main",
+                        color: "white",
+                        "&:hover": {
+                          bgcolor: "error.dark",
+                        },
+                      }}
+                    >
+                      <AddIcon />
+                    </IconButton>
+                  </Box>
+                  <Box
+                    sx={{
+                      mt: 2,
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: 1,
+                      maxHeight: 200,
+                      overflowY: "auto",
+                      p: 1,
+                      border:
+                        blockDomains.length > 0
+                          ? `1px solid ${colors.border.default}`
+                          : "none",
+                      borderRadius: 1,
+                    }}
+                  >
+                    {blockDomains.length === 0 ? (
+                      <Typography variant="body2" color="text.secondary">
+                        No block domains added
+                      </Typography>
+                    ) : (
+                      blockDomains.map((domain) => (
+                        <Chip
+                          key={domain}
+                          label={domain}
+                          onDelete={() => handleRemoveBlockDomain(domain)}
+                          size="small"
+                          color="error"
+                        />
+                      ))
                     )}
                   </Box>
-                </Grid>
+                </Box>
               </Grid>
-            </TabPanel>
-          </SettingSection>
-        )}
+
+              {config.domains.geosite_path &&
+                availableCategories.length > 0 && (
+                  <Grid size={{ sm: 12, md: 6 }}>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography
+                        variant="h6"
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 1,
+                          mb: 2,
+                        }}
+                      >
+                        <CategoryIcon /> Block GeoSite Categories
+                        <Tooltip title="Load predefined domain lists from GeoSite database to block">
+                          <InfoIcon fontSize="small" color="action" />
+                        </Tooltip>
+                      </Typography>
+
+                      {config.domains.geosite_path &&
+                        availableCategories.length > 0 && (
+                          <SettingAutocomplete
+                            label="Add Block Category"
+                            value={newBlockCategory}
+                            options={availableCategories}
+                            onChange={setNewBlockCategory}
+                            onSelect={handleAddBlockCategory}
+                            loading={loadingCategories}
+                            placeholder="Select category to block"
+                            helperText={`${availableCategories.length} categories available`}
+                          />
+                        )}
+
+                      {blockCategories.length > 0 && (
+                        <Box sx={{ mt: 3 }}>
+                          <Typography variant="subtitle2" gutterBottom>
+                            Active Block Categories
+                          </Typography>
+                          <Box
+                            sx={{
+                              display: "flex",
+                              flexWrap: "wrap",
+                              gap: 1,
+                              p: 2,
+                              border: `1px solid ${colors.border.default}`,
+                              borderRadius: 1,
+                              bgcolor: colors.background.paper,
+                            }}
+                          >
+                            {blockCategories.map((category) => (
+                              <Chip
+                                key={category}
+                                label={
+                                  <Box
+                                    sx={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: 0.5,
+                                    }}
+                                  >
+                                    <span>{category}</span>
+                                    {stats?.block_category_breakdown?.[
+                                      category
+                                    ] && (
+                                      <Typography
+                                        component="span"
+                                        variant="caption"
+                                        sx={{
+                                          cursor: "pointer",
+                                          bgcolor: "action.selected",
+                                          px: 0.5,
+                                          borderRadius: 0.5,
+                                        }}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          previewCategory(category);
+                                        }}
+                                      >
+                                        {
+                                          stats.block_category_breakdown[
+                                            category
+                                          ]
+                                        }
+                                      </Typography>
+                                    )}
+                                  </Box>
+                                }
+                                onDelete={() =>
+                                  handleRemoveBlockCategory(category)
+                                }
+                                color="error"
+                              />
+                            ))}
+                          </Box>
+                        </Box>
+                      )}
+                    </Box>
+                  </Grid>
+                )}
+            </Grid>
+          </TabPanel>
+        </SettingSection>
       </Stack>
 
       {/* Preview Dialog */}

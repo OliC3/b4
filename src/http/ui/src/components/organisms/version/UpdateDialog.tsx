@@ -213,7 +213,7 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
           }}
         >
           <Typography
-            variant="subtitle2"
+            variant="subtitle1"
             sx={{
               color: colors.secondary,
               mb: 2,
@@ -277,7 +277,25 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
               },
             }}
           >
-            <ReactMarkdown>{releaseNotes}</ReactMarkdown>
+            <ReactMarkdown
+              components={{
+                h2(props) {
+                  const { node, ref, ...rest } = props;
+                  return (
+                    <Typography
+                      variant="subtitle2"
+                      sx={{
+                        fontWeight: 800,
+                        textTransform: "uppercase",
+                      }}
+                      {...rest}
+                    />
+                  );
+                },
+              }}
+            >
+              {releaseNotes}
+            </ReactMarkdown>
           </Box>
         </Box>
 

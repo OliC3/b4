@@ -143,7 +143,7 @@ func runB4(cmd *cobra.Command, args []string) error {
 	}
 
 	// Setup iptables/nftables rules
-	if !cfg.SkipTables {
+	if !cfg.Tables.SkipSetup {
 		log.Tracef("Clearing existing iptables/nftables rules")
 		tables.ClearRules(&cfg)
 
@@ -169,6 +169,13 @@ func runB4(cmd *cobra.Command, args []string) error {
 
 	metrics.RecordEvent("info", fmt.Sprintf("NFQueue started with %d threads", cfg.Threads))
 	metrics.NFQueueStatus = "active"
+
+	// Start tables monitor to handle rule restoration if system wipes them
+	var tablesMonitor *tables.Monitor
+	if !cfg.Tables.SkipSetup && cfg.Tables.MonitorInterval > 0 {
+		tablesMonitor = tables.NewMonitor(&cfg)
+		tablesMonitor.Start()
+	}
 
 	// Start internal web server if configured
 	httpServer, err := b4http.StartServer(&cfg, pool)
@@ -244,7 +251,7 @@ func gracefulShutdown(cfg *config.Config, pool *nfq.Pool, httpServer *http.Serve
 	}()
 
 	// Clean up iptables/nftables rules
-	if !cfg.SkipTables {
+	if !cfg.Tables.SkipSetup {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -290,29 +297,23 @@ func gracefulShutdown(cfg *config.Config, pool *nfq.Pool, httpServer *http.Serve
 		}
 
 	case <-shutdownCtx.Done():
-		// Timeout reached
 		log.Errorf("Shutdown timeout reached, forcing exit")
 		metrics.RecordEvent("error", "Forced shutdown due to timeout")
 
-		// Force flush logs before exit
 		log.Flush()
-		time.Sleep(100 * time.Millisecond) // Give logs time to flush
+		time.Sleep(100 * time.Millisecond)
 
-		// Force exit
 		os.Exit(1)
 	}
 
-	// Final log flush
 	log.Flush()
 	return nil
 }
 
 func initLogging(cfg *config.Config) error {
-	// Ensure logging is initialized with stderr output and WebSocket broadcast
 	w := io.MultiWriter(os.Stderr, b4http.LogWriter())
 	log.Init(w, log.Level(cfg.Logging.Level), cfg.Logging.Instaflush)
 
-	// Log that initialization happened
 	fmt.Fprintf(os.Stderr, "[INIT] Logging initialized at level %d\n", cfg.Logging.Level)
 
 	if cfg.Logging.Syslog {

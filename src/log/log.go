@@ -117,6 +117,12 @@ func Errorf(format string, a ...any) error {
 	return fmt.Errorf(format, a...)
 }
 
+func Warnf(format string, a ...any) {
+	if Level(CurLevel.Load()) >= LevelError {
+		out("[WARN] "+format, a...)
+	}
+}
+
 func Infof(format string, a ...any) {
 	if Level(CurLevel.Load()) >= LevelInfo {
 		out("[INFO] "+format, a...)

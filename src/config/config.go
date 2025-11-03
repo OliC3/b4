@@ -12,11 +12,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	//go:embed config.json
-	configJson string
-)
-
 type Config struct {
 	ConfigPath     string  `json:"-" bson:"-"`
 	QueueStartNum  int     `json:"queue_start_num" bson:"queue_start_num"`
@@ -24,7 +19,6 @@ type Config struct {
 	ConnBytesLimit int     `json:"conn_bytes_limit" bson:"conn_bytes_limit"`
 	Logging        Logging `json:"logging" bson:"logging"`
 	Threads        int     `json:"threads" bson:"threads"`
-	SkipTables     bool    `json:"skip_tables" bson:"skip_tables"`
 	Seg2Delay      int     `json:"seg2delay" bson:"seg2delay"`
 	IPv4Enabled    bool    `json:"ipv4" bson:"ipv4"`
 	IPv6Enabled    bool    `json:"ipv6" bson:"ipv6"`
@@ -34,7 +28,13 @@ type Config struct {
 	Faking        Faking        `json:"faking" bson:"faking"`
 	UDP           UDPConfig     `json:"udp" bson:"udp"`
 
-	WebServer WebServer `json:"web_server" bson:"web_server"`
+	WebServer WebServer    `json:"web_server" bson:"web_server"`
+	Tables    TablesConfig `json:"tables" bson:"tables"`
+}
+
+type TablesConfig struct {
+	MonitorInterval int  `json:"monitor_interval" bson:"monitor_interval"`
+	SkipSetup       bool `json:"skip_setup" bson:"skip_setup"`
 }
 
 type Faking struct {
@@ -97,7 +97,6 @@ var DefaultConfig = Config{
 	Mark:           1 << 15,
 	Threads:        4,
 	ConnBytesLimit: 19,
-	SkipTables:     false,
 	Seg2Delay:      0,
 	IPv4Enabled:    true,
 	IPv6Enabled:    false,
@@ -139,9 +138,14 @@ var DefaultConfig = Config{
 		ConnBytesLimit: 8,
 	},
 
+	Tables: TablesConfig{
+		MonitorInterval: 10,
+		SkipSetup:       false,
+	},
+
 	WebServer: WebServer{
-		Port:      0,
-		IsEnabled: false,
+		Port:      7000,
+		IsEnabled: true,
 	},
 
 	Logging: Logging{
@@ -203,21 +207,7 @@ func (c *Config) LoadFromFile(path string) error {
 	return nil
 }
 
-func (c *Config) BindFromEmbed() (Config, error) {
-	data := []byte(configJson)
-	err := json.Unmarshal(data, c)
-	if err != nil {
-		return Config{}, fmt.Errorf("failed to parse embedded config: %v", err)
-	}
-	return *c, nil
-}
-
 func (c *Config) BindFlags(cmd *cobra.Command) {
-
-	_, err := c.BindFromEmbed()
-	if err != nil {
-		fmt.Printf("Warning: failed to load embedded config: %v\n", err)
-	}
 
 	// Config path
 	cmd.Flags().StringVar(&c.ConfigPath, "config", c.ConfigPath, "Path to config file")
@@ -260,9 +250,12 @@ func (c *Config) BindFlags(cmd *cobra.Command) {
 	cmd.Flags().IntVar(&c.UDP.ConnBytesLimit, "udp-conn-bytes-limit", c.UDP.ConnBytesLimit, "UDP connection bytes limit (default 8)")
 
 	// Feature flags
-	cmd.Flags().BoolVar(&c.SkipTables, "skip-tables", c.SkipTables, "Skip iptables/nftables rules setup")
 	cmd.Flags().BoolVar(&c.IPv4Enabled, "ipv4", c.IPv4Enabled, "Enable IPv4 processing")
 	cmd.Flags().BoolVar(&c.IPv6Enabled, "ipv6", c.IPv6Enabled, "Enable IPv6 processing")
+
+	// Tables configuration
+	cmd.Flags().IntVar(&c.Tables.MonitorInterval, "tables-monitor-interval", c.Tables.MonitorInterval, "Tables monitor interval in seconds (default 10, 0 to disable)")
+	cmd.Flags().BoolVar(&c.Tables.SkipSetup, "skip-tables", c.Tables.SkipSetup, "Skip iptables/nftables setup on startup")
 
 	// Logging configuration
 	cmd.Flags().BoolVarP(&c.Logging.Instaflush, "instaflush", "i", c.Logging.Instaflush, "Flush logs immediately")

@@ -621,7 +621,7 @@ install_b4() {
     # Backup existing binary if it exists
     if [ -f "${INSTALL_DIR}/${BINARY_NAME}" ]; then
         print_info "Backing up existing binary..."
-        mv "${INSTALL_DIR}/${BINARY_NAME}" "${INSTALL_DIR}/${BINARY_NAME}.backup.*"
+        mv "${INSTALL_DIR}/${BINARY_NAME}" "${INSTALL_DIR}/${BINARY_NAME}.backup.${timestamp}"
     fi
 
     # Install the new binary
@@ -639,7 +639,7 @@ install_b4() {
 
     # Verify installation
     if "${INSTALL_DIR}/${BINARY_NAME}" --version >/dev/null 2>&1; then
-        rm -f "${INSTALL_DIR}/${BINARY_NAME}.backup.${timestamp}"
+        rm -f "${INSTALL_DIR}/${BINARY_NAME}.backup.*" 2>/dev/null || true
         print_success "b4 installed successfully!"
     else
         print_warning "Binary installed but version check failed"
