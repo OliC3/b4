@@ -903,16 +903,25 @@ download_geosite() {
 update_config_geosite_path() {
     geosite_file="$1"
 
-    if [ ! -f "$CONFIG_FILE" ]; then
-        print_warning "Config file not found: $CONFIG_FILE"
-        print_info "You'll need to manually add geosite_path to your config"
-        print_info "Set domains.geosite_path to: $geosite_file"
-        return 0
-    fi
-
     # Try to update with jq if available
     if command_exists jq; then
         print_info "Updating config file..."
+
+        touch "$CONFIG_FILE" 2>/dev/null || {
+            print_error "Failed to create config file: $CONFIG_FILE"
+            return 0
+        }
+        chmod 644 "$CONFIG_FILE" 2>/dev/null || true
+
+        if [ ! -f "$CONFIG_FILE" ]; then
+            jq -n --arg path "$geosite_file" --arg url "$geosite_url" '{
+           domains: {
+               geosite_path: $path,
+               geosite_url: $url
+           }
+       }' >"$CONFIG_FILE"
+            return 0
+        fi
 
         # Create temporary file
         temp_file="${CONFIG_FILE}.tmp"
