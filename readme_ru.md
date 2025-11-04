@@ -26,13 +26,13 @@ B4 использует Linux netfilter для перехвата и модиф�
 > В некоторых системах необходимо запускать `sudo b4install.sh`.
 
 ```bash
-wget -O ~/b4install.sh https://raw.githubusercontent.com/DanielLavrushin/b4/main/install.sh && chmod +x ~/b4install.sh && ./b4install.sh
+wget -O ~/b4install.sh https://raw.githubusercontent.com/DanielLavrushin/b4/main/install.sh && chmod +x ~/b4install.sh && ~/b4install.sh
 ```
 
 Если что-то пошло не так, попробуйте запустить — это выполнит диагностику системы:
 
 ```bash
-wget -O ~/b4install.sh https://raw.githubusercontent.com/DanielLavrushin/b4/main/install.sh && chmod +x ~/b4install.sh && ./b4install.sh --sysinfo
+wget -O ~/b4install.sh https://raw.githubusercontent.com/DanielLavrushin/b4/main/install.sh && chmod +x ~/b4install.sh && ~/b4install.sh --sysinfo
 ```
 
 ### Опции установщика
