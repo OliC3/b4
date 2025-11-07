@@ -1,4 +1,4 @@
-import React from "react";
+import { useState } from "react";
 import {
   Routes,
   Route,
@@ -54,11 +54,10 @@ const navItems: NavItem[] = [
 ];
 
 export default function App() {
-  const [drawerOpen, setDrawerOpen] = React.useState(true);
+  const [drawerOpen, setDrawerOpen] = useState<boolean>(true);
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Get the current page title based on the route
   const getPageTitle = () => {
     const path = location.pathname;
     if (path.startsWith("/dashboard")) return "System Dashboard";
@@ -69,9 +68,7 @@ export default function App() {
     return "B4";
   };
 
-  // Check if a nav item is selected based on the current path
   const isNavItemSelected = (navPath: string) => {
-    // Special handling for settings - it's selected for any settings subpath
     if (navPath === "/settings") {
       return location.pathname.startsWith("/settings");
     }
@@ -82,7 +79,6 @@ export default function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Box sx={{ display: "flex", height: "100vh" }}>
-        {/* Left Drawer */}
         <Drawer
           variant="persistent"
           open={drawerOpen}
@@ -126,7 +122,6 @@ export default function App() {
           <Version />
         </Drawer>
 
-        {/* Main Content */}
         <Box
           component="main"
           sx={{
@@ -141,7 +136,6 @@ export default function App() {
             }),
           }}
         >
-          {/* AppBar */}
           <AppBar position="static" elevation={0}>
             <Toolbar>
               <IconButton
@@ -158,7 +152,6 @@ export default function App() {
             </Toolbar>
           </AppBar>
 
-          {/* Content Area with Routing */}
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<Dashboard />} />
@@ -166,7 +159,6 @@ export default function App() {
             <Route path="/test" element={<Test />} />
             <Route path="/logs" element={<Logs />} />
             <Route path="/settings/*" element={<Settings />} />
-            {/* Catch all route - redirect to dashboard */}
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </Box>

@@ -11,12 +11,12 @@ interface LoggingSettingsProps {
   onChange: (field: string, value: number | boolean) => void;
 }
 
-const LOG_LEVELS = [
+const LOG_LEVELS: Array<{ value: LogLevel; label: string }> = [
   { value: LogLevel.ERROR, label: "Error" },
   { value: LogLevel.INFO, label: "Info" },
   { value: LogLevel.TRACE, label: "Trace" },
   { value: LogLevel.DEBUG, label: "Debug" },
-];
+] as const;
 
 export const LoggingSettings: React.FC<LoggingSettingsProps> = ({
   config,
@@ -43,16 +43,18 @@ export const LoggingSettings: React.FC<LoggingSettingsProps> = ({
         <Grid size={{ xs: 12, md: 6 }}>
           <SettingSwitch
             label="Instant Flush"
-            checked={config.system.logging.instaflush}
-            onChange={(checked) =>
-              onChange("system.logging.instaflush", checked)
+            checked={config?.system?.logging?.instaflush}
+            onChange={(checked: boolean) =>
+              onChange("system.logging.instaflush", Boolean(checked))
             }
             description="Flush logs immediately (may impact performance)"
           />
           <SettingSwitch
             label="Syslog"
-            checked={config.system.logging.syslog}
-            onChange={(checked) => onChange("system.logging.syslog", checked)}
+            checked={config?.system?.logging?.syslog}
+            onChange={(checked: boolean) =>
+              onChange("system.logging.syslog", Boolean(checked))
+            }
             description="Enable syslog output"
           />
         </Grid>

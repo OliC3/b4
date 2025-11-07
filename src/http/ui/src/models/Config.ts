@@ -4,6 +4,7 @@ export type FakingStrategy =
   | "randseq"
   | "tcp_check"
   | "md5sum";
+
 export enum FakingPayloadType {
   RANDOM = 0,
   CUSTOM = 1,
@@ -34,6 +35,7 @@ export enum LogLevel {
   TRACE = 2,
   DEBUG = 3,
 }
+
 export interface LoggingConfig {
   level: LogLevel;
   instaflush: boolean;

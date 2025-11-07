@@ -25,19 +25,19 @@ export const FeatureSettings: React.FC<FeatureSettingsProps> = ({
           <SettingSwitch
             label="Enable IPv4 Support"
             checked={config.queue.ipv4}
-            onChange={(checked) => onChange("queue.ipv4", checked)}
+            onChange={(checked: boolean) => onChange("queue.ipv4", checked)}
             description="Enable IPv4 support"
           />
           <SettingSwitch
             label="Enable IPv6 Support"
             checked={config.queue.ipv6}
-            onChange={(checked) => onChange("queue.ipv6", checked)}
+            onChange={(checked: boolean) => onChange("queue.ipv6", checked)}
             description="Enable IPv6 support"
           />
           <SettingSwitch
             label="Skip IPTables/NFTables Setup"
             checked={config.system.tables.skip_setup}
-            onChange={(checked) =>
+            onChange={(checked: boolean) =>
               onChange("system.tables.skip_setup", checked)
             }
             description="Skip automatic IPTables/NFTables rules configuration"

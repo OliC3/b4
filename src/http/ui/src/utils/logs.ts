@@ -1,11 +1,10 @@
 import { ParsedLog } from "@organisms/domains/Table";
 
-// Parse log line from string
 export function parseSniLogLine(line: string): ParsedLog | null {
   // Example: 2025/10/13 22:41:12.466126 [INFO] SNI TCP: assets.alicdn.com 192.168.1.100:38894 -> 92.123.206.67:443
   const regex =
     /^(\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}\.\d+)\s+\[INFO\]\s+SNI\s+(TCP|UDP)(?:\s+TARGET)?:\s+(\S+)\s+(\S+)\s+->\s+(\S+)$/;
-  const match = new RegExp(regex).exec(line);
+  const match = regex.exec(line);
 
   if (!match) return null;
 
