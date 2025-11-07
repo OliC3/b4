@@ -70,7 +70,10 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [pauseDomains]);
 
   const clearLogs = useCallback(() => setLogs([]), []);
-  const clearDomains = useCallback(() => setDomains([]), []);
+  const clearDomains = useCallback(() => {
+    setDomains([]);
+    setUnseenDomainsCount(0);
+  }, []);
 
   const resetDomainsBadge = useCallback(() => {
     setUnseenDomainsCount(0);
