@@ -1,8 +1,8 @@
 import React from "react";
 import { Box, Grid, Paper, Typography } from "@mui/material";
-import { SimpleLineChart } from "../../molecules/metrics/SimpleLineChart";
-import { SimplePieChart } from "../../molecules/metrics/SimplePieChart";
-import { colors } from "../../../Theme";
+import { SimpleLineChart } from "@molecules/metrics/SimpleLineChart";
+import { SimplePieChart } from "@molecules/metrics/SimplePieChart";
+import { colors } from "@design";
 
 interface DashboardChartsProps {
   connectionRate: Array<{ timestamp: number; value: number }>;

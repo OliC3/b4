@@ -12,11 +12,11 @@ import {
   CheckCircle as CheckCircleIcon,
   Error as ErrorIcon,
 } from "@mui/icons-material";
-import { DashboardMetricsGrid } from "../organisms/metrics/DashboardMetricsGrid";
-import { DashboardStatusBar } from "../organisms/metrics/DashboardStatusBar";
-import { DashboardCharts } from "../organisms/metrics/DashboardCharts";
-import { DashboardActivityPanels } from "../organisms/metrics/DashboardActivityPanels";
-import { colors } from "../../Theme";
+import { DashboardMetricsGrid } from "@organisms/metrics/DashboardMetricsGrid";
+import { DashboardStatusBar } from "@organisms/metrics/DashboardStatusBar";
+import { DashboardCharts } from "@organisms/metrics/DashboardCharts";
+import { DashboardActivityPanels } from "@organisms/metrics/DashboardActivityPanels";
+import { colors } from "@design";
 
 export interface Metrics {
   total_connections: number;
@@ -70,7 +70,7 @@ export interface Metrics {
 const safeNumber = (val: any, defaultValue: number = 0): number => {
   if (val === null || val === undefined) return defaultValue;
   const num = Number(val);
-  if (isNaN(num) || !isFinite(num)) return defaultValue;
+  if (Number.isNaN(num) || !Number.isFinite(num)) return defaultValue;
   if (num > Number.MAX_SAFE_INTEGER) return Number.MAX_SAFE_INTEGER;
   if (num < Number.MIN_SAFE_INTEGER) return Number.MIN_SAFE_INTEGER;
   return num;
@@ -229,7 +229,6 @@ export default function Dashboard() {
         try {
           const data = JSON.parse(event.data);
           const normalizedData = normalizeMetrics(data);
-          console.log("Received metrics:", normalizedData);
           setMetrics(normalizedData);
         } catch (error) {
           console.error("Failed to parse metrics:", error);
@@ -274,8 +273,7 @@ export default function Dashboard() {
   }
 
   return (
-    <Container maxWidth={false} sx={{ py: 3, px: 3 }}>
-      {/* Header */}
+    <Container maxWidth={false} sx={{ p: 3 }}>
       <Box
         sx={{
           mb: 3,

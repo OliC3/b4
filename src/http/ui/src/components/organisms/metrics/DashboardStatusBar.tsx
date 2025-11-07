@@ -1,8 +1,8 @@
 import React from "react";
 import { Paper, Stack, Typography } from "@mui/material";
-import { StatusBadge } from "../../atoms/metrics/StatusBadge";
-import { formatNumber } from "../../../utils/common";
-import { colors } from "../../../Theme";
+import { StatusBadge } from "@atoms/metrics/StatusBadge";
+import { formatNumber } from "@utils";
+import { colors } from "@design";
 
 interface DashboardStatusBarProps {
   metrics: {

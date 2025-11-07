@@ -14,12 +14,11 @@ import {
   PlayArrow as StartIcon,
   Stop as StopIcon,
   Refresh as RefreshIcon,
-  // Speed as SpeedIcon,
 } from "@mui/icons-material";
-import { colors } from "../../../Theme";
-import { TestResultCard } from "../../molecules/check/ResultCard";
-import { TestStatus } from "../../atoms/check/Badge";
-import { useConfigLoad } from "../../../hooks/useConfig";
+import { colors } from "@design";
+import { TestResultCard } from "@molecules/check/ResultCard";
+import { TestStatus } from "@atoms/check/Badge";
+import { useConfigLoad } from "@hooks/useConfig";
 
 interface TestResult {
   domain: string;
@@ -111,8 +110,8 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
     }
 
     try {
-      const timeout = (config?.checker.timeout || 15) * 1e9;
-      const maxConcurrent = config?.checker.max_concurrent || 5;
+      const timeout = (config?.system.checker.timeout || 15) * 1e9;
+      const maxConcurrent = config?.system.checker.max_concurrent || 5;
       const response = await fetch("/api/check/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

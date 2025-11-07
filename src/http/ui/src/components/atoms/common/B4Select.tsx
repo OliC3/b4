@@ -7,7 +7,7 @@ import {
   SelectProps,
   FormHelperText,
 } from "@mui/material";
-import { colors } from "../../../Theme";
+import { colors } from "@design";
 
 interface B4SelectProps extends Omit<SelectProps<string | number>, "variant"> {
   label: string;

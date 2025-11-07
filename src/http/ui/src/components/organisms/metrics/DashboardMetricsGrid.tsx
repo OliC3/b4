@@ -6,9 +6,9 @@ import {
   SwapHoriz as SwapHorizIcon,
   Memory as MemoryIcon,
 } from "@mui/icons-material";
-import { MetricCard } from "../../atoms/metrics/MetricCard";
-import { formatBytes, formatNumber } from "../../../utils/common";
-import { colors } from "../../../Theme";
+import { StatCard } from "@molecules/metrics/StatCard";
+import { formatBytes, formatNumber } from "@utils";
+import { colors } from "@design";
 
 interface DashboardMetricsGridProps {
   metrics: {
@@ -31,39 +31,46 @@ export const DashboardMetricsGrid: React.FC<DashboardMetricsGridProps> = ({
   return (
     <Grid container spacing={3}>
       <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-        <MetricCard
+        <StatCard
           title="Total Connections"
           value={formatNumber(metrics.total_connections)}
           subtitle={`${metrics.targeted_connections} targeted`}
           icon={<SwapHorizIcon />}
           color={colors.primary}
+          variant="outlined"
         />
       </Grid>
+
       <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-        <MetricCard
+        <StatCard
           title="Active Flows"
           value={formatNumber(metrics.active_flows)}
           subtitle={`${metrics.current_cps.toFixed(1)} conn/s`}
           icon={<SpeedIcon />}
           color={colors.secondary}
+          variant="outlined"
         />
       </Grid>
+
       <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-        <MetricCard
+        <StatCard
           title="Packets Processed"
           value={formatNumber(metrics.packets_processed)}
           subtitle={`${metrics.current_pps.toFixed(1)} pkt/s`}
           icon={<StorageIcon />}
           color={colors.tertiary}
+          variant="outlined"
         />
       </Grid>
+
       <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-        <MetricCard
+        <StatCard
           title="Data Processed"
           value={formatBytes(metrics.bytes_processed)}
           subtitle={`Memory: ${metrics.memory_usage.percent.toFixed(1)}%`}
           icon={<MemoryIcon />}
           color={colors.quaternary}
+          variant="outlined"
         />
       </Grid>
     </Grid>

@@ -6,7 +6,7 @@ import {
   Warning as WarningIcon,
   Error as ErrorIcon,
 } from "@mui/icons-material";
-import { colors } from "../../../Theme";
+import { colors } from "@design";
 
 interface StatusBadgeProps {
   label: string;

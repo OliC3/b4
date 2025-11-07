@@ -1,10 +1,6 @@
-import React from "react";
 import { Box, Chip, CircularProgress, Tooltip } from "@mui/material";
-import {
-  FiberManualRecord as DotIcon,
-  NewReleases as NewReleasesIcon,
-} from "@mui/icons-material";
-import { colors } from "../../../Theme";
+import { NewReleases as NewReleasesIcon } from "@mui/icons-material";
+import { colors } from "@design";
 
 interface VersionBadgeProps {
   version: string;

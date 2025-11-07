@@ -6,7 +6,7 @@ export interface B4SnackbarProps {
   severity: "error" | "warning" | "info" | "success";
 }
 
-export function B4Snackbar({ ...snackbar }: B4SnackbarProps) {
+export function B4Snackbar({ ...snackbar }: Readonly<B4SnackbarProps>) {
   function handleClose() {
     snackbar.open = false;
   }

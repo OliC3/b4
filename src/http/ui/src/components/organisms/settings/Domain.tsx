@@ -7,10 +7,6 @@ import {
   Typography,
   Alert,
   Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   List,
   ListItem,
   ListItemText,
@@ -31,11 +27,12 @@ import {
   Security as SecurityIcon,
   Settings as SettingsIcon,
 } from "@mui/icons-material";
-import SettingSection from "../../molecules/common/B4Section";
-import SettingTextField from "../../atoms/common/B4TextField";
-import SettingAutocomplete from "../../atoms/common/B4Autocomplete";
-import { colors } from "../../../Theme";
-import B4Config from "../../../models/Config";
+import SettingSection from "@molecules/common/B4Section";
+import SettingTextField from "@atoms/common/B4TextField";
+import SettingAutocomplete from "@atoms/common/B4Autocomplete";
+import { colors, button_primary } from "@design";
+import { B4Dialog } from "@molecules/common/B4Dialog";
+import B4Config from "@models/Config";
 
 interface DomainSettingsProps {
   config: B4Config & { domain_stats?: DomainStatistics };
@@ -514,7 +511,8 @@ export const DomainSettings: React.FC<DomainSettingsProps> = ({
                                           sx={{
                                             cursor: "pointer",
                                             bgcolor: "action.selected",
-                                            px: 1,
+                                            px: 0.5,
+                                            ml: 0.5,
                                             borderRadius: 1,
                                           }}
                                           onClick={(e) => {
@@ -750,16 +748,29 @@ export const DomainSettings: React.FC<DomainSettingsProps> = ({
       </Stack>
 
       {/* Preview Dialog */}
-      <Dialog
+      <B4Dialog
+        title={`${previewDialog.category.toUpperCase()}`}
+        subtitle="Category Preview"
+        icon={<CategoryIcon />}
         open={previewDialog.open}
         onClose={() =>
           setPreviewDialog({ open: false, category: "", loading: false })
         }
-        maxWidth="sm"
-        fullWidth
+        actions={
+          <Button
+            variant="contained"
+            onClick={() =>
+              setPreviewDialog({ open: false, category: "", loading: false })
+            }
+            sx={{
+              ...button_primary,
+            }}
+          >
+            Close
+          </Button>
+        }
       >
-        <DialogTitle>Category Preview: {previewDialog.category}</DialogTitle>
-        <DialogContent>
+        <>
           {(() => {
             if (previewDialog.loading) {
               return (
@@ -779,7 +790,7 @@ export const DomainSettings: React.FC<DomainSettingsProps> = ({
                       previewDialog.data.preview_count &&
                       ` (showing first ${previewDialog.data.preview_count})`}
                   </Alert>
-                  <List dense sx={{ maxHeight: 300, overflow: "auto" }}>
+                  <List dense sx={{ maxHeight: 600, overflow: "auto" }}>
                     {previewDialog.data.preview.map((domain) => (
                       <ListItem key={domain}>
                         <ListItemText primary={domain} />
@@ -794,17 +805,8 @@ export const DomainSettings: React.FC<DomainSettingsProps> = ({
               );
             }
           })()}
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={() =>
-              setPreviewDialog({ open: false, category: "", loading: false })
-            }
-          >
-            Close
-          </Button>
-        </DialogActions>
-      </Dialog>
+        </>
+      </B4Dialog>
     </>
   );
 };

@@ -28,14 +28,14 @@ import LanguageIcon from "@mui/icons-material/Language";
 import SpeedIcon from "@mui/icons-material/Speed";
 import AssessmentIcon from "@mui/icons-material/Assessment";
 import ScienceIcon from "@mui/icons-material/Science";
-import Dashboard from "./components/pages/Dashboard";
-import Logs from "./components/pages/Logs";
-import Domains from "./components/pages/Domains";
-import Settings from "./components/pages/Settings";
-import Test from "./components/pages/Checker";
-import { theme, colors } from "./Theme";
-import Logo from "./components/molecules/Logo";
-import Version from "./components/organisms/version/Version";
+import Dashboard from "@pages/Dashboard";
+import Logs from "@pages/Logs";
+import Domains from "@pages/Domains";
+import Settings from "@pages/Settings";
+import Test from "@pages/Checker";
+import { theme, colors } from "@design";
+import Logo from "@molecules/Logo";
+import Version from "@organisms/version/Version";
 
 const DRAWER_WIDTH = 240;
 

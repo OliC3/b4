@@ -1,6 +1,6 @@
 import React from "react";
 import { TextField, TextFieldProps } from "@mui/material";
-import { colors } from "../../../Theme";
+import { colors } from "@design";
 
 interface B4TextFieldProps extends Omit<TextFieldProps, "variant"> {
   helperText?: string;

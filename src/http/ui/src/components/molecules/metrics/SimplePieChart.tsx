@@ -1,8 +1,8 @@
 // src/http/ui/src/components/molecules/SimplePieChart.tsx
 import React from "react";
 import { Box, Typography } from "@mui/material";
-import { colors } from "../../../Theme";
-import { formatNumber } from "../../../utils/common";
+import { colors } from "@design";
+import { formatNumber } from "@utils";
 
 interface SimplePieChartProps {
   data: Record<string, number>;

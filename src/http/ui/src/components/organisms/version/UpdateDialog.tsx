@@ -1,18 +1,13 @@
 import React, { useState } from "react";
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   Button,
   Typography,
   Box,
-  Link,
   Divider,
-  Chip,
   Stack,
   LinearProgress,
   Alert,
+  Chip,
 } from "@mui/material";
 import {
   NewReleases as NewReleasesIcon,
@@ -22,9 +17,10 @@ import {
   CloudDownload as CloudDownloadIcon,
   CheckCircle as CheckCircleIcon,
 } from "@mui/icons-material";
-import { colors } from "../../../Theme";
 import ReactMarkdown from "react-markdown";
-import { useSystemUpdate } from "../../../hooks/useSystemUpdate";
+import { useSystemUpdate } from "@hooks/useSystemUpdate";
+import { colors, button_primary, button_secondary } from "@design";
+import { B4Dialog } from "@molecules/common/B4Dialog";
 
 interface UpdateModalProps {
   open: boolean;
@@ -47,8 +43,7 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
   releaseUrl,
   publishedAt,
 }) => {
-  const { performUpdate, waitForReconnection, loading, error } =
-    useSystemUpdate();
+  const { performUpdate, waitForReconnection, error } = useSystemUpdate();
   const [updateStatus, setUpdateStatus] = useState<
     "idle" | "updating" | "reconnecting" | "success" | "error"
   >("idle");
@@ -68,7 +63,7 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
     setUpdateMessage("Initiating update...");
 
     const result = await performUpdate(latestVersion);
-    if (!result || !result.success) {
+    if (!result?.success) {
       setUpdateStatus("error");
       setUpdateMessage(
         result?.message || error || "Failed to initiate update."
@@ -88,7 +83,7 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
 
       // Reload the page after successful update to get new version
       setTimeout(() => {
-        window.location.reload();
+        globalThis.window.location.reload();
       }, 5000);
     } else {
       setUpdateStatus("error");
@@ -100,51 +95,46 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
 
   const isUpdating =
     updateStatus === "updating" || updateStatus === "reconnecting";
-  const showUpdateProgress = updateStatus !== "idle";
 
-  return (
-    <Dialog
-      open={open}
-      onClose={isUpdating ? undefined : onClose}
-      maxWidth="md"
-      fullWidth
-      PaperProps={{
-        sx: {
-          bgcolor: colors.background.paper,
-          border: `2px solid ${colors.border.default}`,
-          borderRadius: 4,
-        },
-      }}
-    >
-      <DialogTitle
-        sx={{
-          bgcolor: colors.background.dark,
-          color: colors.text.primary,
-          borderBottom: `1px solid ${colors.border.default}`,
-        }}
-      >
-        <Stack direction="row" alignItems="center" spacing={2}>
-          <Box
-            sx={{
-              p: 1,
-              borderRadius: 2,
-              bgcolor: colors.accent.secondary,
-              color: colors.secondary,
-              display: "flex",
-              alignItems: "center",
-            }}
-          >
-            <NewReleasesIcon />
-          </Box>
-          <Box sx={{ flex: 1 }}>
-            <Typography sx={{ mt: 1.5, lineHeight: 0 }}>
-              New Version Available
-            </Typography>
-            <Typography variant="caption" sx={{ color: colors.text.secondary }}>
-              Published on {formatDate(publishedAt)}
-            </Typography>
-          </Box>
-          <Stack direction="row" spacing={1}>
+  const defaultDialogProps = {
+    title: "New Version Available",
+    subtitle: `Published on ${formatDate(publishedAt)}`,
+    icon: <NewReleasesIcon />,
+  };
+  const getDialogProps = () => {
+    switch (updateStatus) {
+      case "updating":
+      case "reconnecting":
+        return {
+          ...defaultDialogProps,
+          title: "Updating B4 Service",
+          subtitle: "Please wait while the service is updating...",
+        };
+      case "success":
+        return {
+          ...defaultDialogProps,
+          title: "Update Successful",
+          subtitle: "The B4 service has been updated successfully.",
+        };
+      case "error":
+        return {
+          ...defaultDialogProps,
+          title: "Update Failed",
+          subtitle: "An error occurred during the update process.",
+        };
+      default:
+        return {
+          ...defaultDialogProps,
+        };
+    }
+  };
+
+  const dialogContent = () => {
+    return (
+      <>
+        {getDialogPartContent()}
+        {updateStatus === "idle" && (
+          <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
             <Chip
               label={`Current: ${currentVersion}`}
               size="small"
@@ -163,45 +153,7 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
               }}
             />
           </Stack>
-        </Stack>
-      </DialogTitle>
-
-      <DialogContent sx={{ mt: 2 }}>
-        {showUpdateProgress && (
-          <Box sx={{ mb: 3 }}>
-            <Alert
-              severity={
-                updateStatus === "success"
-                  ? "success"
-                  : updateStatus === "error"
-                  ? "error"
-                  : "info"
-              }
-              icon={
-                updateStatus === "success" ? (
-                  <CheckCircleIcon />
-                ) : updateStatus === "error" ? (
-                  <CloseIcon />
-                ) : (
-                  <CloudDownloadIcon />
-                )
-              }
-              sx={{
-                bgcolor:
-                  updateStatus === "success"
-                    ? colors.accent.secondary
-                    : updateStatus === "error"
-                    ? colors.accent.primary
-                    : colors.accent.tertiary,
-                color: colors.text.primary,
-              }}
-            >
-              {updateMessage}
-            </Alert>
-            {isUpdating && <LinearProgress sx={{ mt: 2 }} />}
-          </Box>
         )}
-
         <Box
           sx={{
             maxHeight: 400,
@@ -339,29 +291,65 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
             View on GitHub
           </Button>
         </Stack>
-      </DialogContent>
+      </>
+    );
+  };
+  const getDialogPartContent = () => {
+    switch (updateStatus) {
+      case "updating":
+      case "reconnecting":
+        return (
+          <Box sx={{ mb: 3 }}>
+            <LinearProgress sx={{ mt: 2 }} />
+          </Box>
+        );
+      case "success":
+        return (
+          <Box sx={{ mb: 3 }}>
+            <Alert
+              severity={updateStatus}
+              sx={{ bgcolor: colors.accent.secondary }}
+              icon={<CheckCircleIcon />}
+            >
+              {updateMessage}
+            </Alert>
+          </Box>
+        );
+      case "error":
+        return (
+          <Box sx={{ mb: 3 }}>
+            <Alert
+              severity={updateStatus}
+              sx={{
+                bgcolor: colors.accent.primary,
+                color: colors.text.primary,
+              }}
+              icon={<CheckCircleIcon />}
+            >
+              {updateMessage}
+            </Alert>
+          </Box>
+        );
+      case "idle":
+      default:
+        return null;
+    }
+  };
 
-      <DialogActions
-        sx={{
-          borderTop: `1px solid ${colors.border.default}`,
-          p: 2,
-        }}
-      >
+  const dialogActions = () => {
+    return (
+      <>
         <Button
           onClick={onDismiss}
           startIcon={<CloseIcon />}
           disabled={isUpdating}
           sx={{
-            color: colors.text.secondary,
-            "&:hover": {
-              bgcolor: colors.accent.primaryHover,
-            },
+            ...button_secondary,
           }}
         >
           Don't Show Again for This Version
         </Button>
         <Box sx={{ flex: 1 }} />
-
         {updateStatus === "idle" && (
           <>
             <Button
@@ -385,32 +373,37 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
               startIcon={<CloudDownloadIcon />}
               disabled={isUpdating}
               sx={{
-                bgcolor: colors.primary,
-                "&:hover": {
-                  bgcolor: colors.secondary,
-                },
+                ...button_primary,
               }}
             >
               Update Now
             </Button>
           </>
         )}
-
         {updateStatus === "success" && (
           <Button
             variant="contained"
-            onClick={() => window.location.reload()}
+            onClick={() => globalThis.window.location.reload()}
             sx={{
-              bgcolor: colors.secondary,
-              "&:hover": {
-                bgcolor: colors.primary,
-              },
+              ...button_primary,
             }}
           >
             Reload Page
           </Button>
         )}
-      </DialogActions>
-    </Dialog>
+      </>
+    );
+  };
+
+  return (
+    <B4Dialog
+      {...getDialogProps()}
+      open={open}
+      onClose={isUpdating ? () => {} : onClose}
+      actions={dialogActions()}
+      maxWidth="lg"
+    >
+      {dialogContent()}
+    </B4Dialog>
   );
 };

@@ -134,12 +134,6 @@ func (a *API) updateConfig(w http.ResponseWriter, r *http.Request) {
 	allDomainsForMatcher = append(allDomainsForMatcher, a.manualDomains...)
 	allDomainsForMatcher = append(allDomainsForMatcher, allGeositeDomains...)
 
-	if globalPool != nil {
-		globalPool.UpdateConfig(&newConfig, allDomainsForMatcher)
-		log.Infof("Config pushed to all workers (manual: %d, geosite: %d, total: %d domains)",
-			len(a.manualDomains), len(allGeositeDomains), len(allDomainsForMatcher))
-	}
-
 	// Save config to file if path is set
 	if newConfig.ConfigPath != "" {
 		if err := newConfig.SaveToFile(newConfig.ConfigPath); err != nil {
@@ -150,14 +144,27 @@ func (a *API) updateConfig(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Prepare response with statistics
-	totalDomains := len(a.manualDomains) + len(allGeositeDomains)
+	totalDomains := make(map[string]struct{})
+	for _, d := range a.manualDomains {
+		totalDomains[d] = struct{}{}
+	}
+	for _, d := range allGeositeDomains {
+		totalDomains[d] = struct{}{}
+	}
+
+	if globalPool != nil {
+		globalPool.UpdateConfig(&newConfig, allDomainsForMatcher)
+		log.Infof("Config pushed to all workers (manual: %d, geosite: %d, total: %d domains)",
+			len(a.manualDomains), len(allGeositeDomains), len(totalDomains))
+	}
+
 	response := map[string]interface{}{
 		"success": true,
 		"message": "Configuration updated successfully",
 		"domain_stats": DomainStatistics{
 			ManualDomains:     len(a.manualDomains),
 			GeositeDomains:    len(allGeositeDomains),
-			TotalDomains:      totalDomains,
+			TotalDomains:      len(totalDomains),
 			CategoryBreakdown: categoryStats,
 		},
 	}
@@ -168,7 +175,6 @@ func (a *API) updateConfig(w http.ResponseWriter, r *http.Request) {
 	_ = enc.Encode(response)
 }
 
-// src/http/handler/config.go - Add this function
 func (a *API) resetConfig(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)

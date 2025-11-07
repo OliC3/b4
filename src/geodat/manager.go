@@ -74,6 +74,7 @@ func (gm *GeodataManager) LoadCategory(category string) ([]string, error) {
 }
 
 // LoadCategories loads domains for multiple categories and returns combined domains + counts
+// LoadCategories loads domains for multiple categories and returns combined domains + counts
 func (gm *GeodataManager) LoadCategories(categories []string) ([]string, map[string]int, error) {
 	if len(categories) == 0 {
 		return []string{}, make(map[string]int), nil
@@ -100,7 +101,7 @@ func (gm *GeodataManager) LoadCategories(categories []string) ([]string, map[str
 	}
 	gm.mu.Unlock()
 
-	allDomains := []string{}
+	uniqueDomains := make(map[string]bool)
 	categoryStats := make(map[string]int)
 
 	for _, category := range categories {
@@ -110,8 +111,15 @@ func (gm *GeodataManager) LoadCategories(categories []string) ([]string, map[str
 			continue
 		}
 
-		allDomains = append(allDomains, domains...)
+		for _, domain := range domains {
+			uniqueDomains[domain] = true
+		}
 		categoryStats[category] = len(domains)
+	}
+
+	allDomains := make([]string, 0, len(uniqueDomains))
+	for domain := range uniqueDomains {
+		allDomains = append(allDomains, domain)
 	}
 
 	log.Tracef("Loaded %d total domains from %d categories", len(allDomains), len(categories))

@@ -2,10 +2,10 @@ import React from "react";
 import { Box, Typography } from "@mui/material";
 import {
   Speed as SpeedIcon,
-  TrendingUp as UpIcon,
-  TrendingDown as DownIcon,
+  // TrendingUp as UpIcon,
+  // TrendingDown as DownIcon,
 } from "@mui/icons-material";
-import { colors } from "../../../Theme";
+import { colors } from "@design";
 
 interface SpeedIndicatorProps {
   speed: number; // bytes per second

@@ -1,24 +1,23 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Container, Paper, Snackbar, Alert } from "@mui/material";
-import { DomainsControlBar } from "../../components/molecules/domains/ControlBar";
-import { DomainAddModal } from "../organisms/domains/AddModal";
+import { DomainsControlBar } from "@molecules/domains/ControlBar";
+import { DomainAddModal } from "@organisms/domains/AddModal";
+import { DomainsTable, SortColumn } from "@organisms/domains/Table";
+import { SortDirection } from "@atoms/common/SortableTableCell";
 import {
-  DomainsTable,
-  SortColumn,
-} from "../../components/organisms/domains/Table";
-import { SortDirection } from "../../components/atoms/common/SortableTableCell";
-import { useDomainActions } from "../../hooks/useDomainActions";
-import { useDomainsWebSocket } from "../../hooks/useDomainsWebSocket";
-import {
+  useDomainActions,
   useParsedLogs,
   useFilteredLogs,
   useSortedLogs,
+} from "@hooks/useDomainActions";
+import { useDomainsWebSocket } from "@hooks/useDomainsWebSocket";
+import {
   generateDomainVariants,
   loadPersistedLines,
-  persistLines,
-  clearPersistedLines,
-} from "../../utils/domains";
-import { colors } from "../../Theme";
+  clearLogPersistedLines,
+  persistLogLines,
+} from "@utils";
+import { colors } from "@design";
 
 export default function Domains() {
   // State
@@ -45,7 +44,7 @@ export default function Domains() {
 
   // Persist lines to localStorage
   useEffect(() => {
-    persistLines(lines);
+    persistLogLines(lines);
   }, [lines]);
 
   // WebSocket connection
@@ -130,7 +129,7 @@ export default function Domains() {
 
   const handleReset = () => {
     setLines([]);
-    clearPersistedLines();
+    clearLogPersistedLines();
   };
 
   const handleHotkeysDown = (e: KeyboardEvent) => {
@@ -154,9 +153,9 @@ export default function Domains() {
   };
 
   useEffect(() => {
-    window.addEventListener("keydown", handleHotkeysDown);
+    globalThis.window.addEventListener("keydown", handleHotkeysDown);
     return () => {
-      window.removeEventListener("keydown", handleHotkeysDown);
+      globalThis.window.removeEventListener("keydown", handleHotkeysDown);
     };
   }, [handleHotkeysDown]);
 

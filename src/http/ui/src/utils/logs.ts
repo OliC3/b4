@@ -1,0 +1,69 @@
+import { ParsedLog } from "@organisms/domains/Table";
+
+// Parse log line from string
+export function parseSniLogLine(line: string): ParsedLog | null {
+  // Example: 2025/10/13 22:41:12.466126 [INFO] SNI TCP: assets.alicdn.com 192.168.1.100:38894 -> 92.123.206.67:443
+  const regex =
+    /^(\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}\.\d+)\s+\[INFO\]\s+SNI\s+(TCP|UDP)(?:\s+TARGET)?:\s+(\S+)\s+(\S+)\s+->\s+(\S+)$/;
+  const match = line.match(regex);
+
+  if (!match) return null;
+
+  const [, timestamp, protocol, domain, source, destination] = match;
+  const isTarget = line.includes("TARGET");
+
+  return {
+    timestamp,
+    protocol: protocol as "TCP" | "UDP",
+    isTarget,
+    domain,
+    source,
+    destination,
+    raw: line,
+  };
+}
+
+// Generate domain variants from most specific to least specific
+export function generateDomainVariants(domain: string): string[] {
+  const parts = domain.split(".");
+  const variants: string[] = [];
+
+  // Generate from full domain to TLD+1 (e.g., example.com)
+  for (let i = 0; i < parts.length - 1; i++) {
+    variants.push(parts.slice(i).join("."));
+  }
+
+  return variants;
+}
+
+// Local storage utilities
+export const STORAGE_KEY = "b4_domains_lines";
+export const MAX_STORED_LINES = 1000;
+
+export function loadPersistedLines(): string[] {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      return Array.isArray(parsed) ? parsed : [];
+    }
+  } catch (e) {
+    console.error("Failed to load persisted domains:", e);
+  }
+  return [];
+}
+
+export function persistLogLines(lines: string[]): void {
+  try {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(lines.slice(-MAX_STORED_LINES))
+    );
+  } catch (e) {
+    console.error("Failed to persist domains:", e);
+  }
+}
+
+export function clearLogPersistedLines(): void {
+  localStorage.removeItem(STORAGE_KEY);
+}

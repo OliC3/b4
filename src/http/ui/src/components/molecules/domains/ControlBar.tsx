@@ -10,7 +10,7 @@ import {
   IconButton,
 } from "@mui/material";
 import RefreshIcon from "@mui/icons-material/DeleteForever";
-import { colors } from "../../../Theme";
+import { colors } from "@design";
 
 interface DomainsControlBarProps {
   filter: string;

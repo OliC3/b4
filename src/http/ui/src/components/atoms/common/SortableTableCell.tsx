@@ -1,6 +1,6 @@
 import React from "react";
 import { TableCell, TableSortLabel } from "@mui/material";
-import { colors } from "../../../Theme";
+import { colors } from "@design";
 
 export type SortDirection = "asc" | "desc" | null;
 

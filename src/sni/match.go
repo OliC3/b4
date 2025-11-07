@@ -18,6 +18,8 @@ func NewSuffixSet(domains []string) *SuffixSet {
 		regexes: make([]*regexp.Regexp, 0),
 	}
 
+	seenRegexes := make(map[string]bool)
+
 	for _, d := range domains {
 		d = strings.ToLower(strings.TrimSpace(d))
 		if d == "" {
@@ -27,8 +29,12 @@ func NewSuffixSet(domains []string) *SuffixSet {
 		// Handle regex patterns
 		if strings.HasPrefix(d, "regexp:") {
 			pattern := strings.TrimPrefix(d, "regexp:")
+			if seenRegexes[pattern] {
+				continue
+			}
 			if re, err := regexp.Compile(pattern); err == nil {
 				s.regexes = append(s.regexes, re)
+				seenRegexes[pattern] = true
 			}
 			continue
 		}

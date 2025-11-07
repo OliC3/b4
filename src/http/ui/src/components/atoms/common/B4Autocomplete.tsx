@@ -1,8 +1,7 @@
-import React, { useState } from "react";
 import { Autocomplete, CircularProgress, IconButton, Box } from "@mui/material";
 import { Add as AddIcon } from "@mui/icons-material";
 import B4TextField from "./B4TextField";
-import { colors } from "../../../Theme";
+import { colors } from "@design";
 
 interface SettingAutocompleteProps {
   label: string;

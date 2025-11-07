@@ -6,7 +6,7 @@ import {
   Typography,
   Box,
 } from "@mui/material";
-import { colors } from "../../../Theme";
+import { colors } from "@design";
 
 interface B4SwitchProps extends Omit<SwitchProps, "checked" | "onChange"> {
   label: string;

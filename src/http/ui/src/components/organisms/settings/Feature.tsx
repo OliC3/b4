@@ -1,9 +1,9 @@
 import React from "react";
 import { Grid } from "@mui/material";
 import { ToggleOn as ToggleOnIcon } from "@mui/icons-material";
-import SettingSection from "../../molecules/common/B4Section";
-import SettingSwitch from "../../atoms/common/B4Switch";
-import B4Config from "../../../models/Config";
+import SettingSection from "@molecules/common/B4Section";
+import SettingSwitch from "@atoms/common/B4Switch";
+import B4Config from "@models/Config";
 
 interface FeatureSettingsProps {
   config: B4Config;

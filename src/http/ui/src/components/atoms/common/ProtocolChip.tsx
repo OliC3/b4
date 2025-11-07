@@ -2,7 +2,7 @@ import React from "react";
 import { Chip } from "@mui/material";
 import TcpIcon from "@mui/icons-material/SyncAlt";
 import UdpIcon from "@mui/icons-material/TrendingFlat";
-import { colors } from "../../../Theme";
+import { colors } from "@design";
 
 interface ProtocolChipProps {
   protocol: "TCP" | "UDP";

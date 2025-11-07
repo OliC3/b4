@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import B4Config from "../models/Config";
+import B4Config from "@models/Config";
 
 export function useConfigLoad() {
   const [config, setConfig] = useState<B4Config | null>(null);

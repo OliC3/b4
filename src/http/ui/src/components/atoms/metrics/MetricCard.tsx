@@ -2,7 +2,7 @@
 import React from "react";
 import { Box, Card, CardContent, Stack, Typography } from "@mui/material";
 import { TrendingUp as TrendingUpIcon } from "@mui/icons-material";
-import { colors } from "../../../Theme";
+import { colors } from "@design";
 
 interface MetricCardProps {
   title: string;

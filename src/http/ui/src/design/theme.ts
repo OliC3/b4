@@ -1,37 +1,5 @@
 import { createTheme } from "@mui/material";
-
-// Color palette
-export const colors = {
-  primary: "#9E1C60",
-  secondary: "#F5AD18",
-  tertiary: "#811844",
-  quaternary: "#561530",
-  background: {
-    default: "#1a0e15",
-    paper: "#1f1218",
-    dark: "#0f0a0e",
-    control: "rgba(31, 18, 24, 0.6)",
-  },
-  text: {
-    primary: "#ffe8f4",
-    secondary: "#f8d7e9",
-  },
-  border: {
-    default: "rgba(245, 173, 24, 0.24)",
-    light: "rgba(245, 173, 24, 0.12)",
-    medium: "rgba(245, 173, 24, 0.24)",
-    strong: "rgba(245, 173, 24, 0.5)",
-  },
-  accent: {
-    primary: "rgba(158, 28, 96, 0.2)",
-    primaryHover: "rgba(158, 28, 96, 0.3)",
-    primaryStrong: "rgba(158, 28, 96, 0.1)",
-    secondary: "rgba(245, 173, 24, 0.2)",
-    secondaryHover: "rgba(245, 173, 24, 0.1)",
-    tertiary: "rgba(129, 24, 68, 0.2)",
-  },
-};
-
+import { colors } from "./tokens";
 export const theme = createTheme({
   palette: {
     mode: "dark",

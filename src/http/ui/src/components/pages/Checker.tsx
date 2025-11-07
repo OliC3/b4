@@ -1,6 +1,6 @@
 import { Container, Alert, Stack } from "@mui/material";
-import { TestRunner } from "../organisms/check/Runner";
-import { colors } from "../../Theme";
+import { TestRunner } from "@organisms/check/Runner";
+import { colors } from "@design";
 import { Link as RouterLink } from "react-router-dom";
 
 export default function Test() {

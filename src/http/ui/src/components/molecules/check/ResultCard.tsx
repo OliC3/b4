@@ -5,17 +5,15 @@ import {
   Typography,
   Box,
   Stack,
-  Chip,
   Alert,
 } from "@mui/material";
 import {
   Language as DomainIcon,
   Timer as TimerIcon,
-  Category as CategoryIcon,
 } from "@mui/icons-material";
-import { colors } from "../../../Theme";
-import { TestStatusBadge, TestStatus } from "../../atoms/check/Badge";
-import { SpeedIndicator } from "../../atoms/check/SpeedIndicator";
+import { colors } from "@design";
+import { TestStatusBadge, TestStatus } from "@atoms/check/Badge";
+import { SpeedIndicator } from "@atoms/check/SpeedIndicator";
 
 interface TestResultCardProps {
   domain: string;

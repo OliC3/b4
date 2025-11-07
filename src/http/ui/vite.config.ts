@@ -1,6 +1,7 @@
 import { defineConfig } from "vite";
 import dotenv from "dotenv";
 import react from "@vitejs/plugin-react";
+import tsconfigPaths from "vite-tsconfig-paths";
 
 dotenv.config();
 const REMOTE_BACKEND = process.env.B4_BACKEND_URL || "http://192.168.1.1:7000";
@@ -10,7 +11,7 @@ console.log("Using backend:", REMOTE_BACKEND);
 console.log("Building version:", APP_VERSION);
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [tsconfigPaths(), react()],
   build: {
     outDir: "dist",
     emptyOutDir: true,
@@ -18,6 +19,7 @@ export default defineConfig({
   define: {
     "import.meta.env.VITE_APP_VERSION": JSON.stringify(APP_VERSION),
   },
+
   server: {
     port: 5173,
     proxy: {

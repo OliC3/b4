@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { useNavigate, useLocation, useParams } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   Container,
   Box,
@@ -15,11 +15,8 @@ import {
   Chip,
   Fade,
   Backdrop,
-  Dialog,
-  DialogTitle,
   DialogContent,
   DialogContentText,
-  DialogActions,
   Grid,
 } from "@mui/material";
 import {
@@ -34,19 +31,19 @@ import {
   Science as TestIcon,
 } from "@mui/icons-material";
 
-import { NetworkSettings } from "../organisms/settings/Network";
-import { LoggingSettings } from "../organisms/settings/Logging";
-import { FeatureSettings } from "../organisms/settings/Feature";
-import { DomainSettings } from "../organisms/settings/Domain";
-import { FragmentationSettings } from "../organisms/settings/Fragmentation";
-import { FakingSettings } from "../organisms/settings/Faking";
-import { UDPSettings } from "../organisms/settings/Udp";
-import { CheckerSettings } from "../organisms/settings/Checker";
-import { ControlSettings } from "../organisms/settings/Control";
+import { NetworkSettings } from "@organisms/settings/Network";
+import { LoggingSettings } from "@organisms/settings/Logging";
+import { FeatureSettings } from "@organisms/settings/Feature";
+import { DomainSettings } from "@organisms/settings/Domain";
+import { FragmentationSettings } from "@organisms/settings/Fragmentation";
+import { FakingSettings } from "@organisms/settings/Faking";
+import { UDPSettings } from "@organisms/settings/Udp";
+import { CheckerSettings } from "@organisms/settings/Checker";
+import { ControlSettings } from "@organisms/settings/Control";
 
-import B4Config from "../../models/Config";
-import { colors } from "../../Theme";
-
+import B4Config from "@models/Config";
+import { colors, spacing, button_primary, button_secondary } from "@design";
+import { B4Dialog } from "@molecules/common/B4Dialog";
 // Tab panel component
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -477,7 +474,7 @@ export default function Settings() {
       <Box sx={{ flex: 1, overflow: "auto", pb: 2 }}>
         {/* Core Settings */}
         <TabPanel value={validTab} index={0}>
-          <Grid container spacing={3}>
+          <Grid container spacing={spacing}>
             <Grid size={{ xs: 12, md: 12 }}>
               {categoryHasChanges[0] && (
                 <Alert severity="warning" icon={<WarningIcon />}>
@@ -529,21 +526,37 @@ export default function Settings() {
       </Box>
 
       {/* Reset Confirmation Dialog */}
-      <Dialog open={showResetDialog} onClose={() => setShowResetDialog(false)}>
-        <DialogTitle>Discard Changes?</DialogTitle>
+      <B4Dialog
+        title="Discard changes"
+        open={showResetDialog}
+        onClose={() => setShowResetDialog(false)}
+        actions={
+          <>
+            <Button
+              variant="outlined"
+              onClick={() => setShowResetDialog(false)}
+              sx={{ ...button_secondary }}
+            >
+              Cancel
+            </Button>
+            <Box sx={{ flex: 1 }} />{" "}
+            <Button
+              onClick={resetChanges}
+              variant="contained"
+              sx={{ ...button_primary }}
+            >
+              Discard Changes
+            </Button>
+          </>
+        }
+      >
         <DialogContent>
           <DialogContentText>
             Are you sure you want to discard all unsaved changes? This action
             cannot be undone.
           </DialogContentText>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setShowResetDialog(false)}>Cancel</Button>
-          <Button onClick={resetChanges} color="warning" variant="contained">
-            Discard Changes
-          </Button>
-        </DialogActions>
-      </Dialog>
+      </B4Dialog>
 
       {/* Snackbar */}
       <Snackbar

@@ -7,7 +7,7 @@ import {
   Error as ErrorIcon,
   Cancel as CanceledIcon,
 } from "@mui/icons-material";
-import { colors } from "../../../Theme";
+import { colors } from "@design";
 
 export type TestStatus =
   | "pending"

@@ -1,11 +1,11 @@
 import React from "react";
 import { Grid } from "@mui/material";
 import { Security as SecurityIcon } from "@mui/icons-material";
-import SettingSection from "../../molecules/common/B4Section";
-import SettingSelect from "../../atoms/common/B4Select";
-import SettingTextField from "../../atoms/common/B4TextField";
-import SettingSwitch from "../../atoms/common/B4Switch";
-import B4Config, { FakingPayloadType } from "../../../models/Config";
+import SettingSection from "@molecules/common/B4Section";
+import SettingSelect from "@atoms/common/B4Select";
+import SettingTextField from "@atoms/common/B4TextField";
+import SettingSwitch from "@atoms/common/B4Switch";
+import B4Config, { FakingPayloadType } from "@models/Config";
 
 interface FakingSettingsProps {
   config: B4Config;

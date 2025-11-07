@@ -86,9 +86,9 @@ export default function Logs() {
   };
 
   useEffect(() => {
-    window.addEventListener("keydown", handleHotkeysDown);
+    globalThis.window.addEventListener("keydown", handleHotkeysDown);
     return () => {
-      window.removeEventListener("keydown", handleHotkeysDown);
+      globalThis.window.removeEventListener("keydown", handleHotkeysDown);
     };
   }, [handleHotkeysDown]);
 
@@ -135,11 +135,13 @@ export default function Logs() {
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
               sx={{ flex: 1 }}
-              InputProps={{
-                sx: {
-                  bgcolor: "rgba(15, 10, 14, 0.5)",
-                  "& fieldset": {
-                    borderColor: "rgba(245, 173, 24, 0.24) !important",
+              slotProps={{
+                input: {
+                  sx: {
+                    bgcolor: "rgba(15, 10, 14, 0.5)",
+                    "& fieldset": {
+                      borderColor: "rgba(245, 173, 24, 0.24) !important",
+                    },
                   },
                 },
               }}
@@ -228,45 +230,51 @@ export default function Logs() {
             color: "text.primary",
           }}
         >
-          {filtered.length === 0 && lines.length === 0 ? (
-            <Typography
-              sx={{
-                color: "text.secondary",
-                textAlign: "center",
-                mt: 4,
-                fontStyle: "italic",
-              }}
-            >
-              Waiting for logs...
-            </Typography>
-          ) : filtered.length === 0 ? (
-            <Typography
-              sx={{
-                color: "text.secondary",
-                textAlign: "center",
-                mt: 4,
-                fontStyle: "italic",
-              }}
-            >
-              No logs match your filter
-            </Typography>
-          ) : (
-            filtered.map((l, i) => (
-              <Typography
-                key={i}
-                component="div"
-                sx={{
-                  fontFamily: "inherit",
-                  fontSize: "inherit",
-                  "&:hover": {
-                    bgcolor: "rgba(158, 28, 96, 0.1)",
-                  },
-                }}
-              >
-                {l}
-              </Typography>
-            ))
-          )}
+          {(() => {
+            if (filtered.length === 0 && lines.length === 0) {
+              return (
+                <Typography
+                  sx={{
+                    color: "text.secondary",
+                    textAlign: "center",
+                    mt: 4,
+                    fontStyle: "italic",
+                  }}
+                >
+                  Waiting for logs...
+                </Typography>
+              );
+            } else if (filtered.length === 0) {
+              return (
+                <Typography
+                  sx={{
+                    color: "text.secondary",
+                    textAlign: "center",
+                    mt: 4,
+                    fontStyle: "italic",
+                  }}
+                >
+                  No logs match your filter
+                </Typography>
+              );
+            } else {
+              return filtered.map((l, i) => (
+                <Typography
+                  key={l + "_" + i}
+                  component="div"
+                  sx={{
+                    fontFamily: "inherit",
+                    fontSize: "inherit",
+                    "&:hover": {
+                      bgcolor: "rgba(158, 28, 96, 0.1)",
+                    },
+                  }}
+                >
+                  {l}
+                </Typography>
+              ));
+            }
+          })()}
 
           {/* Scroll to Bottom Button */}
           {showScrollBtn && (

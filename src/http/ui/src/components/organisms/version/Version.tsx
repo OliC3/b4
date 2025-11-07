@@ -1,13 +1,10 @@
 import React, { useState } from "react";
-import { Box, Link, Stack, Divider, Tooltip } from "@mui/material";
-import { colors } from "../../../Theme";
+import { Box, Link, Stack, Divider } from "@mui/material";
+import { colors } from "@design";
 import GitHubIcon from "@mui/icons-material/GitHub";
-import { VersionBadge } from "../../atoms/version/Badge";
+import { VersionBadge } from "@/components/molecules/version/Badge";
 import { UpdateModal } from "./UpdateDialog";
-import {
-  useGitHubRelease,
-  dismissVersion,
-} from "../../../hooks/useGitHubRelease";
+import { useGitHubRelease, dismissVersion } from "@hooks/useGitHubRelease";
 
 export default function Version() {
   const [updateModalOpen, setUpdateModalOpen] = useState(false);

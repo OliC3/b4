@@ -1,6 +1,6 @@
 import React from "react";
 import { Box, Paper, Typography, Divider } from "@mui/material";
-import { colors } from "../../../Theme";
+import { colors } from "@design";
 
 interface B4SectionProps {
   title: string;

@@ -1,11 +1,10 @@
 import { Box, Typography } from "@mui/material";
-import { colors } from "../../Theme";
-import DecryptedText from "../atoms/ReactBits/DecryptedText";
+import { colors } from "@design";
+import DecryptedText from "@atoms/ReactBits/DecryptedText";
 
 export default function Logo() {
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 0 }}>
-      {/* B4 - Main logo */}
       <Typography
         variant="h4"
         component="div"
@@ -23,7 +22,6 @@ export default function Logo() {
         B<sup style={{ fontSize: "0.5em" }}>4</sup>
       </Typography>
 
-      {/* Subtitle */}
       <Typography
         variant="caption"
         component="div"

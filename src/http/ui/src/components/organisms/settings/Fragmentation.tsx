@@ -1,11 +1,11 @@
 import React from "react";
 import { Grid } from "@mui/material";
 import { CallSplit as CallSplitIcon } from "@mui/icons-material";
-import SettingSection from "../../molecules/common/B4Section";
-import SettingSelect from "../../atoms/common/B4Select";
-import SettingTextField from "../../atoms/common/B4TextField";
-import SettingSwitch from "../../atoms/common/B4Switch";
-import B4Config, { FragmentationStrategy } from "../../../models/Config";
+import SettingSection from "@molecules/common/B4Section";
+import SettingSelect from "@atoms/common/B4Select";
+import SettingTextField from "@atoms/common/B4TextField";
+import SettingSwitch from "@atoms/common/B4Switch";
+import B4Config, { FragmentationStrategy } from "@models/Config";
 
 interface FragmentationSettingsProps {
   config: B4Config;

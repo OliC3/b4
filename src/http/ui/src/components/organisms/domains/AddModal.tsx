@@ -1,9 +1,5 @@
 import React from "react";
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   Button,
   Alert,
   Typography,
@@ -13,12 +9,13 @@ import {
   ListItemText,
   ListItemIcon,
   Radio,
-  Stack,
   Box,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import DomainIcon from "@mui/icons-material/Language";
-import { colors } from "../../../Theme";
+import { colors, button_primary, button_secondary } from "@design";
+import { B4Dialog } from "@molecules/common/B4Dialog";
+import { B4Badge } from "@/components/atoms/common/B4Badge";
 
 interface DomainAddModalProps {
   open: boolean;
@@ -40,50 +37,43 @@ export const DomainAddModal: React.FC<DomainAddModalProps> = ({
   onAdd,
 }) => {
   return (
-    <Dialog
+    <B4Dialog
+      title="Add Domain to Manual List"
+      icon={<DomainIcon />}
       open={open}
       onClose={onClose}
-      maxWidth="sm"
-      fullWidth
-      PaperProps={{
-        sx: {
-          bgcolor: colors.background.paper,
-          border: `2px solid ${colors.border.default}`,
-          borderRadius: 4,
-        },
-      }}
-    >
-      <DialogTitle
-        sx={{
-          bgcolor: colors.background.dark,
-          color: colors.text.primary,
-          borderBottom: `1px solid ${colors.border.default}`,
-        }}
-      >
-        <Stack direction="row" alignItems="center" spacing={2}>
-          <Box
+      actions={
+        <>
+          <Button
+            onClick={onClose}
+            variant="outlined"
+            sx={{ ...button_secondary }}
+          >
+            Cancel
+          </Button>
+          <Box sx={{ flex: 1 }} />
+          <Button
+            onClick={onAdd}
+            variant="contained"
+            startIcon={<AddIcon />}
+            disabled={!selected}
             sx={{
-              p: 1,
-              borderRadius: 2,
-              bgcolor: colors.accent.secondary,
-              color: colors.secondary,
-              display: "flex",
-              alignItems: "center",
+              ...button_primary,
             }}
           >
-            <DomainIcon />
-          </Box>
-          <Typography>Add Domain to Manual List</Typography>
-        </Stack>
-      </DialogTitle>
-      <DialogContent sx={{ mt: 2 }}>
+            Add Domain
+          </Button>
+        </>
+      }
+    >
+      <>
         <Alert severity="info" sx={{ mb: 2 }}>
           Select which domain pattern to add to the manual domains list. More
           specific patterns will only match exact subdomains, while broader
           patterns will match all subdomains.
         </Alert>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-          Original domain: <strong>{domain}</strong>
+          Original domain: <B4Badge label={domain} badgeVariant="secondary" />
         </Typography>
         <List>
           {variants.map((variant, index) => (
@@ -127,29 +117,7 @@ export const DomainAddModal: React.FC<DomainAddModalProps> = ({
             </ListItem>
           ))}
         </List>
-      </DialogContent>
-      <DialogActions
-        sx={{ borderTop: `1px solid ${colors.border.light}`, p: 2 }}
-      >
-        <Button onClick={onClose} color="inherit">
-          Cancel
-        </Button>
-        <Box sx={{ flex: 1 }} />
-        <Button
-          onClick={onAdd}
-          variant="contained"
-          startIcon={<AddIcon />}
-          disabled={!selected}
-          sx={{
-            bgcolor: colors.primary,
-            "&:hover": {
-              bgcolor: colors.secondary,
-            },
-          }}
-        >
-          Add Domain
-        </Button>
-      </DialogActions>
-    </Dialog>
+      </>
+    </B4Dialog>
   );
 };

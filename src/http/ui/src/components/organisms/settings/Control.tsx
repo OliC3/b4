@@ -1,15 +1,15 @@
 import React, { useState } from "react";
 import { Button, Grid, Stack } from "@mui/material";
-import SettingSection from "../../molecules/common/B4Section";
+import SettingSection from "@molecules/common/B4Section";
 import {
   RestartAlt as RestartIcon,
   ToggleOn as ToggleOnIcon,
   Hub as ControlIcon,
   Restore as RestoreIcon,
 } from "@mui/icons-material";
-import B4Config from "../../../models/Config";
+import B4Config from "@models/Config";
 import { RestartDialog } from "./RestartDialog";
-import { colors } from "../../../Theme";
+import { colors } from "@design";
 import { ResetDialog } from "./ResetDialog";
 
 interface ControlSettingsProps {

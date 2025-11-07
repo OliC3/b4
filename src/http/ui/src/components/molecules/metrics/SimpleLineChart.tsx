@@ -1,6 +1,6 @@
 import React from "react";
 import { Box, Typography } from "@mui/material";
-import { colors } from "../../../Theme";
+import { colors } from "@design";
 
 interface SimpleChartProps {
   data: Array<{ timestamp: number; value: number }>;

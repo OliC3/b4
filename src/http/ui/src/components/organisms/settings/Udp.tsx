@@ -1,10 +1,10 @@
 import React from "react";
 import { Grid } from "@mui/material";
 import { Dns as DnsIcon } from "@mui/icons-material";
-import SettingSection from "../../molecules/common/B4Section";
-import SettingSelect from "../../atoms/common/B4Select";
-import SettingTextField from "../../atoms/common/B4TextField";
-import B4Config from "../../../models/Config";
+import SettingSection from "@molecules/common/B4Section";
+import SettingSelect from "@atoms/common/B4Select";
+import SettingTextField from "@atoms/common/B4TextField";
+import B4Config from "@models/Config";
 
 interface UDPSettingsProps {
   config: B4Config;

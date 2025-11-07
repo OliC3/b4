@@ -14,9 +14,9 @@ import AddIcon from "@mui/icons-material/Add";
 import {
   SortableTableCell,
   SortDirection,
-} from "../../atoms/common/SortableTableCell";
-import { ProtocolChip } from "../../atoms/common/ProtocolChip";
-import { colors } from "../../../Theme";
+} from "@atoms/common/SortableTableCell";
+import { ProtocolChip } from "@atoms/common/ProtocolChip";
+import { colors } from "@design";
 
 export type SortColumn =
   | "timestamp"
