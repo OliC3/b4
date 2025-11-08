@@ -6,10 +6,10 @@ import SettingSelect from "@atoms/common/B4Select";
 import SettingTextField from "@atoms/common/B4TextField";
 import SettingSwitch from "@atoms/common/B4Switch";
 import B4Slider from "@atoms/common/B4Slider";
-import { B4Config, FakingPayloadType } from "@models/Config";
+import { B4SetConfig, FakingPayloadType } from "@models/Config";
 
 interface FakingSettingsProps {
-  config: B4Config;
+  config: B4SetConfig;
   onChange: (field: string, value: string | boolean | number) => void;
 }
 
@@ -41,83 +41,81 @@ export const FakingSettings: React.FC<FakingSettingsProps> = ({
         <Grid size={{ xs: 12 }}>
           <SettingSwitch
             label="Enable Fake SNI"
-            checked={config.bypass.faking.sni}
-            onChange={(checked) => onChange("bypass.faking.sni", checked)}
+            checked={config.faking.sni}
+            onChange={(checked) => onChange("faking.sni", checked)}
             description="Send fake SNI packets"
           />
         </Grid>
         <Grid size={{ xs: 12, md: 6 }}>
           <SettingSelect
             label="Fake Strategy"
-            value={config.bypass.faking.strategy}
+            value={config.faking.strategy}
             options={FAKE_STRATEGIES}
             onChange={(e) =>
-              onChange("bypass.faking.strategy", e.target.value as string)
+              onChange("faking.strategy", e.target.value as string)
             }
             helperText="Strategy for sending fake packets"
-            disabled={!config.bypass.faking.sni}
+            disabled={!config.faking.sni}
           />
         </Grid>
         <Grid size={{ xs: 12, md: 6 }}>
           <SettingSelect
             label="Fake Payload Type"
-            value={config.bypass.faking.sni_type}
+            value={config.faking.sni_type}
             options={FAKE_PAYLOAD_TYPES}
             onChange={(e) =>
-              onChange("bypass.faking.sni_type", Number(e.target.value))
+              onChange("faking.sni_type", Number(e.target.value))
             }
             helperText="Type of payload to send in fake packets"
-            disabled={!config.bypass.faking.sni}
+            disabled={!config.faking.sni}
           />
         </Grid>
         <Grid size={{ xs: 12, md: 4 }}>
           <B4Slider
             label="Fake TTL"
-            value={config.bypass.faking.ttl}
-            onChange={(value) => onChange("bypass.faking.ttl", value)}
+            value={config.faking.ttl}
+            onChange={(value) => onChange("faking.ttl", value)}
             min={1}
             max={64}
             step={1}
             helperText="TTL for fake packets"
-            disabled={!config.bypass.faking.sni}
+            disabled={!config.faking.sni}
           />
         </Grid>
         <Grid size={{ xs: 12, md: 4 }}>
           <SettingTextField
             label="Sequence Offset"
             type="number"
-            value={config.bypass.faking.seq_offset}
+            value={config.faking.seq_offset}
             onChange={(e) =>
-              onChange("bypass.faking.seq_offset", Number(e.target.value))
+              onChange("faking.seq_offset", Number(e.target.value))
             }
             helperText="Sequence number offset"
-            disabled={!config.bypass.faking.sni}
+            disabled={!config.faking.sni}
           />
         </Grid>
         <Grid size={{ xs: 12, md: 4 }}>
           <B4Slider
             label="SNI Sequence Length"
-            value={config.bypass.faking.sni_seq_length}
-            onChange={(value) =>
-              onChange("bypass.faking.sni_seq_length", value)
-            }
+            value={config.faking.sni_seq_length}
+            onChange={(value) => onChange("faking.sni_seq_length", value)}
             min={1}
             max={20}
             step={1}
             helperText="Length of fake SNI sequence"
-            disabled={!config.bypass.faking.sni}
+            disabled={!config.faking.sni}
           />
         </Grid>
-        {config.bypass.faking.sni_type === FakingPayloadType.CUSTOM && (
+        {config.faking.sni_type === FakingPayloadType.CUSTOM && (
           <Grid size={{ xs: 12 }}>
             <SettingTextField
               label="Custom Payload"
-              value={config.bypass.faking.custom_payload}
+              value={config.faking.custom_payload}
               onChange={(e) =>
-                onChange("bypass.faking.custom_payload", e.target.value)
+                onChange("faking.custom_payload", e.target.value)
               }
               helperText="Custom payload for fake packets (hex string)"
-              disabled={!config.bypass.faking.sni}
+              disabled={!config.faking.sni}
               multiline
               rows={2}
             />

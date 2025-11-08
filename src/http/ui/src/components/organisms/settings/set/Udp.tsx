@@ -5,10 +5,10 @@ import SettingSection from "@molecules/common/B4Section";
 import SettingSelect from "@atoms/common/B4Select";
 import SettingTextField from "@atoms/common/B4TextField";
 import B4Slider from "@atoms/common/B4Slider";
-import { B4Config } from "@models/Config";
+import { B4SetConfig } from "@models/Config";
 
-interface UDPSettingsProps {
-  config: B4Config;
+interface UdpSettingsProps {
+  config: B4SetConfig;
   onChange: (field: string, value: string | number) => void;
 }
 
@@ -29,7 +29,7 @@ const UDP_QUIC_FILTERS = [
   { value: "parse", label: "Parse" },
 ];
 
-export const UDPSettings: React.FC<UDPSettingsProps> = ({
+export const UdpSettings: React.FC<UdpSettingsProps> = ({
   config,
   onChange,
 }) => {
@@ -39,25 +39,23 @@ export const UDPSettings: React.FC<UDPSettingsProps> = ({
       description="Configure UDP packet handling and QUIC filtering"
       icon={<DnsIcon />}
     >
-      <Grid container spacing={2}>
+      <Grid container spacing={3}>
         <Grid size={{ xs: 12, md: 6 }}>
           <SettingSelect
             label="UDP Mode"
-            value={config.bypass.udp.mode}
+            value={config.udp.mode}
             options={UDP_MODES}
-            onChange={(e) =>
-              onChange("bypass.udp.mode", e.target.value as string)
-            }
+            onChange={(e) => onChange("udp.mode", e.target.value as string)}
             helperText="UDP packet handling strategy"
           />
         </Grid>
         <Grid size={{ xs: 12, md: 6 }}>
           <SettingSelect
             label="QUIC Filter"
-            value={config.bypass.udp.filter_quic}
+            value={config.udp.filter_quic}
             options={UDP_QUIC_FILTERS}
             onChange={(e) =>
-              onChange("bypass.udp.filter_quic", e.target.value as string)
+              onChange("udp.filter_quic", e.target.value as string)
             }
             helperText="QUIC traffic filtering mode"
           />
@@ -65,10 +63,10 @@ export const UDPSettings: React.FC<UDPSettingsProps> = ({
         <Grid size={{ xs: 12, md: 6 }}>
           <SettingSelect
             label="Faking Strategy"
-            value={config.bypass.udp.faking_strategy}
+            value={config.udp.faking_strategy}
             options={UDP_FAKING_STRATEGIES}
             onChange={(e) =>
-              onChange("bypass.udp.faking_strategy", e.target.value as string)
+              onChange("udp.faking_strategy", e.target.value as string)
             }
             helperText="Strategy for fake UDP packets"
           />
@@ -76,8 +74,8 @@ export const UDPSettings: React.FC<UDPSettingsProps> = ({
         <Grid size={{ xs: 12, md: 6 }}>
           <B4Slider
             label="Fake Packet Size"
-            value={config.bypass.udp.fake_len}
-            onChange={(value) => onChange("bypass.udp.fake_len", value)}
+            value={config.udp.fake_len}
+            onChange={(value) => onChange("udp.fake_len", value)}
             min={32}
             max={1500}
             step={8}
@@ -88,8 +86,8 @@ export const UDPSettings: React.FC<UDPSettingsProps> = ({
         <Grid size={{ xs: 12, md: 6 }}>
           <B4Slider
             label="Fake Sequence Length"
-            value={config.bypass.udp.fake_seq_length}
-            onChange={(value) => onChange("bypass.udp.fake_seq_length", value)}
+            value={config.udp.fake_seq_length}
+            onChange={(value) => onChange("udp.fake_seq_length", value)}
             min={1}
             max={20}
             step={1}
@@ -102,9 +100,9 @@ export const UDPSettings: React.FC<UDPSettingsProps> = ({
               <SettingTextField
                 label="Dest Port Min"
                 type="number"
-                value={config.bypass.udp.dport_min}
+                value={config.udp.dport_min}
                 onChange={(e) =>
-                  onChange("bypass.udp.dport_min", Number(e.target.value))
+                  onChange("udp.dport_min", Number(e.target.value))
                 }
                 helperText="Minimum destination port"
               />
@@ -113,9 +111,9 @@ export const UDPSettings: React.FC<UDPSettingsProps> = ({
               <SettingTextField
                 label="Dest Port Max"
                 type="number"
-                value={config.bypass.udp.dport_max}
+                value={config.udp.dport_max}
                 onChange={(e) =>
-                  onChange("bypass.udp.dport_max", Number(e.target.value))
+                  onChange("udp.dport_max", Number(e.target.value))
                 }
                 helperText="Maximum destination port"
               />

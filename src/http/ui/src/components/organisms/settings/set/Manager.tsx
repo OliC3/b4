@@ -186,10 +186,11 @@ export const SetsManager: React.FC<SetsManagerProps> = ({
         description="Manage multiple bypass configurations for different scenarios"
         icon={<LayersIcon />}
       >
-        <Box sx={{ mb: 2, display: "flex", justifyContent: "flex-end" }}>
+        <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
           <Button
             startIcon={<AddIcon />}
             onClick={handleAddSet}
+            size="small"
             variant="contained"
             sx={{
               bgcolor: colors.secondary,

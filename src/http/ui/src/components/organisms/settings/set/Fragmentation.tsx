@@ -5,10 +5,10 @@ import SettingSection from "@molecules/common/B4Section";
 import SettingSelect from "@atoms/common/B4Select";
 import SettingSwitch from "@atoms/common/B4Switch";
 import B4Slider from "@atoms/common/B4Slider";
-import { B4Config, FragmentationStrategy } from "@models/Config";
+import { B4SetConfig, FragmentationStrategy } from "@models/Config";
 
 interface FragmentationSettingsProps {
-  config: B4Config;
+  config: B4SetConfig;
   onChange: (field: string, value: string | boolean | number) => void;
 }
 const fragmentationOptions: { label: string; value: FragmentationStrategy }[] =
@@ -28,17 +28,14 @@ export const FragmentationSettings: React.FC<FragmentationSettingsProps> = ({
       description="Configure packet fragmentation for DPI circumvention"
       icon={<CallSplitIcon />}
     >
-      <Grid container spacing={2}>
+      <Grid container spacing={3}>
         <Grid size={{ xs: 12, md: 6 }}>
           <SettingSelect
             label="Fragment Strategy"
-            value={config.bypass.fragmentation.strategy}
+            value={config.fragmentation.strategy}
             options={fragmentationOptions}
             onChange={(e) =>
-              onChange(
-                "bypass.fragmentation.strategy",
-                e.target.value as string
-              )
+              onChange("fragmentation.strategy", e.target.value as string)
             }
             helperText="Choose fragmentation method"
           />
@@ -46,10 +43,8 @@ export const FragmentationSettings: React.FC<FragmentationSettingsProps> = ({
         <Grid size={{ xs: 12, md: 6 }}>
           <B4Slider
             label="SNI Fragment Position"
-            value={config.bypass.fragmentation.sni_position}
-            onChange={(value) =>
-              onChange("bypass.fragmentation.sni_position", value)
-            }
+            value={config.fragmentation.sni_position}
+            onChange={(value) => onChange("fragmentation.sni_position", value)}
             min={0}
             max={10}
             step={1}
@@ -59,9 +54,9 @@ export const FragmentationSettings: React.FC<FragmentationSettingsProps> = ({
         <Grid size={{ xs: 12, md: 6 }}>
           <SettingSwitch
             label="Reverse Fragment Order"
-            checked={config.bypass.fragmentation.sni_reverse}
+            checked={config.fragmentation.sni_reverse}
             onChange={(checked) =>
-              onChange("bypass.fragmentation.sni_reverse", checked)
+              onChange("fragmentation.sni_reverse", checked)
             }
             description="Send fragments in reverse order"
           />
@@ -69,9 +64,9 @@ export const FragmentationSettings: React.FC<FragmentationSettingsProps> = ({
         <Grid size={{ xs: 12, md: 6 }}>
           <SettingSwitch
             label="Fragment in Middle of SNI"
-            checked={config.bypass.fragmentation.middle_sni}
+            checked={config.fragmentation.middle_sni}
             onChange={(checked) =>
-              onChange("bypass.fragmentation.middle_sni", checked)
+              onChange("fragmentation.middle_sni", checked)
             }
             description="Fragment in the middle of the SNI field"
           />
