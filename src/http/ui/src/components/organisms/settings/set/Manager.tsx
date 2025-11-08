@@ -116,30 +116,31 @@ export const SetsManager: React.FC<SetsManagerProps> = ({
   };
 
   const handleSaveSet = (set: B4SetConfig) => {
-    const isNew = !sets.find((s) => s.id === set.id);
+    const existingIndex = sets.findIndex((s) => s.id === set.id);
 
-    if (isNew) {
-      sets.push(set);
+    let updatedSets: B4SetConfig[];
+    if (existingIndex >= 0) {
+      // Update existing
+      updatedSets = [
+        ...sets.slice(0, existingIndex),
+        set,
+        ...sets.slice(existingIndex + 1),
+      ];
+    } else {
+      // Add new
+      updatedSets = [...sets, set];
     }
-    onChange("sets", sets);
 
+    onChange("sets", updatedSets);
     setEditDialog({ open: false, set: null, isNew: false });
   };
 
   const handleDeleteSet = () => {
-    if (deleteDialog.setId) {
-      onChange(
-        "sets",
-        sets.filter((s) => s.id !== deleteDialog.setId)
-      );
-      // If deleting main set, set first remaining as main
-      if (mainSetId === deleteDialog.setId && sets.length > 1) {
-        const newMain = sets.find((s) => s.id !== deleteDialog.setId);
-        if (newMain) {
-          onChange("sets", sets);
-        }
-      }
-    }
+    if (!deleteDialog.setId) return;
+
+    const filteredSets = sets.filter((s) => s.id !== deleteDialog.setId);
+    onChange("sets", filteredSets);
+
     setDeleteDialog({ open: false, setId: null });
   };
 

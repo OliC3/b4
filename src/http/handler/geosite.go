@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/daniellavrushin/b4/config"
 	"github.com/daniellavrushin/b4/geodat"
 	"github.com/daniellavrushin/b4/log"
 )
@@ -42,8 +43,7 @@ func (a *API) addGeositeDomain(w http.ResponseWriter, r *http.Request) {
 	req.Domain = normalizeDomain(req.Domain)
 
 	if req.SetId == "" {
-		http.Error(w, "Set ID cannot be empty", http.StatusBadRequest)
-		return
+		req.SetId = config.DefaultSetConfig.Id // Use default set ID if not provided
 	}
 
 	set := a.cfg.GetSetById(req.SetId)

@@ -128,6 +128,7 @@ export const DomainSettings: React.FC<DomainSettingsProps> = ({
       onChange("domains.sni_domains", [
         ...config.domains.sni_domains,
         newBypassDomain.trim(),
+        config.id,
       ]);
       setNewBypassDomain("");
     }

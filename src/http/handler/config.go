@@ -82,7 +82,7 @@ func (a *API) updateConfig(w http.ResponseWriter, r *http.Request) {
 
 	if newConfig.System.Geo.GeoSitePath != "" {
 
-		for _, set := range a.cfg.Sets {
+		for _, set := range newConfig.Sets {
 			_, err := a.applyDomainChanges(set)
 			if err != nil {
 				log.Errorf("Failed to apply domain changes for set '%s': %v", set.Name, err)
@@ -90,15 +90,12 @@ func (a *API) updateConfig(w http.ResponseWriter, r *http.Request) {
 
 			allDomainsCount += len(set.Domains.DomainsToMatch)
 			categories = append(categories, set.Domains.GeoSiteCategories...)
-			log.Infof("Loaded %d domains from geodata for set '%s'", allDomainsCount, set.Name)
+			log.Infof("Loaded %d domains from geodata for set '%s'", len(set.Domains.DomainsToMatch), set.Name)
 		}
 
 		m := metrics.GetMetricsCollector()
 		m.RecordEvent("info", fmt.Sprintf("Loaded %d domains from geodata across %d sets",
-			allDomainsCount, len(a.cfg.Sets)))
-	} else if allDomainsCount == 0 {
-		a.geodataManager.ClearCache()
-		log.Infof("Cleared all geosite domains")
+			allDomainsCount, len(newConfig.Sets)))
 	}
 
 	categoryBreakdown, _ := a.geodataManager.GetCategoryCounts(utils.FilterUniqueStrings(categories))
