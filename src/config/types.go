@@ -16,13 +16,6 @@ type QueueConfig struct {
 	IPv6Enabled bool `json:"ipv6" bson:"ipv6"`
 }
 
-type BypassConfig struct {
-	TCP           TCPConfig           `json:"tcp" bson:"tcp"`
-	UDP           UDPConfig           `json:"udp" bson:"udp"`
-	Fragmentation FragmentationConfig `json:"fragmentation" bson:"fragmentation"`
-	Faking        FakingConfig        `json:"faking" bson:"faking"`
-}
-
 type TCPConfig struct {
 	ConnBytesLimit int `json:"conn_bytes_limit" bson:"conn_bytes_limit"`
 	Seg2Delay      int `json:"seg2delay" bson:"seg2delay"`
@@ -58,11 +51,10 @@ type FakingConfig struct {
 }
 
 type DomainsConfig struct {
-	GeoSitePath       string   `json:"geosite_path" bson:"geosite_path"`
-	GeoIpPath         string   `json:"geoip_path" bson:"geoip_path"`
 	SNIDomains        []string `json:"sni_domains" bson:"sni_domains"`
 	GeoSiteCategories []string `json:"geosite_categories" bson:"geosite_categories"`
 	GeoIpCategories   []string `json:"geoip_categories" bson:"geoip_categories"`
+	DomainsToMatch    []string `json:"-" bson:"-"`
 }
 
 type SystemConfig struct {
@@ -70,6 +62,7 @@ type SystemConfig struct {
 	Logging   Logging         `json:"logging" bson:"logging"`
 	WebServer WebServerConfig `json:"web_server" bson:"web_server"`
 	Checker   CheckerConfig   `json:"checker" bson:"checker"`
+	Geo       GeoDatConfig    `json:"geo" bson:"geo"`
 }
 
 type TablesConfig struct {
@@ -92,4 +85,19 @@ type Logging struct {
 	Level      log.Level `json:"level" bson:"level"`
 	Instaflush bool      `json:"instaflush" bson:"instaflush"`
 	Syslog     bool      `json:"syslog" bson:"syslog"`
+}
+
+type SetConfig struct {
+	Id            string              `json:"id" bson:"id"`
+	Name          string              `json:"name" bson:"name"`
+	TCP           TCPConfig           `json:"tcp" bson:"tcp"`
+	UDP           UDPConfig           `json:"udp" bson:"udp"`
+	Fragmentation FragmentationConfig `json:"fragmentation" bson:"fragmentation"`
+	Faking        FakingConfig        `json:"faking" bson:"faking"`
+	Domains       DomainsConfig       `json:"domains" bson:"domains"`
+}
+
+type GeoDatConfig struct {
+	GeoSitePath string `json:"sitedat_path" bson:"sitedat_path"`
+	GeoIpPath   string `json:"ipdat_path" bson:"ipdat_path"`
 }

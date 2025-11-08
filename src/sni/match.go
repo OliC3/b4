@@ -4,72 +4,87 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+
+	"github.com/daniellavrushin/b4/config"
 )
 
 type SuffixSet struct {
-	domains    map[string]struct{}
-	regexes    []*regexp.Regexp
+	sets       map[string]*config.SetConfig
+	regexes    []*regexWithSet
 	regexCache sync.Map
 }
 
-func NewSuffixSet(domains []string) *SuffixSet {
+type regexWithSet struct {
+	regex *regexp.Regexp
+	set   *config.SetConfig
+}
+
+type cacheEntry struct {
+	matched bool
+	set     *config.SetConfig
+}
+
+func NewSuffixSet(sets []*config.SetConfig) *SuffixSet {
 	s := &SuffixSet{
-		domains: make(map[string]struct{}),
-		regexes: make([]*regexp.Regexp, 0),
+		sets:    make(map[string]*config.SetConfig),
+		regexes: make([]*regexWithSet, 0),
 	}
 
 	seenRegexes := make(map[string]bool)
 
-	for _, d := range domains {
-		d = strings.ToLower(strings.TrimSpace(d))
-		if d == "" {
-			continue
-		}
-
-		// Handle regex patterns
-		if strings.HasPrefix(d, "regexp:") {
-			pattern := strings.TrimPrefix(d, "regexp:")
-			if seenRegexes[pattern] {
+	for _, set := range sets {
+		for _, d := range set.Domains.DomainsToMatch {
+			d = strings.ToLower(strings.TrimSpace(d))
+			if d == "" {
 				continue
 			}
-			if re, err := regexp.Compile(pattern); err == nil {
-				s.regexes = append(s.regexes, re)
-				seenRegexes[pattern] = true
-			}
-			continue
-		}
 
-		// Regular domain
-		d = strings.TrimRight(d, ".")
-		s.domains[d] = struct{}{}
+			// Handle regex patterns
+			if strings.HasPrefix(d, "regexp:") {
+				pattern := strings.TrimPrefix(d, "regexp:")
+				if seenRegexes[pattern] {
+					continue
+				}
+				if re, err := regexp.Compile(pattern); err == nil {
+					s.regexes = append(s.regexes, &regexWithSet{regex: re, set: set})
+					seenRegexes[pattern] = true
+				}
+				continue
+			}
+
+			// Regular domain
+			d = strings.TrimRight(d, ".")
+			s.sets[d] = set
+		}
 	}
 
 	return s
 }
 
-func (s *SuffixSet) Match(host string) bool {
-	if s == nil || len(s.domains) == 0 && len(s.regexes) == 0 || host == "" {
-		return false
+// Match returns (matched, set)
+func (s *SuffixSet) Match(host string) (bool, *config.SetConfig) {
+	if s == nil || (len(s.sets) == 0 && len(s.regexes) == 0) || host == "" {
+		return false, nil
 	}
 
 	lower := strings.ToLower(host)
 
 	// Check exact/suffix match first (fast)
-	if s.matchDomain(lower) {
-		return true
+	if matched, set := s.matchDomain(lower); matched {
+		return true, set
 	}
 
 	if len(s.regexes) > 0 {
 		return s.matchRegex(lower)
 	}
 
-	return false
+	return false, nil
 }
 
-func (s *SuffixSet) matchDomain(host string) bool {
+func (s *SuffixSet) matchDomain(host string) (bool, *config.SetConfig) {
 	// Exact match
-	if _, ok := s.domains[host]; ok {
-		return true
+	if set, ok := s.sets[host]; ok {
+		return true, set
 	}
 
 	// Check suffixes
@@ -79,28 +94,29 @@ func (s *SuffixSet) matchDomain(host string) bool {
 			break
 		}
 		host = host[idx+1:]
-		if _, ok := s.domains[host]; ok {
-			return true
+		if set, ok := s.sets[host]; ok {
+			return true, set
 		}
 	}
 
-	return false
+	return false, nil
 }
 
-func (s *SuffixSet) matchRegex(host string) bool {
+func (s *SuffixSet) matchRegex(host string) (bool, *config.SetConfig) {
 	// Check cache
 	if cached, ok := s.regexCache.Load(host); ok {
-		return cached.(bool)
+		entry := cached.(cacheEntry)
+		return entry.matched, entry.set
 	}
 
 	// Test patterns
-	for _, re := range s.regexes {
-		if re.MatchString(host) {
-			s.regexCache.Store(host, true)
-			return true
+	for _, rws := range s.regexes {
+		if rws.regex.MatchString(host) {
+			s.regexCache.Store(host, cacheEntry{matched: true, set: rws.set})
+			return true, rws.set
 		}
 	}
 
-	s.regexCache.Store(host, false)
-	return false
+	s.regexCache.Store(host, cacheEntry{matched: false, set: nil})
+	return false, nil
 }

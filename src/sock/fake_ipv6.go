@@ -8,7 +8,7 @@ import (
 )
 
 // BuildFakeSNIPacketV6 creates a fake SNI packet for IPv6
-func BuildFakeSNIPacketV6(original []byte, cfg *config.Config) []byte {
+func BuildFakeSNIPacketV6(original []byte, cfg *config.SetConfig) []byte {
 	if len(original) < 60 || original[0]>>4 != 6 {
 		return nil
 	}
@@ -18,12 +18,12 @@ func BuildFakeSNIPacketV6(original []byte, cfg *config.Config) []byte {
 	tcpHdrLen := int((original[ipv6HdrLen+12] >> 4) * 4)
 
 	var fakePayload []byte
-	switch cfg.Bypass.Faking.SNIType {
+	switch cfg.Faking.SNIType {
 	case config.FakePayloadRandom:
 		fakePayload = make([]byte, 1200)
 		rand.Read(fakePayload)
 	case config.FakePayloadCustom:
-		fakePayload = []byte(cfg.Bypass.Faking.CustomPayload)
+		fakePayload = []byte(cfg.Faking.CustomPayload)
 	default:
 		fakePayload = FakeSNIOld
 	}
@@ -37,17 +37,17 @@ func BuildFakeSNIPacketV6(original []byte, cfg *config.Config) []byte {
 	payloadLen := tcpHdrLen + len(fakePayload)
 	binary.BigEndian.PutUint16(fake[4:6], uint16(payloadLen))
 
-	off := cfg.Bypass.Faking.SeqOffset
+	off := cfg.Faking.SeqOffset
 	if off <= 0 {
 		off = 10000
 	}
 
-	switch cfg.Bypass.Faking.Strategy {
+	switch cfg.Faking.Strategy {
 	case "ttl":
 		// IPv6 uses hop limit (byte 7) instead of TTL
-		fake[7] = cfg.Bypass.Faking.TTL
+		fake[7] = cfg.Faking.TTL
 	case "pastseq":
-		off := uint32(cfg.Bypass.Faking.SeqOffset)
+		off := uint32(cfg.Faking.SeqOffset)
 		if off == 0 {
 			off = 8192
 		}
@@ -55,13 +55,13 @@ func BuildFakeSNIPacketV6(original []byte, cfg *config.Config) []byte {
 		binary.BigEndian.PutUint32(fake[ipv6HdrLen+4:ipv6HdrLen+8], seq-off)
 	case "randseq":
 		dlen := len(original) - ipv6HdrLen - tcpHdrLen
-		if cfg.Bypass.Faking.SeqOffset == 0 {
+		if cfg.Faking.SeqOffset == 0 {
 			var r [4]byte
 			rand.Read(r[:])
 			binary.BigEndian.PutUint32(fake[ipv6HdrLen+4:ipv6HdrLen+8], binary.BigEndian.Uint32(r[:]))
 		} else {
 			seq := binary.BigEndian.Uint32(fake[ipv6HdrLen+4 : ipv6HdrLen+8])
-			off := uint32(cfg.Bypass.Faking.SeqOffset) + uint32(dlen)
+			off := uint32(cfg.Faking.SeqOffset) + uint32(dlen)
 			binary.BigEndian.PutUint32(fake[ipv6HdrLen+4:ipv6HdrLen+8], seq-off)
 		}
 	case "tcp_check":
@@ -70,7 +70,7 @@ func BuildFakeSNIPacketV6(original []byte, cfg *config.Config) []byte {
 
 	FixTCPChecksumV6(fake)
 
-	if cfg.Bypass.Faking.Strategy == "tcp_check" {
+	if cfg.Faking.Strategy == "tcp_check" {
 		fake[ipv6HdrLen+16] ^= 0xFF
 	}
 

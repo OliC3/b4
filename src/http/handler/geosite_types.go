@@ -15,8 +15,6 @@ type ConfigResponse struct {
 
 // DomainStatistics provides overview of domain configuration
 type DomainStatistics struct {
-	ManualDomains     int            `json:"manual_domains"`
-	GeositeDomains    int            `json:"geosite_domains"`
 	TotalDomains      int            `json:"total_domains"`
 	CategoryBreakdown map[string]int `json:"category_breakdown,omitempty"`
 	GeositeAvailable  bool           `json:"geosite_available"`

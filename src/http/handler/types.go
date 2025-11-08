@@ -11,5 +11,4 @@ type API struct {
 	cfg            *config.Config
 	mux            *http.ServeMux
 	geodataManager *geodat.GeodataManager
-	manualDomains  []string // Track manually added domains
 }

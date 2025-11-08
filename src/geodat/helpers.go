@@ -4,9 +4,9 @@ import (
 	"github.com/urlesistiana/v2dat/v2data"
 )
 
-// LoadDomainsFromSites loads domains from geodata file for specified sites
-func LoadDomainsFromSites(geodataPath string, sites []string) ([]string, error) {
-	if geodataPath == "" || len(sites) == 0 {
+// LoadDomainsFromCategories loads domains from geodata file for specified categories
+func LoadDomainsFromCategories(geodataPath string, categories []string) ([]string, error) {
+	if geodataPath == "" || len(categories) == 0 {
 		return nil, nil
 	}
 
@@ -24,8 +24,8 @@ func LoadDomainsFromSites(geodataPath string, sites []string) ([]string, error) 
 		return nil
 	}
 
-	// Stream and process each site
-	if err := streamGeoSite(geodataPath, sites, save); err != nil {
+	// Stream and process each category
+	if err := streamGeoSite(geodataPath, categories, save); err != nil {
 		return nil, err
 	}
 

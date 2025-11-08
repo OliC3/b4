@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/daniellavrushin/b4/config"
-	"github.com/daniellavrushin/b4/geodat"
 	b4http "github.com/daniellavrushin/b4/http"
 	"github.com/daniellavrushin/b4/http/handler"
 	"github.com/daniellavrushin/b4/log"
@@ -103,43 +102,20 @@ func runB4(cmd *cobra.Command, args []string) error {
 		metrics.RecordEvent("info", fmt.Sprintf("Web server started on port %d", cfg.System.WebServer.Port))
 	}
 
-	// Load domains from geodata if specified
+	// Load domains
+	_, totalDomains, err := cfg.LoadDomains()
+	if err != nil {
+		metrics.RecordEvent("error", fmt.Sprintf("Failed to load domains: %v", err))
+		return fmt.Errorf("failed to load domains: %w", err)
+	}
 
-	// Initialize GeodataManager
-	geodataManager := geodat.NewGeodataManager(cfg.Domains.GeoSitePath, cfg.Domains.GeoIpPath)
-
-	var allDomains []string
-	manualDomains := cfg.Domains.SNIDomains // These are the user's manual domains
-
-	if cfg.Domains.GeoSitePath != "" && len(cfg.Domains.GeoSiteCategories) > 0 {
-		log.Infof("Loading domains from geodata for categories: %v", cfg.Domains.GeoSiteCategories)
-
-		geositeDomains, categoryStats, err := geodataManager.LoadCategories(cfg.Domains.GeoSiteCategories)
-		if err != nil {
-			metrics.RecordEvent("error", fmt.Sprintf("Failed to load geodata: %v", err))
-			return fmt.Errorf("failed to load geodata domains: %w", err)
-		}
-
-		// Log category breakdown
-		log.Tracef("Loaded %d domains from geodata:", len(geositeDomains))
-		for category, count := range categoryStats {
-			log.Tracef("  - %s: %d domains", category, count)
-		}
-		metrics.RecordEvent("info", fmt.Sprintf("Loaded %d domains from geodata", len(geositeDomains)))
-
-		// Combine for matching
-		allDomains = make([]string, 0, len(manualDomains)+len(geositeDomains))
-		allDomains = append(allDomains, manualDomains...)
-		allDomains = append(allDomains, geositeDomains...)
-
-		log.Infof("Total domains for matching: %d (manual: %d, geosite: %d)",
-			len(allDomains), len(manualDomains), len(geositeDomains))
+	if totalDomains == 0 {
+		log.Warnf("No domains configured in any set, B4 will not process any traffic")
 	} else {
-		// No geosite categories, just use manual domains
-		allDomains = manualDomains
-		if len(manualDomains) > 0 {
-			log.Infof("Using %d manual SNI domains for matching", len(manualDomains))
+		for _, set := range cfg.Sets {
+			log.Infof("Set '%s': %d domains", set.Name, len(set.Domains.DomainsToMatch))
 		}
+		log.Infof("Total: %d domains across %d sets", totalDomains, len(cfg.Sets))
 	}
 
 	// Setup iptables/nftables rules
@@ -160,7 +136,7 @@ func runB4(cmd *cobra.Command, args []string) error {
 
 	// Start netfilter queue pool
 	log.Infof("Starting netfilter queue pool (queue: %d, threads: %d)", cfg.Queue.StartNum, cfg.Queue.Threads)
-	pool := nfq.NewPool(&cfg, &allDomains)
+	pool := nfq.NewPool(&cfg)
 	if err := pool.Start(); err != nil {
 		metrics.RecordEvent("error", fmt.Sprintf("NFQueue start failed: %v", err))
 		metrics.NFQueueStatus = "error"

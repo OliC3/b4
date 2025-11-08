@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/daniellavrushin/b4/geodat"
 	"github.com/daniellavrushin/b4/log"
@@ -38,19 +39,31 @@ func (a *API) addGeositeDomain(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
+	req.Domain = normalizeDomain(req.Domain)
+
+	if req.SetId == "" {
+		http.Error(w, "Set ID cannot be empty", http.StatusBadRequest)
+		return
+	}
+
+	set := a.cfg.GetSetById(req.SetId)
+	if set == nil {
+		http.Error(w, fmt.Sprintf("Set with ID '%s' not found", req.SetId), http.StatusBadRequest)
+		return
+	}
 
 	if req.Domain == "" {
 		http.Error(w, "Domain cannot be empty", http.StatusBadRequest)
 		return
 	}
 
-	for _, existingDomain := range a.manualDomains {
+	for _, existingDomain := range set.Domains.SNIDomains {
 		if existingDomain == req.Domain {
 			response := AddDomainResponse{
 				Success:      false,
-				Message:      fmt.Sprintf("Domain '%s' already exists in manual domains", req.Domain),
+				Message:      fmt.Sprintf("Domain '%s' already exists in domains list", req.Domain),
 				Domain:       req.Domain,
-				TotalDomains: len(a.manualDomains),
+				TotalDomains: len(set.Domains.DomainsToMatch),
 			}
 			setJsonHeader(w)
 			w.WriteHeader(http.StatusConflict)
@@ -59,20 +72,22 @@ func (a *API) addGeositeDomain(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	a.manualDomains = append(a.manualDomains, req.Domain)
-	log.Infof("Added domain '%s' to manual domains list", req.Domain)
+	set.Domains.SNIDomains = append(set.Domains.SNIDomains, req.Domain)
+	log.Infof("Added domain '%s' to set '%s' domains list", req.Domain, set.Id)
 
-	a.cfg.Domains.SNIDomains = make([]string, len(a.manualDomains))
-	copy(a.cfg.Domains.SNIDomains, a.manualDomains)
-
-	stats := a.applyDomainChanges()
+	stats, err := a.applyDomainChanges(set)
+	if err != nil {
+		log.Errorf("Failed to apply domain changes after adding domain: %v", err)
+		http.Error(w, "Failed to apply domain changes: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	response := AddDomainResponse{
 		Success:       true,
 		Message:       fmt.Sprintf("Successfully added domain '%s'", req.Domain),
 		Domain:        req.Domain,
 		TotalDomains:  stats.TotalDomains,
-		ManualDomains: a.manualDomains,
+		ManualDomains: set.Domains.SNIDomains,
 	}
 
 	setJsonHeader(w)
@@ -142,4 +157,14 @@ func (a *API) previewGeoCategory(w http.ResponseWriter, r *http.Request) {
 	setJsonHeader(w)
 	enc := json.NewEncoder(w)
 	_ = enc.Encode(response)
+}
+
+func normalizeDomain(domain string) string {
+	domain = strings.TrimSpace(domain)              // Remove surrounding whitespace
+	domain = strings.ToLower(domain)                // Normalize case
+	domain = strings.TrimPrefix(domain, "http://")  // Remove scheme
+	domain = strings.TrimPrefix(domain, "https://") // Remove scheme
+	domain = strings.SplitN(domain, "/", 2)[0]      // Remove path
+	domain = strings.SplitN(domain, ":", 2)[0]      // Remove port
+	return domain
 }

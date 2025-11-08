@@ -8,6 +8,7 @@ import (
 	"github.com/daniellavrushin/b4/geodat"
 	"github.com/daniellavrushin/b4/log"
 	"github.com/daniellavrushin/b4/nfq"
+	"github.com/daniellavrushin/b4/utils"
 )
 
 // These variables are set at build time via ldflags
@@ -31,11 +32,22 @@ func SetNFQPool(pool *nfq.Pool) {
 
 func NewAPIHandler(cfg *config.Config) *API {
 	// Initialize geodata manager
-	geodataManager := geodat.NewGeodataManager(cfg.Domains.GeoSitePath, cfg.Domains.GeoIpPath)
+	geodataManager := geodat.NewGeodataManager(cfg.System.Geo.GeoSitePath, cfg.System.Geo.GeoIpPath)
 
 	// Preload categories if configured
-	if cfg.Domains.GeoSitePath != "" && len(cfg.Domains.GeoSiteCategories) > 0 {
-		_, err := geodataManager.PreloadCategories(cfg.Domains.GeoSiteCategories)
+
+	geoCategories := []string{}
+	if len(cfg.Sets) > 0 {
+		for _, set := range cfg.Sets {
+			if len(set.Domains.GeoSiteCategories) > 0 {
+				geoCategories = append(geoCategories, set.Domains.GeoSiteCategories...)
+			}
+		}
+	}
+	geoCategories = utils.FilterUniqueStrings(geoCategories)
+
+	if cfg.System.Geo.GeoSitePath != "" && len(geoCategories) > 0 {
+		_, err := geodataManager.PreloadCategories(geoCategories)
 		if err != nil {
 			log.Errorf("Failed to preload categories: %v", err)
 		}
@@ -43,7 +55,6 @@ func NewAPIHandler(cfg *config.Config) *API {
 
 	return &API{
 		cfg:            cfg,
-		manualDomains:  append([]string{}, cfg.Domains.SNIDomains...), // Copy manual domains
 		geodataManager: geodataManager,
 	}
 }
@@ -52,7 +63,7 @@ func (api *API) RegisterEndpoints(mux *http.ServeMux, cfg *config.Config) {
 	api.cfg = cfg
 	api.mux = mux
 
-	api.geodataManager.UpdatePaths(cfg.Domains.GeoSitePath, cfg.Domains.GeoIpPath)
+	api.geodataManager.UpdatePaths(cfg.System.Geo.GeoSitePath, cfg.System.Geo.GeoIpPath)
 
 	api.RegisterConfigApi()
 	api.RegisterMetricsApi()

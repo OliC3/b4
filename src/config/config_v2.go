@@ -10,17 +10,55 @@ import (
 type Config struct {
 	ConfigPath string `json:"-" bson:"-"`
 
-	// Netfilter Queue Configuration
-	Queue QueueConfig `json:"queue" bson:"queue"`
+	Queue   QueueConfig  `json:"queue" bson:"queue"`
+	MainSet *SetConfig   `json:"-" bson:"-"`
+	System  SystemConfig `json:"system" bson:"system"`
+	Sets    []*SetConfig `json:"sets" bson:"sets"`
+}
 
-	// DPI Bypass Configuration
-	Bypass BypassConfig `json:"bypass" bson:"bypass"`
+var DefaultSetConfig = SetConfig{
+	Id:   "04a6b092-6900-4933-8c76-543a0d18d5e6",
+	Name: "default",
 
-	// Domain Filtering Configuration
-	Domains DomainsConfig `json:"domains" bson:"domains"`
+	UDP: UDPConfig{
+		Mode:           "fake",
+		FakeSeqLength:  6,
+		FakeLen:        64,
+		FakingStrategy: "none",
+		DPortMin:       0,
+		DPortMax:       0,
+		FilterQUIC:     "disabled",
+		FilterSTUN:     true,
+		ConnBytesLimit: 8,
+	},
 
-	// System Configuration
-	System SystemConfig `json:"system" bson:"system"`
+	TCP: TCPConfig{
+		ConnBytesLimit: 19,
+		Seg2Delay:      0,
+	},
+
+	Fragmentation: FragmentationConfig{
+		Strategy:    "tcp",
+		SNIReverse:  true,
+		MiddleSNI:   true,
+		SNIPosition: 1,
+	},
+
+	Faking: FakingConfig{
+		SNI:           true,
+		TTL:           8,
+		SNISeqLength:  1,
+		SNIType:       FakePayloadDefault,
+		CustomPayload: "",
+		Strategy:      "pastseq",
+		SeqOffset:     10000,
+	},
+
+	Domains: DomainsConfig{
+		SNIDomains:        []string{},
+		GeoSiteCategories: []string{},
+		GeoIpCategories:   []string{},
+	},
 }
 
 var DefaultConfig = Config{
@@ -34,51 +72,16 @@ var DefaultConfig = Config{
 		IPv6Enabled: false,
 	},
 
-	Bypass: BypassConfig{
-		TCP: TCPConfig{
-			ConnBytesLimit: 19,
-			Seg2Delay:      0,
-		},
+	Sets: []*SetConfig{},
 
-		UDP: UDPConfig{
-			Mode:           "fake",
-			FakeSeqLength:  6,
-			FakeLen:        64,
-			FakingStrategy: "none",
-			DPortMin:       0,
-			DPortMax:       0,
-			FilterQUIC:     "disabled",
-			FilterSTUN:     true,
-			ConnBytesLimit: 8,
-		},
-
-		Fragmentation: FragmentationConfig{
-			Strategy:    "tcp",
-			SNIReverse:  true,
-			MiddleSNI:   true,
-			SNIPosition: 1,
-		},
-
-		Faking: FakingConfig{
-			SNI:           true,
-			TTL:           8,
-			SNISeqLength:  1,
-			SNIType:       FakePayloadDefault,
-			CustomPayload: "",
-			Strategy:      "pastseq",
-			SeqOffset:     10000,
-		},
-	},
-
-	Domains: DomainsConfig{
-		GeoSitePath:       "",
-		GeoIpPath:         "",
-		SNIDomains:        []string{},
-		GeoSiteCategories: []string{},
-		GeoIpCategories:   []string{},
-	},
+	MainSet: &DefaultSetConfig,
 
 	System: SystemConfig{
+		Geo: GeoDatConfig{
+			GeoSitePath: "",
+			GeoIpPath:   "",
+		},
+
 		Tables: TablesConfig{
 			MonitorInterval: 10,
 			SkipSetup:       false,

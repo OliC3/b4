@@ -21,7 +21,6 @@ type Worker struct {
 	cancel           context.CancelFunc
 	q                *nfqueue.Nfqueue
 	wg               sync.WaitGroup
-	mu               sync.Mutex
 	matcher          atomic.Value
 	sock             *sock.Sender
 }

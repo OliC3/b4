@@ -16,6 +16,7 @@ type StartCheckResponse struct {
 
 type AddDomainRequest struct {
 	Domain string `json:"domain"`
+	SetId  string `json:"set_id"`
 }
 
 type AddDomainResponse struct {

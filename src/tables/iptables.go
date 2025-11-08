@@ -210,8 +210,8 @@ func (manager *IPTablesManager) buildManifest() (Manifest, error) {
 			Rule{manager: manager, IPT: ipt, Table: "mangle", Chain: chainName, Action: "I", Spec: []string{"-m", "mark", "--mark", markAccept, "-j", "RETURN"}},
 		)
 
-		tcpConnbytesRange := fmt.Sprintf("0:%d", cfg.Bypass.TCP.ConnBytesLimit)
-		udpConnbytesRange := fmt.Sprintf("0:%d", cfg.Bypass.UDP.ConnBytesLimit)
+		tcpConnbytesRange := fmt.Sprintf("0:%d", cfg.MainSet.TCP.ConnBytesLimit)
+		udpConnbytesRange := fmt.Sprintf("0:%d", cfg.MainSet.UDP.ConnBytesLimit)
 
 		tcpSpec := append(
 			[]string{"-p", "tcp", "--dport", "443",

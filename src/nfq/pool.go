@@ -10,7 +10,7 @@ import (
 	"github.com/daniellavrushin/b4/sni"
 )
 
-func NewWorkerWithQueue(cfg *config.Config, domains *[]string, qnum uint16) *Worker {
+func NewWorkerWithQueue(cfg *config.Config, qnum uint16) *Worker {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	w := &Worker{
@@ -20,12 +20,12 @@ func NewWorkerWithQueue(cfg *config.Config, domains *[]string, qnum uint16) *Wor
 	}
 
 	w.cfg.Store(cfg)
-	w.rebuildMatcher(*domains)
+	w.rebuildMatcher(cfg)
 
 	return w
 }
 
-func NewPool(cfg *config.Config, domains *[]string) *Pool {
+func NewPool(cfg *config.Config) *Pool {
 	threads := cfg.Queue.Threads
 	start := uint16(cfg.Queue.StartNum)
 	if threads < 1 {
@@ -33,7 +33,7 @@ func NewPool(cfg *config.Config, domains *[]string) *Pool {
 	}
 	ws := make([]*Worker, 0, threads)
 	for i := 0; i < threads; i++ {
-		ws = append(ws, NewWorkerWithQueue(cfg, domains, start+uint16(i)))
+		ws = append(ws, NewWorkerWithQueue(cfg, start+uint16(i)))
 	}
 	return &Pool{workers: ws}
 }
@@ -54,7 +54,7 @@ func (p *Pool) Stop() {
 	var wg sync.WaitGroup
 	for _, w := range p.workers {
 		wg.Add(1)
-		worker := w // capture loop variable
+		worker := w
 		go func() {
 			defer wg.Done()
 			worker.Stop()
@@ -83,26 +83,34 @@ func (w *Worker) getMatcher() *sni.SuffixSet {
 	return w.matcher.Load().(*sni.SuffixSet)
 }
 
-func (w *Worker) UpdateConfig(newCfg *config.Config, allDomains []string) {
+func (w *Worker) UpdateConfig(newCfg *config.Config) {
 	w.cfg.Store(newCfg)
-	w.rebuildMatcher(allDomains)
+	w.rebuildMatcher(newCfg)
 }
 
-func (w *Worker) rebuildMatcher(domains []string) {
+func (w *Worker) rebuildMatcher(cfg *config.Config) {
 	var m *sni.SuffixSet
-	if len(domains) > 0 {
-		m = sni.NewSuffixSet(domains)
-		log.Tracef("Built matcher with %d domains", len(domains))
+	if len(cfg.Sets) > 0 {
+		m = sni.NewSuffixSet(cfg.Sets)
+		totalDomains := 0
+		for _, set := range cfg.Sets {
+			totalDomains += len(set.Domains.SNIDomains)
+		}
+		log.Tracef("Built matcher with %d domains across %d sets", totalDomains, len(cfg.Sets))
 	} else {
-		m = sni.NewSuffixSet([]string{})
+		m = sni.NewSuffixSet([]*config.SetConfig{})
 		log.Tracef("Built empty matcher")
 	}
 	w.matcher.Store(m)
 }
 
-func (p *Pool) UpdateConfig(newCfg *config.Config, allDomains []string) {
+func (p *Pool) UpdateConfig(newCfg *config.Config) {
 	for _, w := range p.workers {
-		w.UpdateConfig(newCfg, allDomains)
+		w.UpdateConfig(newCfg)
 	}
-	log.Tracef("Updated all %d workers with %d domains for matching", len(p.workers), len(allDomains))
+	totalDomains := 0
+	for _, set := range newCfg.Sets {
+		totalDomains += len(set.Domains.SNIDomains)
+	}
+	log.Tracef("Updated all %d workers with %d domains", len(p.workers), totalDomains)
 }

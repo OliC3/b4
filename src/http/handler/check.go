@@ -7,6 +7,7 @@ import (
 
 	"github.com/daniellavrushin/b4/checker"
 	"github.com/daniellavrushin/b4/log"
+	"github.com/daniellavrushin/b4/utils"
 )
 
 func (api *API) RegisterCheckApi() {
@@ -36,15 +37,16 @@ func (api *API) handleStartCheck(w http.ResponseWriter, r *http.Request) {
 		req.MaxConcurrent = chckCfg.MaxConcurrent
 	}
 
-	seen := make(map[string]bool)
 	domains := []string{}
-
-	for _, d := range append(chckCfg.Domains, api.cfg.Domains.SNIDomains...) {
-		if !seen[d] {
-			seen[d] = true
-			domains = append(domains, d)
+	if len(api.cfg.Sets) > 0 {
+		for _, set := range api.cfg.Sets {
+			if len(set.Domains.SNIDomains) > 0 {
+				domains = append(domains, set.Domains.SNIDomains...)
+			}
 		}
 	}
+	domains = append(domains, chckCfg.Domains...)
+	domains = utils.FilterUniqueStrings(domains)
 
 	if len(domains) == 0 {
 

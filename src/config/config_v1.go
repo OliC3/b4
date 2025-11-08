@@ -18,7 +18,7 @@ type ConfigV1 struct {
 	IPv4Enabled    bool    `json:"ipv4" bson:"ipv4"`
 	IPv6Enabled    bool    `json:"ipv6" bson:"ipv6"`
 
-	Domains       DomainsConfig       `json:"domains" bson:"domains"`
+	Domains       DomainsV1Config     `json:"domains" bson:"domains"`
 	Fragmentation FragmentationConfig `json:"fragmentation" bson:"fragmentation"`
 	Faking        FakingConfig        `json:"faking" bson:"faking"`
 	UDP           UDPConfig           `json:"udp" bson:"udp"`
@@ -27,6 +27,13 @@ type ConfigV1 struct {
 	Tables    TablesConfig    `json:"tables" bson:"tables"`
 
 	Checker CheckerConfig `json:"checker" bson:"checker"`
+}
+type DomainsV1Config struct {
+	GeoSitePath       string   `json:"geosite_path" bson:"geosite_path"`
+	GeoIpPath         string   `json:"geoip_path" bson:"geoip_path"`
+	SNIDomains        []string `json:"sni_domains" bson:"sni_domains"`
+	GeoSiteCategories []string `json:"geosite_categories" bson:"geosite_categories"`
+	GeoIpCategories   []string `json:"geoip_categories" bson:"geoip_categories"`
 }
 
 var DefaultConfigV1 = ConfigV1{
@@ -39,7 +46,7 @@ var DefaultConfigV1 = ConfigV1{
 	IPv4Enabled:    true,
 	IPv6Enabled:    false,
 
-	Domains: DomainsConfig{
+	Domains: DomainsV1Config{
 		GeoSitePath:       "",
 		GeoIpPath:         "",
 		SNIDomains:        []string{},

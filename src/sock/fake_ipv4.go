@@ -7,7 +7,7 @@ import (
 	"github.com/daniellavrushin/b4/config"
 )
 
-func BuildFakeSNIPacketV4(original []byte, cfg *config.Config) []byte {
+func BuildFakeSNIPacketV4(original []byte, cfg *config.SetConfig) []byte {
 	if len(original) < 40 || original[0]>>4 != 4 {
 		return nil
 	}
@@ -16,12 +16,12 @@ func BuildFakeSNIPacketV4(original []byte, cfg *config.Config) []byte {
 	tcpHdrLen := int((original[ipHdrLen+12] >> 4) * 4)
 
 	var fakePayload []byte
-	switch cfg.Bypass.Faking.SNIType {
+	switch cfg.Faking.SNIType {
 	case config.FakePayloadRandom:
 		fakePayload = make([]byte, 1200)
 		rand.Read(fakePayload)
 	case config.FakePayloadCustom:
-		fakePayload = []byte(cfg.Bypass.Faking.CustomPayload)
+		fakePayload = []byte(cfg.Faking.CustomPayload)
 	default:
 		fakePayload = FakeSNIOld
 	}
@@ -33,16 +33,16 @@ func BuildFakeSNIPacketV4(original []byte, cfg *config.Config) []byte {
 
 	binary.BigEndian.PutUint16(fake[2:4], uint16(fakeLen))
 
-	off := cfg.Bypass.Faking.SeqOffset
+	off := cfg.Faking.SeqOffset
 	if off <= 0 {
 		off = 10000
 	}
 
-	switch cfg.Bypass.Faking.Strategy {
+	switch cfg.Faking.Strategy {
 	case "ttl":
-		fake[8] = cfg.Bypass.Faking.TTL
+		fake[8] = cfg.Faking.TTL
 	case "pastseq":
-		off := uint32(cfg.Bypass.Faking.SeqOffset)
+		off := uint32(cfg.Faking.SeqOffset)
 		if off == 0 {
 			off = 8192
 		}
@@ -50,13 +50,13 @@ func BuildFakeSNIPacketV4(original []byte, cfg *config.Config) []byte {
 		binary.BigEndian.PutUint32(fake[ipHdrLen+4:ipHdrLen+8], seq-off)
 	case "randseq":
 		dlen := len(original) - ipHdrLen - tcpHdrLen
-		if cfg.Bypass.Faking.SeqOffset == 0 {
+		if cfg.Faking.SeqOffset == 0 {
 			var r [4]byte
 			rand.Read(r[:])
 			binary.BigEndian.PutUint32(fake[ipHdrLen+4:ipHdrLen+8], binary.BigEndian.Uint32(r[:]))
 		} else {
 			seq := binary.BigEndian.Uint32(fake[ipHdrLen+4 : ipHdrLen+8])
-			off := uint32(cfg.Bypass.Faking.SeqOffset) + uint32(dlen)
+			off := uint32(cfg.Faking.SeqOffset) + uint32(dlen)
 			binary.BigEndian.PutUint32(fake[ipHdrLen+4:ipHdrLen+8], seq-off)
 		}
 	case "tcp_check":
@@ -66,7 +66,7 @@ func BuildFakeSNIPacketV4(original []byte, cfg *config.Config) []byte {
 	FixIPv4Checksum(fake[:ipHdrLen])
 	FixTCPChecksum(fake)
 
-	if cfg.Bypass.Faking.Strategy == "tcp_check" {
+	if cfg.Faking.Strategy == "tcp_check" {
 		fake[ipHdrLen+16] ^= 0xFF
 	}
 

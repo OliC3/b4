@@ -58,7 +58,7 @@ func (gm *GeodataManager) LoadCategory(category string) ([]string, error) {
 		return nil, log.Errorf("geosite path not configured")
 	}
 
-	domains, err := LoadDomainsFromSites(gm.geositePath, []string{category})
+	domains, err := LoadDomainsFromCategories(gm.geositePath, []string{category})
 	if err != nil {
 		return nil, err
 	}

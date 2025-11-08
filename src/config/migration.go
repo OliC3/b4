@@ -36,26 +36,32 @@ func (c *Config) migrateFromV1(old *ConfigV1) {
 	c.Queue.IPv4Enabled = old.IPv4Enabled
 	c.Queue.IPv6Enabled = old.IPv6Enabled
 
-	// TCP bypass settings
-	c.Bypass.TCP.ConnBytesLimit = old.ConnBytesLimit
-	c.Bypass.TCP.Seg2Delay = old.Seg2Delay
-
-	// UDP bypass settings
-	c.Bypass.UDP = old.UDP
-
-	// Fragmentation and Faking
-	c.Bypass.Fragmentation = old.Fragmentation
-	c.Bypass.Faking = old.Faking
-
 	// Domains
-	c.Domains = old.Domains
+	c.Sets = []*SetConfig{
+		{
+			Name: "default",
+			Domains: DomainsConfig{
+				SNIDomains:        old.Domains.SNIDomains,
+				GeoSiteCategories: old.Domains.GeoSiteCategories,
+				GeoIpCategories:   old.Domains.GeoIpCategories,
+			},
+			Fragmentation: old.Fragmentation,
+			Faking:        old.Faking,
+			UDP:           old.UDP,
+			TCP:           TCPConfig{ConnBytesLimit: old.ConnBytesLimit, Seg2Delay: old.Seg2Delay},
+		},
+	}
+	c.MainSet = c.Sets[0]
 
 	// System settings
 	c.System.Tables = old.Tables
 	c.System.Logging = old.Logging
 	c.System.WebServer = old.WebServer
 	c.System.Checker = old.Checker
-
+	c.System.Geo = GeoDatConfig{
+		GeoSitePath: old.Domains.GeoSitePath,
+		GeoIpPath:   old.Domains.GeoIpPath,
+	}
 	c.ConfigPath = old.ConfigPath
 }
 

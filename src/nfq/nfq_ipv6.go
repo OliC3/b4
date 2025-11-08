@@ -10,18 +10,18 @@ import (
 )
 
 // dropAndInjectQUIV6 handles QUIC (UDP) packet manipulation for IPv6
-func (w *Worker) dropAndInjectQUICV6(cfg *config.Config, raw []byte, dst net.IP) {
-	seg2d := cfg.Bypass.TCP.Seg2Delay
-	if cfg.Bypass.UDP.Mode != "fake" {
+func (w *Worker) dropAndInjectQUICV6(cfg *config.SetConfig, raw []byte, dst net.IP) {
+	seg2d := cfg.TCP.Seg2Delay
+	if cfg.UDP.Mode != "fake" {
 		return
 	}
 
 	// Send fake UDP packets
-	if cfg.Bypass.UDP.FakeSeqLength > 0 {
-		for i := 0; i < cfg.Bypass.UDP.FakeSeqLength; i++ {
-			fake, ok := sock.BuildFakeUDPFromOriginalV6(raw, cfg.Bypass.UDP.FakeLen, cfg.Bypass.Faking.TTL)
+	if cfg.UDP.FakeSeqLength > 0 {
+		for i := 0; i < cfg.UDP.FakeSeqLength; i++ {
+			fake, ok := sock.BuildFakeUDPFromOriginalV6(raw, cfg.UDP.FakeLen, cfg.Faking.TTL)
 			if ok {
-				if cfg.Bypass.UDP.FakingStrategy == "checksum" {
+				if cfg.UDP.FakingStrategy == "checksum" {
 					// Corrupt the UDP checksum
 					ipv6HdrLen := 40
 					if len(fake) >= ipv6HdrLen+8 {
@@ -47,7 +47,7 @@ func (w *Worker) dropAndInjectQUICV6(cfg *config.Config, raw []byte, dst net.IP)
 		return
 	}
 
-	if cfg.Bypass.Fragmentation.SNIReverse {
+	if cfg.Fragmentation.SNIReverse {
 		_ = w.sock.SendIPv6(frags[0], dst)
 		if seg2d > 0 {
 			time.Sleep(time.Duration(seg2d) * time.Millisecond)
@@ -63,7 +63,7 @@ func (w *Worker) dropAndInjectQUICV6(cfg *config.Config, raw []byte, dst net.IP)
 }
 
 // dropAndInjectTCPv6 handles TCP packet manipulation for IPv6
-func (w *Worker) dropAndInjectTCPv6(cfg *config.Config, raw []byte, dst net.IP) {
+func (w *Worker) dropAndInjectTCPv6(cfg *config.SetConfig, raw []byte, dst net.IP) {
 	if len(raw) < 60 { // IPv6 header (40) + TCP header (20 min)
 		_ = w.sock.SendIPv6(raw, dst)
 		return
@@ -80,12 +80,12 @@ func (w *Worker) dropAndInjectTCPv6(cfg *config.Config, raw []byte, dst net.IP) 
 	}
 
 	// Inject fake SNI packets if configured
-	if cfg.Bypass.Faking.SNI && cfg.Bypass.Faking.SNISeqLength > 0 {
+	if cfg.Faking.SNI && cfg.Faking.SNISeqLength > 0 {
 		w.sendFakeSNISequencev6(cfg, raw, dst)
 	}
 
 	// Apply fragmentation strategy
-	switch cfg.Bypass.Fragmentation.Strategy {
+	switch cfg.Fragmentation.Strategy {
 	case "tcp":
 		w.sendTCPSegmentsv6(cfg, raw, dst)
 	case "ip":
@@ -97,10 +97,10 @@ func (w *Worker) dropAndInjectTCPv6(cfg *config.Config, raw []byte, dst net.IP) 
 	}
 }
 
-func (w *Worker) sendTCPSegmentsv6(cfg *config.Config, packet []byte, dst net.IP) {
+func (w *Worker) sendTCPSegmentsv6(cfg *config.SetConfig, packet []byte, dst net.IP) {
 	ipv6HdrLen := 40
 	tcpHdrLen := int((packet[ipv6HdrLen+12] >> 4) * 4)
-	seg2d := cfg.Bypass.TCP.Seg2Delay
+	seg2d := cfg.TCP.Seg2Delay
 
 	totalLen := len(packet)
 	payloadStart := ipv6HdrLen + tcpHdrLen
@@ -112,11 +112,11 @@ func (w *Worker) sendTCPSegmentsv6(cfg *config.Config, packet []byte, dst net.IP
 	}
 
 	payload := packet[payloadStart:]
-	p1 := cfg.Bypass.Fragmentation.SNIPosition
+	p1 := cfg.Fragmentation.SNIPosition
 	validP1 := p1 > 0 && p1 < payloadLen
 
 	p2 := -1
-	if cfg.Bypass.Fragmentation.MiddleSNI {
+	if cfg.Fragmentation.MiddleSNI {
 		if s, e, ok := locateSNI(payload); ok && e-s >= 4 {
 			p2 = s + (e-s)/2
 		}
@@ -164,7 +164,7 @@ func (w *Worker) sendTCPSegmentsv6(cfg *config.Config, packet []byte, dst net.IP
 		binary.BigEndian.PutUint16(seg3[4:6], uint16(seg3Len-ipv6HdrLen))
 		sock.FixTCPChecksumV6(seg3)
 
-		if cfg.Bypass.Fragmentation.SNIReverse {
+		if cfg.Fragmentation.SNIReverse {
 			_ = w.sock.SendIPv6(seg2, dst)
 			if seg2d > 0 {
 				time.Sleep(time.Duration(seg2d) * time.Millisecond)
@@ -213,7 +213,7 @@ func (w *Worker) sendTCPSegmentsv6(cfg *config.Config, packet []byte, dst net.IP
 	binary.BigEndian.PutUint16(seg2[4:6], uint16(seg2Len-ipv6HdrLen))
 	sock.FixTCPChecksumV6(seg2)
 
-	if cfg.Bypass.Fragmentation.SNIReverse {
+	if cfg.Fragmentation.SNIReverse {
 		_ = w.sock.SendIPv6(seg2, dst)
 		if seg2d > 0 {
 			time.Sleep(time.Duration(seg2d) * time.Millisecond)
@@ -229,9 +229,9 @@ func (w *Worker) sendTCPSegmentsv6(cfg *config.Config, packet []byte, dst net.IP
 }
 
 // sendIPFragmentsv6 sends packet as IPv6 fragments (IP-level fragmentation)
-func (w *Worker) sendIPFragmentsv6(cfg *config.Config, packet []byte, dst net.IP) {
-	splitPos := cfg.Bypass.Fragmentation.SNIPosition
-	seg2d := cfg.Bypass.TCP.Seg2Delay
+func (w *Worker) sendIPFragmentsv6(cfg *config.SetConfig, packet []byte, dst net.IP) {
+	splitPos := cfg.Fragmentation.SNIPosition
+	seg2d := cfg.TCP.Seg2Delay
 	if splitPos <= 0 || splitPos >= len(packet) {
 		_ = w.sock.SendIPv6(packet, dst)
 		return
@@ -243,7 +243,7 @@ func (w *Worker) sendIPFragmentsv6(cfg *config.Config, packet []byte, dst net.IP
 		return
 	}
 
-	if cfg.Bypass.Fragmentation.SNIReverse {
+	if cfg.Fragmentation.SNIReverse {
 		_ = w.sock.SendIPv6(fragments[1], dst)
 		if seg2d > 0 {
 			time.Sleep(time.Duration(seg2d) * time.Millisecond)
@@ -259,8 +259,8 @@ func (w *Worker) sendIPFragmentsv6(cfg *config.Config, packet []byte, dst net.IP
 }
 
 // sendFakeSNISequencev6 sends a sequence of fake SNI packets for IPv6
-func (w *Worker) sendFakeSNISequencev6(cfg *config.Config, original []byte, dst net.IP) {
-	faking := cfg.Bypass.Faking
+func (w *Worker) sendFakeSNISequencev6(cfg *config.SetConfig, original []byte, dst net.IP) {
+	faking := cfg.Faking
 	if !faking.SNI || faking.SNISeqLength <= 0 {
 		return
 	}

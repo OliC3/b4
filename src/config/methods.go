@@ -7,6 +7,7 @@ import (
 
 	"github.com/daniellavrushin/b4/geodat"
 	"github.com/daniellavrushin/b4/log"
+	"github.com/daniellavrushin/b4/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -71,40 +72,40 @@ func (c *Config) BindFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVar(&c.Queue.IPv6Enabled, "ipv6", c.Queue.IPv6Enabled, "Enable IPv6 processing")
 
 	// TCP bypass configuration
-	cmd.Flags().IntVar(&c.Bypass.TCP.ConnBytesLimit, "connbytes-limit", c.Bypass.TCP.ConnBytesLimit, "TCP connection bytes limit (default 19)")
-	cmd.Flags().IntVar(&c.Bypass.TCP.Seg2Delay, "seg2delay", c.Bypass.TCP.Seg2Delay, "Delay between segments in ms")
+	cmd.Flags().IntVar(&c.MainSet.TCP.ConnBytesLimit, "connbytes-limit", c.MainSet.TCP.ConnBytesLimit, "TCP connection bytes limit (default 19)")
+	cmd.Flags().IntVar(&c.MainSet.TCP.Seg2Delay, "seg2delay", c.MainSet.TCP.Seg2Delay, "Delay between segments in ms")
 
 	// UDP bypass configuration
-	cmd.Flags().StringVar(&c.Bypass.UDP.Mode, "udp-mode", c.Bypass.UDP.Mode, "UDP handling strategy (drop|fake)")
-	cmd.Flags().IntVar(&c.Bypass.UDP.FakeSeqLength, "udp-fake-seq-len", c.Bypass.UDP.FakeSeqLength, "UDP fake packet sequence length")
-	cmd.Flags().IntVar(&c.Bypass.UDP.FakeLen, "udp-fake-len", c.Bypass.UDP.FakeLen, "UDP fake packet size in bytes")
-	cmd.Flags().StringVar(&c.Bypass.UDP.FakingStrategy, "udp-faking-strategy", c.Bypass.UDP.FakingStrategy, "UDP faking strategy (none|ttl|checksum)")
-	cmd.Flags().IntVar(&c.Bypass.UDP.DPortMin, "udp-dport-min", c.Bypass.UDP.DPortMin, "Minimum UDP destination port to handle")
-	cmd.Flags().IntVar(&c.Bypass.UDP.DPortMax, "udp-dport-max", c.Bypass.UDP.DPortMax, "Maximum UDP destination port to handle")
-	cmd.Flags().StringVar(&c.Bypass.UDP.FilterQUIC, "udp-filter-quic", c.Bypass.UDP.FilterQUIC, "QUIC filtering mode (disabled|all|parse)")
-	cmd.Flags().BoolVar(&c.Bypass.UDP.FilterSTUN, "udp-filter-stun", c.Bypass.UDP.FilterSTUN, "STUN filtering mode (disabled|all|parse)")
-	cmd.Flags().IntVar(&c.Bypass.UDP.ConnBytesLimit, "udp-conn-bytes-limit", c.Bypass.UDP.ConnBytesLimit, "UDP connection bytes limit (default 8)")
+	cmd.Flags().StringVar(&c.MainSet.UDP.Mode, "udp-mode", c.MainSet.UDP.Mode, "UDP handling strategy (drop|fake)")
+	cmd.Flags().IntVar(&c.MainSet.UDP.FakeSeqLength, "udp-fake-seq-len", c.MainSet.UDP.FakeSeqLength, "UDP fake packet sequence length")
+	cmd.Flags().IntVar(&c.MainSet.UDP.FakeLen, "udp-fake-len", c.MainSet.UDP.FakeLen, "UDP fake packet size in bytes")
+	cmd.Flags().StringVar(&c.MainSet.UDP.FakingStrategy, "udp-faking-strategy", c.MainSet.UDP.FakingStrategy, "UDP faking strategy (none|ttl|checksum)")
+	cmd.Flags().IntVar(&c.MainSet.UDP.DPortMin, "udp-dport-min", c.MainSet.UDP.DPortMin, "Minimum UDP destination port to handle")
+	cmd.Flags().IntVar(&c.MainSet.UDP.DPortMax, "udp-dport-max", c.MainSet.UDP.DPortMax, "Maximum UDP destination port to handle")
+	cmd.Flags().StringVar(&c.MainSet.UDP.FilterQUIC, "udp-filter-quic", c.MainSet.UDP.FilterQUIC, "QUIC filtering mode (disabled|all|parse)")
+	cmd.Flags().BoolVar(&c.MainSet.UDP.FilterSTUN, "udp-filter-stun", c.MainSet.UDP.FilterSTUN, "STUN filtering mode (disabled|all|parse)")
+	cmd.Flags().IntVar(&c.MainSet.UDP.ConnBytesLimit, "udp-conn-bytes-limit", c.MainSet.UDP.ConnBytesLimit, "UDP connection bytes limit (default 8)")
 
 	// Fragmentation configuration
-	cmd.Flags().StringVar(&c.Bypass.Fragmentation.Strategy, "frag", c.Bypass.Fragmentation.Strategy, "Fragmentation strategy (tcp|ip|none)")
-	cmd.Flags().BoolVar(&c.Bypass.Fragmentation.SNIReverse, "frag-sni-reverse", c.Bypass.Fragmentation.SNIReverse, "Reverse fragment order")
-	cmd.Flags().BoolVar(&c.Bypass.Fragmentation.MiddleSNI, "frag-middle-sni", c.Bypass.Fragmentation.MiddleSNI, "Fragment in middle of SNI")
-	cmd.Flags().IntVar(&c.Bypass.Fragmentation.SNIPosition, "frag-sni-pos", c.Bypass.Fragmentation.SNIPosition, "SNI fragment position")
+	cmd.Flags().StringVar(&c.MainSet.Fragmentation.Strategy, "frag", c.MainSet.Fragmentation.Strategy, "Fragmentation strategy (tcp|ip|none)")
+	cmd.Flags().BoolVar(&c.MainSet.Fragmentation.SNIReverse, "frag-sni-reverse", c.MainSet.Fragmentation.SNIReverse, "Reverse fragment order")
+	cmd.Flags().BoolVar(&c.MainSet.Fragmentation.MiddleSNI, "frag-middle-sni", c.MainSet.Fragmentation.MiddleSNI, "Fragment in middle of SNI")
+	cmd.Flags().IntVar(&c.MainSet.Fragmentation.SNIPosition, "frag-sni-pos", c.MainSet.Fragmentation.SNIPosition, "SNI fragment position")
 
 	// Faking configuration
-	cmd.Flags().StringVar(&c.Bypass.Faking.Strategy, "fake-strategy", c.Bypass.Faking.Strategy, "Faking strategy (ttl|randseq|pastseq|tcp_check|md5sum)")
-	cmd.Flags().Uint8Var(&c.Bypass.Faking.TTL, "fake-ttl", c.Bypass.Faking.TTL, "TTL for fake packets")
-	cmd.Flags().Int32Var(&c.Bypass.Faking.SeqOffset, "fake-seq-offset", c.Bypass.Faking.SeqOffset, "Sequence offset for fake packets")
-	cmd.Flags().BoolVar(&c.Bypass.Faking.SNI, "fake-sni", c.Bypass.Faking.SNI, "Enable fake SNI packets")
-	cmd.Flags().IntVar(&c.Bypass.Faking.SNISeqLength, "fake-sni-len", c.Bypass.Faking.SNISeqLength, "Length of fake SNI sequence")
-	cmd.Flags().IntVar(&c.Bypass.Faking.SNIType, "fake-sni-type", c.Bypass.Faking.SNIType, "Type of fake SNI payload (0=random, 1=custom, 2=default)")
+	cmd.Flags().StringVar(&c.MainSet.Faking.Strategy, "fake-strategy", c.MainSet.Faking.Strategy, "Faking strategy (ttl|randseq|pastseq|tcp_check|md5sum)")
+	cmd.Flags().Uint8Var(&c.MainSet.Faking.TTL, "fake-ttl", c.MainSet.Faking.TTL, "TTL for fake packets")
+	cmd.Flags().Int32Var(&c.MainSet.Faking.SeqOffset, "fake-seq-offset", c.MainSet.Faking.SeqOffset, "Sequence offset for fake packets")
+	cmd.Flags().BoolVar(&c.MainSet.Faking.SNI, "fake-sni", c.MainSet.Faking.SNI, "Enable fake SNI packets")
+	cmd.Flags().IntVar(&c.MainSet.Faking.SNISeqLength, "fake-sni-len", c.MainSet.Faking.SNISeqLength, "Length of fake SNI sequence")
+	cmd.Flags().IntVar(&c.MainSet.Faking.SNIType, "fake-sni-type", c.MainSet.Faking.SNIType, "Type of fake SNI payload (0=random, 1=custom, 2=default)")
 
 	// Domain filtering
-	cmd.Flags().StringSliceVar(&c.Domains.SNIDomains, "sni-domains", c.Domains.SNIDomains, "List of SNI domains to match")
-	cmd.Flags().StringVar(&c.Domains.GeoSitePath, "geosite", c.Domains.GeoSitePath, "Path to geosite file (e.g., geosite.dat)")
-	cmd.Flags().StringVar(&c.Domains.GeoIpPath, "geoip", c.Domains.GeoIpPath, "Path to geoip file (e.g., geoip.dat)")
-	cmd.Flags().StringSliceVar(&c.Domains.GeoSiteCategories, "geosite-categories", c.Domains.GeoSiteCategories, "Geographic categories to process (e.g., youtube,facebook,amazon)")
-	cmd.Flags().StringSliceVar(&c.Domains.GeoIpCategories, "geoip-categories", c.Domains.GeoIpCategories, "Geographic categories to process (e.g., youtube,facebook,amazon)")
+	cmd.Flags().StringSliceVar(&c.MainSet.Domains.SNIDomains, "sni-domains", c.MainSet.Domains.SNIDomains, "List of SNI domains to match")
+	cmd.Flags().StringVar(&c.System.Geo.GeoSitePath, "geosite", c.System.Geo.GeoSitePath, "Path to geosite file (e.g., geosite.dat)")
+	cmd.Flags().StringVar(&c.System.Geo.GeoIpPath, "geoip", c.System.Geo.GeoIpPath, "Path to geoip file (e.g., geoip.dat)")
+	cmd.Flags().StringSliceVar(&c.MainSet.Domains.GeoSiteCategories, "geosite-categories", c.MainSet.Domains.GeoSiteCategories, "Geographic categories to process (e.g., youtube,facebook,amazon)")
+	cmd.Flags().StringSliceVar(&c.MainSet.Domains.GeoIpCategories, "geoip-categories", c.MainSet.Domains.GeoIpCategories, "Geographic categories to process (e.g., youtube,facebook,amazon)")
 
 	// System configuration
 	cmd.Flags().IntVar(&c.System.Tables.MonitorInterval, "tables-monitor-interval", c.System.Tables.MonitorInterval, "Tables monitor interval in seconds (default 10, 0 to disable)")
@@ -136,7 +137,7 @@ func (cfg *Config) ApplyLogLevel(level string) {
 func (c *Config) Validate() error {
 	c.System.WebServer.IsEnabled = c.System.WebServer.Port > 0 && c.System.WebServer.Port <= 65535
 
-	if len(c.Domains.GeoSiteCategories) > 0 && c.Domains.GeoSitePath == "" {
+	if len(c.MainSet.Domains.GeoSiteCategories) > 0 && c.System.Geo.GeoSitePath == "" {
 		return fmt.Errorf("--geosite must be specified when using --geo-categories")
 	}
 
@@ -148,6 +149,24 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("queue-num must be between 0 and 65535")
 	}
 
+	if len(c.Sets) > 1 {
+		for index, set := range c.Sets {
+			if set.Id == "" {
+				return fmt.Errorf("each set must have a unique non-empty ID")
+			}
+
+			if index > 1 {
+				if set.TCP.ConnBytesLimit > c.MainSet.TCP.ConnBytesLimit {
+					return fmt.Errorf("set '%s' has TCP ConnBytesLimit greater than main set", set.Name)
+				}
+
+				if set.UDP.ConnBytesLimit > c.MainSet.UDP.ConnBytesLimit {
+					return fmt.Errorf("set '%s' has UDP ConnBytesLimit greater than main set", set.Name)
+				}
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -155,6 +174,89 @@ func (c *Config) LogString() string {
 	return ""
 }
 
-func (c *Config) LoadDomainsFromGeodata() ([]string, error) {
-	return geodat.LoadDomainsFromSites(c.Domains.GeoSitePath, c.Domains.GeoSiteCategories)
+// LoadDomains returns all domains from all sets grouped by set name
+func (c *Config) LoadDomains() ([]*SetConfig, int, error) {
+	result := make([]*SetConfig, 0, len(c.Sets))
+	totalDomains := 0
+
+	// Process all sets
+	for _, set := range c.Sets {
+		domains, err := c.GetDomainsForSet(set)
+		if err != nil {
+			return nil, -1, fmt.Errorf("failed to load domains for set '%s': %w", set.Name, err)
+		}
+		if len(domains) > 0 {
+			result = append(result, set)
+			totalDomains += len(domains)
+		}
+	}
+
+	// If no sets have domains, use MainSet as fallback
+	if len(result) == 0 && c.MainSet != nil {
+		domains, err := c.GetDomainsForSet(c.MainSet)
+		if err != nil {
+			return nil, -1, fmt.Errorf("failed to load domains for main set: %w", err)
+		}
+		if len(domains) > 0 {
+			result = append(result, c.MainSet)
+			totalDomains += len(domains)
+		}
+	}
+
+	return result, totalDomains, nil
+}
+
+// GetDomainsForSet loads domains for a specific set, combining geosite and manual domains
+func (c *Config) GetDomainsForSet(set *SetConfig) ([]string, error) {
+
+	domains := []string{}
+
+	if len(set.Domains.GeoSiteCategories) > 0 && c.System.Geo.GeoSitePath != "" {
+		geoDomains, err := geodat.LoadDomainsFromCategories(
+			c.System.Geo.GeoSitePath,
+			set.Domains.GeoSiteCategories,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load geosite domains for set '%s': %w", set.Name, err)
+		}
+
+		if len(geoDomains) > 0 {
+			domains = append(domains, geoDomains...)
+		}
+	}
+
+	if len(set.Domains.SNIDomains) > 0 {
+		domains = append(domains, set.Domains.SNIDomains...)
+	}
+
+	if len(domains) > 0 {
+		set.Domains.DomainsToMatch = utils.FilterUniqueStrings(domains)
+		return set.Domains.DomainsToMatch, nil
+	}
+
+	return nil, nil
+}
+
+func (c *Config) GetSetById(id string) *SetConfig {
+	for _, set := range c.Sets {
+		if set.Id == id {
+			return set
+		}
+	}
+	return nil
+}
+
+func (set *SetConfig) ResetToDefaults() {
+	defaultSet := DefaultSetConfig
+
+	// Preserve data
+	id := set.Id
+	name := set.Name
+	domains := set.Domains
+
+	*set = defaultSet
+
+	set.Id = id
+	set.Name = name
+	set.Domains = domains
 }

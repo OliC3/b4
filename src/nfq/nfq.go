@@ -56,8 +56,7 @@ func (w *Worker) Start() error {
 		defer w.wg.Done()
 		_ = q.RegisterWithErrorFunc(w.ctx, func(a nfqueue.Attribute) int {
 			cfg := w.getConfig()
-
-			udpCfg := &cfg.Bypass.UDP
+			set := cfg.MainSet
 
 			matcher := w.getMatcher()
 			id := *a.PacketID
@@ -152,10 +151,11 @@ func (w *Worker) Start() error {
 					host, ok := sni.ParseTLSClientHelloSNI(payload)
 
 					if ok {
-						matched := matcher.Match(host)
+						matched, st := matcher.Match(host) // Now returns (bool, *config.SetConfig)
 						target := ""
 						if matched {
 							target = labelTarget
+							set = st
 						}
 
 						metrics := metrics.GetMetricsCollector()
@@ -165,11 +165,11 @@ func (w *Worker) Start() error {
 						log.Infof("SNI TCP%v: %s %s:%d -> %s:%d", target, host, src.String(), sport, dst.String(), dport)
 
 						if matched {
-							// This is the SNI packet itself - fragment with fake
+
 							if v == 4 {
-								w.dropAndInjectTCP(cfg, raw, dst)
+								w.dropAndInjectTCP(set, raw, dst)
 							} else {
-								w.dropAndInjectTCPv6(cfg, raw, dst)
+								w.dropAndInjectTCPv6(set, raw, dst)
 							}
 							_ = q.SetVerdict(id, nfqueue.NfDrop)
 						} else {
@@ -191,7 +191,7 @@ func (w *Worker) Start() error {
 					sport := binary.BigEndian.Uint16(udp[0:2])
 					dport := binary.BigEndian.Uint16(udp[2:4])
 
-					if cfg.Bypass.UDP.FilterSTUN && stun.IsSTUNMessage(payload) {
+					if cfg.MainSet.UDP.FilterSTUN && stun.IsSTUNMessage(payload) {
 						// Log at TRACE level to avoid spam (STUN is very frequent)
 						log.Tracef("STUN %s:%d -> %s:%d", src.String(), sport, dst.String(), dport)
 						_ = q.SetVerdict(id, nfqueue.NfAccept)
@@ -201,10 +201,11 @@ func (w *Worker) Start() error {
 					host := ""
 					if h, ok := sni.ParseQUICClientHelloSNI(payload); ok {
 						host = h
-						matched := matcher.Match(host)
+						matched, st := matcher.Match(host)
 						target := ""
 						if matched {
 							target = labelTarget
+							set = st
 						}
 						log.Infof("SNI UDP%v: %s %s:%d -> %s:%d", target, host, src.String(), sport, dst.String(), dport)
 
@@ -213,33 +214,36 @@ func (w *Worker) Start() error {
 						metrics.RecordPacket(uint64(len(raw)))
 					}
 
-					// Now check if filtering is disabled
-					if udpCfg.FilterQUIC == "disabled" {
+					//  check if filtering is disabled
+					if set.UDP.FilterQUIC == "disabled" {
 						_ = q.SetVerdict(id, nfqueue.NfAccept)
 						return 0
 					}
 
 					// Handle based on configuration
 					handle := false
-					switch udpCfg.FilterQUIC {
+					switch set.UDP.FilterQUIC {
 					case "all":
 						handle = true
 					case "parse":
-						if host != "" && matcher.Match(host) {
-							handle = true
+						if host != "" {
+							matched, st := matcher.Match(host)
+							set = st
+							handle = matched
 						}
 					}
 
 					if handle {
-						if udpCfg.Mode == "drop" {
+
+						if set.UDP.Mode == "drop" {
 							_ = q.SetVerdict(id, nfqueue.NfDrop)
 							return 0
 						}
-						if udpCfg.Mode == "fake" {
+						if set.UDP.Mode == "fake" {
 							if v == IPv4 {
-								w.dropAndInjectQUIC(cfg, raw, dst)
+								w.dropAndInjectQUIC(set, raw, dst)
 							} else {
-								w.dropAndInjectQUICV6(cfg, raw, dst)
+								w.dropAndInjectQUICV6(set, raw, dst)
 							}
 							_ = q.SetVerdict(id, nfqueue.NfDrop)
 							return 0
@@ -271,15 +275,15 @@ func (w *Worker) Start() error {
 	return nil
 }
 
-func (w *Worker) dropAndInjectQUIC(cfg *config.Config, raw []byte, dst net.IP) {
-	udpCfg := &cfg.Bypass.UDP
-	seg2d := cfg.Bypass.TCP.Seg2Delay
+func (w *Worker) dropAndInjectQUIC(cfg *config.SetConfig, raw []byte, dst net.IP) {
+	udpCfg := &cfg.UDP
+	seg2d := cfg.TCP.Seg2Delay
 	if udpCfg.Mode != "fake" {
 		return
 	}
 	if udpCfg.FakeSeqLength > 0 {
 		for i := 0; i < udpCfg.FakeSeqLength; i++ {
-			fake, ok := sock.BuildFakeUDPFromOriginalV4(raw, udpCfg.FakeLen, cfg.Bypass.Faking.TTL)
+			fake, ok := sock.BuildFakeUDPFromOriginalV4(raw, udpCfg.FakeLen, cfg.Faking.TTL)
 			if ok {
 				if udpCfg.FakingStrategy == "checksum" {
 					ipHdrLen := int((fake[0] & 0x0F) * 4)
@@ -305,7 +309,7 @@ func (w *Worker) dropAndInjectQUIC(cfg *config.Config, raw []byte, dst net.IP) {
 		return
 	}
 
-	if cfg.Bypass.Fragmentation.SNIReverse {
+	if cfg.Fragmentation.SNIReverse {
 		_ = w.sock.SendIPv4(frags[0], dst)
 		if seg2d > 0 {
 			time.Sleep(time.Duration(seg2d) * time.Millisecond)
@@ -320,8 +324,8 @@ func (w *Worker) dropAndInjectQUIC(cfg *config.Config, raw []byte, dst net.IP) {
 	}
 }
 
-func (w *Worker) dropAndInjectTCP(cfg *config.Config, raw []byte, dst net.IP) {
-	bp := &cfg.Bypass
+func (w *Worker) dropAndInjectTCP(cfg *config.SetConfig, raw []byte, dst net.IP) {
+
 	if len(raw) < 40 {
 		_ = w.sock.SendIPv4(raw, dst)
 		return
@@ -337,11 +341,11 @@ func (w *Worker) dropAndInjectTCP(cfg *config.Config, raw []byte, dst net.IP) {
 		return
 	}
 
-	if bp.Faking.SNI && bp.Faking.SNISeqLength > 0 {
+	if cfg.Faking.SNI && cfg.Faking.SNISeqLength > 0 {
 		w.sendFakeSNISequence(cfg, raw, dst)
 	}
 
-	switch bp.Fragmentation.Strategy {
+	switch cfg.Fragmentation.Strategy {
 	case "tcp":
 		w.sendTCPFragments(cfg, raw, dst)
 	case "ip":
@@ -353,9 +357,9 @@ func (w *Worker) dropAndInjectTCP(cfg *config.Config, raw []byte, dst net.IP) {
 	}
 }
 
-func (w *Worker) sendTCPFragments(cfg *config.Config, packet []byte, dst net.IP) {
-	bp := &cfg.Bypass
-	seg2d := bp.TCP.Seg2Delay
+func (w *Worker) sendTCPFragments(cfg *config.SetConfig, packet []byte, dst net.IP) {
+
+	seg2d := cfg.TCP.Seg2Delay
 	ipHdrLen := int((packet[0] & 0x0F) * 4)
 	tcpHdrLen := int((packet[ipHdrLen+12] >> 4) * 4)
 	totalLen := len(packet)
@@ -367,11 +371,11 @@ func (w *Worker) sendTCPFragments(cfg *config.Config, packet []byte, dst net.IP)
 	}
 
 	payload := packet[payloadStart:]
-	p1 := bp.Fragmentation.SNIPosition
+	p1 := cfg.Fragmentation.SNIPosition
 	validP1 := p1 > 0 && p1 < payloadLen
 
 	p2 := -1
-	if bp.Fragmentation.MiddleSNI {
+	if cfg.Fragmentation.MiddleSNI {
 		if s, e, ok := locateSNI(payload); ok && e-s >= 4 {
 			p2 = s + (e-s)/2
 		}
@@ -422,7 +426,7 @@ func (w *Worker) sendTCPFragments(cfg *config.Config, packet []byte, dst net.IP)
 		sock.FixIPv4Checksum(seg3[:ipHdrLen])
 		sock.FixTCPChecksum(seg3)
 
-		if bp.Fragmentation.SNIReverse {
+		if cfg.Fragmentation.SNIReverse {
 			_ = w.sock.SendIPv4(seg2, dst)
 			if seg2d > 0 {
 				time.Sleep(time.Duration(seg2d) * time.Millisecond)
@@ -471,7 +475,7 @@ func (w *Worker) sendTCPFragments(cfg *config.Config, packet []byte, dst net.IP)
 	sock.FixIPv4Checksum(seg2[:ipHdrLen])
 	sock.FixTCPChecksum(seg2)
 
-	if bp.Fragmentation.SNIReverse {
+	if cfg.Fragmentation.SNIReverse {
 		_ = w.sock.SendIPv4(seg2, dst)
 		if seg2d > 0 {
 			time.Sleep(time.Duration(seg2d) * time.Millisecond)
@@ -486,10 +490,10 @@ func (w *Worker) sendTCPFragments(cfg *config.Config, packet []byte, dst net.IP)
 	}
 }
 
-func (w *Worker) sendIPFragments(cfg *config.Config, packet []byte, dst net.IP) {
-	bp := &cfg.Bypass
-	splitPos := bp.Fragmentation.SNIPosition
-	seg2d := bp.TCP.Seg2Delay
+func (w *Worker) sendIPFragments(cfg *config.SetConfig, packet []byte, dst net.IP) {
+
+	splitPos := cfg.Fragmentation.SNIPosition
+	seg2d := cfg.TCP.Seg2Delay
 	if splitPos <= 0 || splitPos >= len(packet) {
 		_ = w.sock.SendIPv4(packet, dst)
 		return
@@ -532,7 +536,7 @@ func (w *Worker) sendIPFragments(cfg *config.Config, packet []byte, dst net.IP) 
 	binary.BigEndian.PutUint16(frag2[2:4], uint16(frag2Len))
 	sock.FixIPv4Checksum(frag2[:ipHdrLen])
 
-	if bp.Fragmentation.SNIReverse {
+	if cfg.Fragmentation.SNIReverse {
 		_ = w.sock.SendIPv4(frag2, dst)
 		if seg2d > 0 {
 			time.Sleep(time.Duration(seg2d) * time.Millisecond)
@@ -547,8 +551,8 @@ func (w *Worker) sendIPFragments(cfg *config.Config, packet []byte, dst net.IP) 
 	}
 }
 
-func (w *Worker) sendFakeSNISequence(cfg *config.Config, original []byte, dst net.IP) {
-	fk := &cfg.Bypass.Faking
+func (w *Worker) sendFakeSNISequence(cfg *config.SetConfig, original []byte, dst net.IP) {
+	fk := &cfg.Faking
 	if !fk.SNI || fk.SNISeqLength <= 0 {
 		return
 	}
@@ -601,8 +605,6 @@ func locateSNI(payload []byte) (start, end int, ok bool) {
 		hsLen = len(payload) - p
 	}
 
-	// Now inside ClientHello body:
-	// client_version(2) + random(32)
 	if p+2+32 > len(payload) {
 		return 0, 0, false
 	}

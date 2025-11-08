@@ -139,8 +139,8 @@ func (n *NFTablesManager) Apply() error {
 		return err
 	}
 
-	tcpLimit := fmt.Sprintf("%d", cfg.Bypass.TCP.ConnBytesLimit+1)
-	udpLimit := fmt.Sprintf("%d", cfg.Bypass.UDP.ConnBytesLimit+1)
+	tcpLimit := fmt.Sprintf("%d", cfg.MainSet.TCP.ConnBytesLimit+1)
+	udpLimit := fmt.Sprintf("%d", cfg.MainSet.UDP.ConnBytesLimit+1)
 
 	tcpRuleArgs := []string{"tcp", "dport", "443", "ct", "original", "packets", "<", tcpLimit, "counter"}
 	tcpRuleArgs = append(tcpRuleArgs, strings.Fields(n.buildNFQueueAction())...)
