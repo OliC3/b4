@@ -23,12 +23,12 @@ QUIET_MODE="0"
 GEOSITE_SRC=""
 GEOSITE_DST=""
 
-# Geosite sources (pipe-delimited: number|name|url)
-GEOSITE_SOURCES="1|Loyalsoldier source|https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geosite.dat
-2|RUNET Freedom source|https://raw.githubusercontent.com/runetfreedom/russia-v2ray-rules-dat/release/geosite.dat
-3|Nidelon source|https://github.com/Nidelon/ru-block-v2ray-rules/releases/latest/download/geosite.dat
-4|DustinWin source|https://github.com/DustinWin/ruleset_geodata/releases/download/mihomo/geosite.dat
-5|Chocolate4U source|https://raw.githubusercontent.com/Chocolate4U/Iran-v2ray-rules/release/geosite.dat"
+# geodat sources (pipe-delimited: number|name|url)
+GEODAT_SOURCES="1|Loyalsoldier source|https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/
+2|RUNET Freedom source|https://raw.githubusercontent.com/runetfreedom/russia-v2ray-rules-dat/release/
+3|Nidelon source|https://github.com/Nidelon/ru-block-v2ray-rules/releases/latest/download/
+4|DustinWin source|https://github.com/DustinWin/ruleset_geodata/releases/download/mihomo/
+5|Chocolate4U source|https://raw.githubusercontent.com/Chocolate4U/Iran-v2ray-rules/release/"
 
 # Colors for output (if terminal supports it)
 if [ -t 1 ]; then
@@ -916,7 +916,7 @@ get_geosite_path_from_config() {
 }
 
 # Display geosite source menu and get user choice
-select_geosite_source() {
+select_geo_source() {
     echo "" >&2
     echo "=======================================" >&2
     echo "  Select Geosite Data Source" >&2
@@ -924,7 +924,7 @@ select_geosite_source() {
     echo "" >&2
 
     # Display sources (using POSIX-compliant iteration)
-    echo "$GEOSITE_SOURCES" | while IFS='|' read -r num name url; do
+    echo "$GEODAT_SOURCES" | while IFS='|' read -r num name url; do
         if [ -n "$num" ]; then
             printf "  ${GREEN}%s${NC}) %s\n" "$num" "$name" >&2
         fi
@@ -940,7 +940,7 @@ select_geosite_source() {
         ;;
     [1-5])
         # Extract URL for selected choice (POSIX-compliant)
-        selected_url=$(echo "$GEOSITE_SOURCES" | grep "^${choice}|" | cut -d'|' -f3)
+        selected_url=$(echo "$GEODAT_SOURCES" | grep "^${choice}|" | cut -d'|' -f3)
         if [ -n "$selected_url" ]; then
             echo "$selected_url"
             return 0
@@ -956,13 +956,15 @@ select_geosite_source() {
     esac
 }
 
-# Download geosite file
-download_geosite() {
-    geosite_url="$1"
+download_geodat() {
+    geosite_url="$1/geosite.dat"
+    geoip_url="$1/geoip.dat"
+
     save_dir="$2"
     geosite_file="${save_dir}/geosite.dat"
+    geoip_file="${save_dir}/geoip.dat"
 
-    print_info "Downloading geosite.dat from: $geosite_url"
+    print_info "Downloading $3 from: $geosite_url"
 
     # Create directory if it doesn't exist
     if [ ! -d "$save_dir" ]; then
@@ -993,6 +995,27 @@ download_geosite() {
         return 1
     fi
 
+    # Download the file
+    if command_exists wget; then
+        if [ "$QUIET_MODE" = "0" ]; then
+            wget_opts="-q --show-progress"
+        else
+            wget_opts="-q"
+        fi
+        wget $wget_opts -O "$geoip_file" "$geoip_url" || {
+            print_error "Download failed"
+            return 1
+        }
+    elif command_exists curl; then
+        curl -L -# -o "$geoip_file" "$geoip_url" || {
+            print_error "Download failed"
+            return 1
+        }
+    else
+        print_error "Neither wget nor curl found"
+        return 1
+    fi
+
     # Verify file was downloaded and is not empty
     if [ ! -f "$geosite_file" ] || [ ! -s "$geosite_file" ]; then
         print_error "Downloaded file is empty or missing"
@@ -1000,23 +1023,34 @@ download_geosite() {
         return 1
     fi
 
+    # Verify file was downloaded and is not empty
+    if [ ! -f "$geoip_file" ] || [ ! -s "$geoip_file" ]; then
+        print_error "Downloaded file is empty or missing"
+        rm -f "$geoip_file"
+        return 1
+    fi
+
     print_success "Geosite file downloaded to: $geosite_file"
+    print_success "GeoIP file downloaded to: $geoip_file"
     return 0
 }
 
 # Update config file with geosite path
-update_config_geosite_path() {
+update_config_geodat_path() {
     geosite_file="$1"
+    geoip_file="$2"
 
     # Try to update with jq if available
     if command_exists jq; then
         print_info "Updating config file..."
 
         if [ ! -f "$CONFIG_FILE" ]; then
-            jq -n --arg path "$geosite_file" --arg url "$geosite_url" '{
+            jq -n --arg path "$geosite_file" --arg geosite_url "$geosite_url" --arg geoip_path "$geoip_file" --arg geoip_url "$geoip_url" '{
            domains: {
                geosite_path: $path,
-               geosite_url: $url
+               geosite_url: $geosite_url,
+               geoip_path: $geoip_path,
+               geoip_url: $geoip_url
            }
        }' >"$CONFIG_FILE"
             return 0
@@ -1026,7 +1060,7 @@ update_config_geosite_path() {
         temp_file="${CONFIG_FILE}.tmp"
 
         # Update or add geosite_path
-        if jq ".domains.geosite_path = \"$geosite_file\" | .domains.geosite_url = \"$geosite_url\"" "$CONFIG_FILE" >"$temp_file" 2>/dev/null; then
+        if jq ".domains.geosite_path = \"$geosite_file\" | .domains.geosite_url = \"$geosite_url\" | .domains.geoip_path = \"$geoip_file\" | .domains.geoip_url = \"$geoip_url\" " "$CONFIG_FILE" >"$temp_file" 2>/dev/null; then
             mv "$temp_file" "$CONFIG_FILE" || {
                 print_error "Failed to update config file"
                 rm -f "$temp_file"
@@ -1034,6 +1068,8 @@ update_config_geosite_path() {
             }
             print_success "Config updated with geosite path: $geosite_file"
             print_success "Config updated with geosite URL: $geosite_url"
+            print_success "Config updated with geoip path: $geoip_file"
+            print_success "Config updated with geoip URL: $geoip_url"
             return 0
         else
             print_error "Failed to parse config with jq"
@@ -1072,7 +1108,7 @@ setup_geosite() {
     [yY] | [yY][eE][sS])
         # Select source
         if [ -z "$GEOSITE_SRC" ]; then
-            geosite_url=$(select_geosite_source)
+            geosite_url=$(select_geo_source)
             if [ $? -ne 0 ] || [ -z "$geosite_url" ]; then
                 print_info "Geosite setup skipped"
                 return 0
@@ -1104,22 +1140,20 @@ setup_geosite() {
             fi
         else
             geosite_dst_dir="$GEOSITE_DST"
-            print_info "Using geosite destination: $geosite_dst_dir"
+            print_info "Using geodat destination: $geosite_dst_dir"
         fi
 
         # Download geosite file
-        if download_geosite "$geosite_url" "$geosite_dst_dir"; then
-            geosite_file="${geosite_dst_dir}/geosite.dat"
+        download_geodat "$geosite_url" "$geosite_dst_dir"
+        geosite_file="${geosite_dst_dir}/geosite.dat"
+        geoip_file="${geosite_dst_dir}/geoip.dat"
 
-            # Update config
-            update_config_geosite_path "$geosite_file"
+        # Update config
+        update_config_geodat_path "$geosite_file" "$geoip_file"
 
-            print_success "Geosite setup completed!"
-            return 0
-        else
-            print_error "Failed to download geosite file"
-            return 1
-        fi
+        print_success "Geosite setup completed!"
+        return 0
+
         ;;
     *)
         print_info "Geosite setup skipped"
