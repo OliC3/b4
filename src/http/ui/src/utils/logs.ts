@@ -36,19 +36,21 @@ export function saveSortState(
 export function parseSniLogLine(line: string): ParsedLog | null {
   // Example: 2025/10/13 22:41:12.466126 [INFO] SNI TCP: assets.alicdn.com 192.168.1.100:38894 -> 92.123.206.67:443
   const regex =
-    /^(\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}\.\d+)\s+\[INFO\]\s+(TCP|UDP)\|(\S+)?:\s+(\S+)\s+(\S+)\s+->\s+(\S+)$/;
+    /^(\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}\.\d+)\s+\[INFO\]\s+(TCP|UDP):\s+(\S+)?\|(\S+)\s+(\S+)\s+->\s+(\S+)\|(\S+)$/;
   const match = regex.exec(line);
 
   if (!match) return null;
 
-  const [, timestamp, protocol, set, domain, source, destination] = match;
+  const [, timestamp, protocol, hostSet, domain, source, ipSet, destination] =
+    match;
 
   return {
     timestamp,
     protocol: protocol as "TCP" | "UDP",
-    set,
+    hostSet,
     domain,
     source,
+    ipSet,
     destination,
     raw: line,
   };

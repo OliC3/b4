@@ -29,7 +29,8 @@ export type SortColumn =
 export interface ParsedLog {
   timestamp: string;
   protocol: "TCP" | "UDP";
-  set: string;
+  hostSet: string;
+  ipSet: string;
   domain: string;
   source: string;
   destination: string;
@@ -154,8 +155,8 @@ export const DomainsTable: React.FC<DomainsTableProps> = ({
                     borderBottom: `1px solid ${colors.border.light}`,
                   }}
                 >
-                  {log.set !== "-" && (
-                    <B4Badge badgeVariant="secondary" label={log.set} />
+                  {log.hostSet !== "-" && (
+                    <B4Badge badgeVariant="secondary" label={log.hostSet} />
                   )}
                 </TableCell>
                 <TableCell
@@ -195,6 +196,9 @@ export const DomainsTable: React.FC<DomainsTableProps> = ({
                   }}
                 >
                   {log.destination}
+                  {log.ipSet !== "-" && (
+                    <B4Badge badgeVariant="secondary" label={log.ipSet} />
+                  )}
                 </TableCell>
               </TableRow>
             ))

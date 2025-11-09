@@ -1,6 +1,7 @@
 package sni
 
 import (
+	"net"
 	"regexp"
 	"strings"
 	"sync"
@@ -8,10 +9,16 @@ import (
 	"github.com/daniellavrushin/b4/config"
 )
 
+type ipRange struct {
+	ipNet *net.IPNet
+	set   *config.SetConfig
+}
+
 type SuffixSet struct {
 	sets       map[string]*config.SetConfig
 	regexes    []*regexWithSet
 	regexCache sync.Map
+	ipRanges   []ipRange
 }
 
 type regexWithSet struct {
@@ -56,13 +63,40 @@ func NewSuffixSet(sets []*config.SetConfig) *SuffixSet {
 			d = strings.TrimRight(d, ".")
 			s.sets[d] = set
 		}
+
+		for _, ipStr := range set.Targets.IpsToMatch {
+			ipStr = strings.TrimSpace(ipStr)
+			if ipStr == "" {
+				continue
+			}
+
+			// Parse CIDR or single IP
+			var ipNet *net.IPNet
+			var err error
+
+			if strings.Contains(ipStr, "/") {
+				_, ipNet, err = net.ParseCIDR(ipStr)
+			} else {
+				ip := net.ParseIP(ipStr)
+				if ip != nil {
+					if ip.To4() != nil {
+						_, ipNet, _ = net.ParseCIDR(ipStr + "/32")
+					} else {
+						_, ipNet, _ = net.ParseCIDR(ipStr + "/128")
+					}
+				}
+			}
+
+			if err == nil && ipNet != nil {
+				s.ipRanges = append(s.ipRanges, ipRange{ipNet: ipNet, set: set})
+			}
+		}
 	}
 
 	return s
 }
 
-// Match returns (matched, set)
-func (s *SuffixSet) Match(host string) (bool, *config.SetConfig) {
+func (s *SuffixSet) MatchSNI(host string) (bool, *config.SetConfig) {
 	if s == nil || (len(s.sets) == 0 && len(s.regexes) == 0) || host == "" {
 		return false, nil
 	}
@@ -76,6 +110,20 @@ func (s *SuffixSet) Match(host string) (bool, *config.SetConfig) {
 
 	if len(s.regexes) > 0 {
 		return s.matchRegex(lower)
+	}
+
+	return false, nil
+}
+
+func (s *SuffixSet) MatchIP(ip net.IP) (bool, *config.SetConfig) {
+	if s == nil || len(s.ipRanges) == 0 || ip == nil {
+		return false, nil
+	}
+
+	for _, r := range s.ipRanges {
+		if r.ipNet.Contains(ip) {
+			return true, r.set
+		}
 	}
 
 	return false, nil
