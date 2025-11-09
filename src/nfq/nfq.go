@@ -191,13 +191,6 @@ func (w *Worker) Start() error {
 					sport := binary.BigEndian.Uint16(udp[0:2])
 					dport := binary.BigEndian.Uint16(udp[2:4])
 
-					if cfg.MainSet.UDP.FilterSTUN && stun.IsSTUNMessage(payload) {
-						// Log at TRACE level to avoid spam (STUN is very frequent)
-						log.Tracef("STUN %s:%d -> %s:%d", src.String(), sport, dst.String(), dport)
-						_ = q.SetVerdict(id, nfqueue.NfAccept)
-						return 0
-					}
-
 					host := ""
 					if h, ok := sni.ParseQUICClientHelloSNI(payload); ok {
 						host = h
@@ -212,6 +205,13 @@ func (w *Worker) Start() error {
 						metrics := metrics.GetMetricsCollector()
 						metrics.RecordConnection("UDP", host, fmt.Sprintf("%s:%d", src, sport), fmt.Sprintf("%s:%d", dst, dport), matched)
 						metrics.RecordPacket(uint64(len(raw)))
+					}
+
+					if set.UDP.FilterSTUN && stun.IsSTUNMessage(payload) {
+						// Log at TRACE level to avoid spam (STUN is very frequent)
+						log.Tracef("STUN %s:%d -> %s:%d", src.String(), sport, dst.String(), dport)
+						_ = q.SetVerdict(id, nfqueue.NfAccept)
+						return 0
 					}
 
 					//  check if filtering is disabled
