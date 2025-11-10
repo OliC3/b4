@@ -8,6 +8,7 @@
 - CHANGED: `UDP` port filtering now uses a single flexible field instead of separate "from" and "to" fields. Supports comma-separated ports and ranges (e.g., `80,443,2000-3000`).
 - CHANGED: Packages count badge in `/domains` menu now only counts packets processed by B4 targets.
 - CHANGED: Replaced `--udp-dport-min` and `--udp-dport-max` flags with single `--udp-dport-filter` flag for flexible port filtering.
+- CHANGED: Refactored UDP/QUIC packet handling and UDP-related UI tab in the set configuration.
 - FIXED: `UDP` entries are now logged even when UDP packets are configured to be ignored in the configuration
 - FIXED: `UI` crash when using filter in /domains monitoring page.
 - FIXED: Manually added domains no longer require service restart when geodat files are not configured.

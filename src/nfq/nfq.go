@@ -14,6 +14,7 @@ import (
 	"github.com/daniellavrushin/b4/config"
 	"github.com/daniellavrushin/b4/log"
 	"github.com/daniellavrushin/b4/metrics"
+	"github.com/daniellavrushin/b4/quic"
 	"github.com/daniellavrushin/b4/sni"
 	"github.com/daniellavrushin/b4/sock"
 	"github.com/daniellavrushin/b4/stun"
@@ -194,11 +195,6 @@ func (w *Worker) Start() error {
 
 			// UDP processing
 			if proto == 17 && len(raw) >= ihl+8 {
-				if set == nil {
-					_ = q.SetVerdict(id, nfqueue.NfAccept)
-					return 0
-				}
-
 				udp := raw[ihl:]
 				if len(udp) < 8 {
 					_ = q.SetVerdict(id, nfqueue.NfAccept)
@@ -209,83 +205,103 @@ func (w *Worker) Start() error {
 				sport := binary.BigEndian.Uint16(udp[0:2])
 				dport := binary.BigEndian.Uint16(udp[2:4])
 
-				host := ""
+				// Get base set config
+				if set == nil {
+					set = cfg.MainSet
+				}
+
+				// Track all match types for logging
 				matchedIP := matched
-				matchedSNI := false
 				matchedPort := false
-
-				// Check UDP port range matching
-				if mport, st := matcher.MatchUDPPort(dport); mport {
-					matchedPort = true
-					set = st
-				}
-
-				// STUN check early
-				if stun.IsSTUNMessage(payload) && set.UDP.FilterSTUN {
-					log.Tracef("STUN %s:%d -> %s:%d", src.String(), sport, dst.String(), dport)
-					_ = q.SetVerdict(id, nfqueue.NfAccept)
-					return 0
-				}
-
-				if h, ok := sni.ParseQUICClientHelloSNI(payload); ok {
-					host = h
-					if mSNI, stSNI := matcher.MatchSNI(host); mSNI {
-						matchedSNI = true
-						matched = true
-						set = stSNI
-					}
-				}
-
-				// Determine if should handle based on FilterQUIC mode
-				shouldHandle := false
-				switch set.UDP.FilterQUIC {
-				case "all":
-					shouldHandle = true
-				case "parse":
-					shouldHandle = matched // Either IP or SNI matched
-				}
-
+				matchedQUIC := false
+				isSTUN := false
+				host := ""
 				ipTarget := ""
 				sniTarget := ""
+
+				// Check IP match
 				if matchedIP {
 					ipTarget = st.Name
 				}
-				if matchedPort {
-					ipTarget = set.Name // same as ipTarget for simplicity
-				}
-				if matchedSNI {
-					sniTarget = set.Name
+
+				// Check UDP port filter
+				if mport, portSet := matcher.MatchUDPPort(dport); mport {
+					matchedPort = true
+					set = portSet
+					ipTarget = portSet.Name
 				}
 
+				// Check STUN
+				isSTUN = stun.IsSTUNMessage(payload)
+
+				// Process QUIC based on FilterQUIC mode
+				switch set.UDP.FilterQUIC {
+				case "disabled":
+					// Don't parse QUIC at all
+
+				case "all":
+					// Mark all QUIC Initial packets for handling
+					if quic.IsInitial(payload) {
+						matchedQUIC = true
+						// Try to extract SNI for logging (best effort)
+						if h, ok := sni.ParseQUICClientHelloSNI(payload); ok {
+							host = h
+						}
+					}
+
+				case "parse":
+					// Parse QUIC and match SNI against domains
+					if h, ok := sni.ParseQUICClientHelloSNI(payload); ok {
+						host = h
+						if mSNI, sniSet := matcher.MatchSNI(host); mSNI {
+							matchedQUIC = true
+							set = sniSet
+							sniTarget = sniSet.Name
+						}
+					}
+				}
+
+				shouldHandle := (matchedPort || matchedIP || matchedQUIC) && !(isSTUN && set.UDP.FilterSTUN)
+
+				matched = shouldHandle
+
+				// Log ALL UDP packets (this runs before verdict)
 				log.Infof(",UDP,%s,%s,%s:%d,%s,%s:%d", sniTarget, host, src.String(), sport, ipTarget, dst.String(), dport)
 
 				metrics := metrics.GetMetricsCollector()
 				metrics.RecordConnection("UDP", host, fmt.Sprintf("%s:%d", src, sport), fmt.Sprintf("%s:%d", dst, dport), matched)
 				metrics.RecordPacket(uint64(len(raw)))
 
+				// Early exit for STUN
+				if isSTUN && set.UDP.FilterSTUN {
+					log.Tracef("STUN filtered: %s:%d -> %s:%d", src.String(), sport, dst.String(), dport)
+					_ = q.SetVerdict(id, nfqueue.NfAccept)
+					return 0
+				}
+
+				// Accept if no match
 				if !shouldHandle {
 					_ = q.SetVerdict(id, nfqueue.NfAccept)
 					return 0
 				}
 
-				// Check if QUIC filtering disabled
-				if set.UDP.FilterQUIC == "disabled" {
-					_ = q.SetVerdict(id, nfqueue.NfAccept)
-					return 0
-				}
-
-				if set.UDP.Mode == "drop" {
+				// Apply configured UDP mode
+				switch set.UDP.Mode {
+				case "drop":
 					_ = q.SetVerdict(id, nfqueue.NfDrop)
 					return 0
-				}
 
-				if set.UDP.Mode == "fake" {
+				case "fake":
 					if v == IPv4 {
 						w.dropAndInjectQUIC(set, raw, dst)
 					} else {
 						w.dropAndInjectQUICV6(set, raw, dst)
 					}
 					_ = q.SetVerdict(id, nfqueue.NfDrop)
+					return 0
+
+				default:
+					_ = q.SetVerdict(id, nfqueue.NfAccept)
 					return 0
 				}
 			}
