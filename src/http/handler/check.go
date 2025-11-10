@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 
 func (api *API) RegisterCheckApi() {
 	api.mux.HandleFunc("/api/check/start", api.handleStartCheck)
+	api.mux.HandleFunc("/api/check/discovery", api.handleStartDiscovery)
 	api.mux.HandleFunc("/api/check/status", api.handleCheckStatus)
 	api.mux.HandleFunc("/api/check/cancel", api.handleCancelCheck)
 }
@@ -123,4 +125,70 @@ func (api *API) handleCancelCheck(w http.ResponseWriter, r *http.Request) {
 		"success": true,
 		"message": "Check suite canceled",
 	})
+}
+
+func (api *API) handleStartDiscovery(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	chckCfg := &api.cfg.System.Checker
+
+	var req StartCheckRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		log.Errorf("Failed to decode discovery request: %v", err)
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if req.Timeout <= 0 {
+		req.Timeout = time.Duration(chckCfg.TimeoutSeconds) * time.Second
+	}
+	if req.MaxConcurrent <= 0 {
+		req.MaxConcurrent = chckCfg.MaxConcurrent
+	}
+
+	domains := []string{}
+	if len(api.cfg.Sets) > 0 {
+		for _, set := range api.cfg.Sets {
+			if len(set.Targets.SNIDomains) > 0 {
+				domains = append(domains, set.Targets.SNIDomains...)
+			}
+		}
+	}
+	domains = append(domains, chckCfg.Domains...)
+	domains = utils.FilterUniqueStrings(domains)
+
+	if len(domains) == 0 {
+		http.Error(w, "No domains configured for checking", http.StatusBadRequest)
+		return
+	}
+
+	config := checker.CheckConfig{
+		CheckURL:      req.CheckURL,
+		Timeout:       req.Timeout,
+		MaxConcurrent: req.MaxConcurrent,
+	}
+
+	presets := checker.GetTestPresets()
+
+	suite := checker.NewDiscoverySuite(config, globalPool, presets)
+
+	go func() {
+		suite.RunDiscovery(domains)
+
+		log.Infof("Discovery complete for %d domains", len(domains))
+		log.Infof("\n%s", suite.GetDiscoveryReport())
+	}()
+
+	response := StartCheckResponse{
+		Id:          suite.Id,
+		TotalChecks: len(domains) * len(presets),
+		Message:     fmt.Sprintf("Discovery started: %d domains × %d presets", len(domains), len(presets)),
+	}
+
+	setJsonHeader(w)
+	w.WriteHeader(http.StatusAccepted)
+	json.NewEncoder(w).Encode(response)
 }

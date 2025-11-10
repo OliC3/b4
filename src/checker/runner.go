@@ -244,16 +244,18 @@ func (ts *CheckSuite) GetSnapshot() *CheckSuite {
 	defer ts.mu.RUnlock()
 
 	snapshot := &CheckSuite{
-		Id:               ts.Id,
-		Status:           ts.Status,
-		StartTime:        ts.StartTime,
-		EndTime:          ts.EndTime,
-		TotalChecks:      ts.TotalChecks,
-		CompletedChecks:  ts.CompletedChecks,
-		SuccessfulChecks: ts.SuccessfulChecks,
-		FailedChecks:     ts.FailedChecks,
-		Summary:          ts.Summary,
-		Config:           ts.Config,
+		Id:                     ts.Id,
+		Status:                 ts.Status,
+		StartTime:              ts.StartTime,
+		EndTime:                ts.EndTime,
+		TotalChecks:            ts.TotalChecks,
+		CompletedChecks:        ts.CompletedChecks,
+		SuccessfulChecks:       ts.SuccessfulChecks,
+		FailedChecks:           ts.FailedChecks,
+		Summary:                ts.Summary,
+		Config:                 ts.Config,
+		PresetResults:          ts.PresetResults,
+		DomainDiscoveryResults: ts.DomainDiscoveryResults,
 	}
 
 	snapshot.Results = make([]CheckResult, len(ts.Results))

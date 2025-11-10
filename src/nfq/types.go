@@ -10,7 +10,7 @@ import (
 )
 
 type Pool struct {
-	workers []*Worker
+	Workers []*Worker
 }
 
 type Worker struct {

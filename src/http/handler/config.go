@@ -255,9 +255,3 @@ func (a *API) saveAndPushConfig(cfg *config.Config) error {
 
 	return nil
 }
-
-type domainStats struct {
-	ManualDomains  int
-	GeositeDomains int
-	TotalDomains   int
-}

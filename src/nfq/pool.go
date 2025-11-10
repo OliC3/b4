@@ -35,13 +35,13 @@ func NewPool(cfg *config.Config) *Pool {
 	for i := 0; i < threads; i++ {
 		ws = append(ws, NewWorkerWithQueue(cfg, start+uint16(i)))
 	}
-	return &Pool{workers: ws}
+	return &Pool{Workers: ws}
 }
 
 func (p *Pool) Start() error {
-	for _, w := range p.workers {
+	for _, w := range p.Workers {
 		if err := w.Start(); err != nil {
-			for _, x := range p.workers {
+			for _, x := range p.Workers {
 				x.Stop()
 			}
 			return err
@@ -52,7 +52,7 @@ func (p *Pool) Start() error {
 
 func (p *Pool) Stop() {
 	var wg sync.WaitGroup
-	for _, w := range p.workers {
+	for _, w := range p.Workers {
 		wg.Add(1)
 		worker := w
 		go func() {
@@ -105,13 +105,20 @@ func (w *Worker) rebuildMatcher(cfg *config.Config) {
 }
 
 func (p *Pool) UpdateConfig(newCfg *config.Config) error {
-	for _, w := range p.workers {
+	for _, w := range p.Workers {
 		w.UpdateConfig(newCfg)
 	}
 	totalDomains := 0
 	for _, set := range newCfg.Sets {
 		totalDomains += len(set.Targets.DomainsToMatch)
 	}
-	log.Tracef("Updated all %d workers with %d domains", len(p.workers), totalDomains)
+	log.Tracef("Updated all %d workers with %d domains", len(p.Workers), totalDomains)
 	return nil
+}
+
+func (p *Pool) GetFirstWorkerConfig() *config.Config {
+	if len(p.Workers) == 0 {
+		return nil
+	}
+	return p.Workers[0].getConfig()
 }
