@@ -811,7 +811,10 @@ create_sysv_service() {
 
         rm -f "${INIT_DIR}/S99b4" 2>/dev/null || true # remove legacy script
 
-        cat >"${INIT_FULL_PATH}" <<'EOF'
+        if [ -f "${INIT_DIR}/rc.func" ]; then
+            print_info "rc.func found in $INIT_DIR, using it for init script"
+
+            cat >"${INIT_FULL_PATH}" <<'EOF'
 #!/bin/sh
 
 # B4 DPI Bypass Service Init Script
@@ -849,6 +852,88 @@ fi
 . /opt/etc/init.d/rc.func
 
 EOF
+
+        else
+            print_info "Creating standard init.d script"
+            cat >"${INIT_FULL_PATH}" <<'EOF'
+#!/bin/sh
+
+# B4 DPI Bypass Service Init Script
+PROG=PROG_PLACEHOLDER
+CONFIG_FILE=CONFIG_PLACEHOLDER
+PIDFILE=/var/run/b4.pid
+
+start() {
+    echo "Starting b4..."
+    if [ -f "$PIDFILE" ] && kill -0 $(cat "$PIDFILE") 2>/dev/null; then
+        echo "b4 is already running"
+        return 1
+    fi
+
+    kernel_mod_load
+
+    nohup $PROG --config $CONFIG_FILE > /var/log/b4.log 2>&1 &
+    echo $! > "$PIDFILE"
+    sleep 1
+    # Verify it's actually running
+    if kill -0 $(cat "$PIDFILE") 2>/dev/null; then
+        echo "b4 started (PID: $(cat "$PIDFILE"))"
+    else
+        echo "Warning: b4 may have failed to start, check /var/log/b4.log"
+        rm -f "$PIDFILE"
+        return 1
+    fi
+}
+
+stop() {
+    echo "Stopping b4..."
+    if [ -f "$PIDFILE" ]; then
+        kill $(cat "$PIDFILE") 2>/dev/null
+        rm -f "$PIDFILE"
+        echo "b4 stopped"
+    else
+        echo "b4 is not running"
+    fi
+}
+
+kernel_mod_load() {
+	KERNEL=$(uname -r)
+
+	connbytes_mod_path=$(find /lib/modules/$(uname -r) -name "xt_connbytes.ko*")
+	if [ ! -z "$connbytes_mod_path" ]; then
+		insmod "$connbytes_mod_path" >/dev/null 2>&1 && echo "xt_connbytes.ko loaded"
+	fi
+
+	nfqueue_mod_path=$(find /lib/modules/$(uname -r) -name "xt_NFQUEUE.ko*")
+	if [ ! -z "$nfqueue_mod_path" ]; then
+		insmod "$nfqueue_mod_path" >/dev/null 2>&1 && echo "xt_NFQUEUE.ko loaded"
+	fi
+
+	(modprobe xt_connbytes --first-time >/dev/null 2>&1 && echo "xt_connbytes loaded") || true
+	(modprobe xt_NFQUEUE --first-time >/dev/null 2>&1 && echo "xt_NFQUEUE loaded") || true
+}
+
+
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    restart)
+        stop
+        sleep 1
+        start
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+        ;;
+esac
+EOF
+
+        fi
 
         chmod +x "${INIT_FULL_PATH}"
         sed -i "s|PROG_PLACEHOLDER|${INSTALL_DIR}/${BINARY_NAME}|g" "${INIT_FULL_PATH}"
