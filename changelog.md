@@ -6,6 +6,7 @@
 - ADDED: One-click configuration adoption from `Discovery` test results. Apply the best-performing configuration directly to your configuration list without manual copying.
 - CHANGED: Complete overhaul of `Discovery` testing service with improved reliability and performance. Now they should work as expected.
 - FIXED: Memory leaks and overall memory management improvements for better long-term stability.
+- FIXED: Update process through the Web UI.
 
 ## [1.13.0] - 2025-11-10
 
