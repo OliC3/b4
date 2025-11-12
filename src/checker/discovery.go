@@ -124,9 +124,7 @@ func (ds *DiscoverySuite) RunDiscovery(domains []string) {
 			// Apply preset configuration by RESTARTING pool
 			testConfig := ds.buildTestConfig(preset, domain)
 
-			log.Tracef("  Applying config %s: stopping pool...", preset.Name)
-			ds.pool.Stop()
-
+			log.Infof("  Applying preset %s config...", preset.Name)
 			if err := ds.pool.UpdateConfig(testConfig); err != nil {
 				log.Errorf("Failed to update config for preset %s: %v", preset.Name, err)
 				ds.CheckSuite.mu.Lock()
@@ -135,17 +133,8 @@ func (ds *DiscoverySuite) RunDiscovery(domains []string) {
 				continue
 			}
 
-			log.Tracef("  Restarting pool with new config...")
-			if err := ds.pool.Start(); err != nil {
-				log.Errorf("Failed to restart pool for preset %s: %v", preset.Name, err)
-				ds.CheckSuite.mu.Lock()
-				ds.CompletedChecks++
-				ds.CheckSuite.mu.Unlock()
-				continue
-			}
-
-			// Wait for workers to fully restart
-			time.Sleep(1000 * time.Millisecond)
+			// Small delay to let config propagate to all workers
+			time.Sleep(500 * time.Millisecond)
 
 			var result CheckResult
 			for attempt := 0; attempt < 2; attempt++ {
