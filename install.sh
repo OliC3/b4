@@ -532,11 +532,7 @@ download_file() {
 
     # Download the file
     if command_exists wget; then
-        if [ "$QUIET_MODE" = "0" ]; then
-            wget_opts="-q --show-progress"
-        else
-            wget_opts="-q"
-        fi
+        wget_opts="-q"
         wget $wget_opts -O "$output" "$url" || {
             print_error "Download failed"
             return 1
@@ -1024,11 +1020,7 @@ download_geodat() {
 
     # Download the file
     if command_exists wget; then
-        if [ "$QUIET_MODE" = "0" ]; then
-            wget_opts="-q --show-progress"
-        else
-            wget_opts="-q"
-        fi
+        wget_opts="-q"
         wget $wget_opts -O "$geosite_file" "$geosite_url" || {
             print_error "Download failed"
             return 1
@@ -1045,11 +1037,7 @@ download_geodat() {
 
     # Download the file
     if command_exists wget; then
-        if [ "$QUIET_MODE" = "0" ]; then
-            wget_opts="-q --show-progress"
-        else
-            wget_opts="-q"
-        fi
+        wget_opts="-q"
         wget $wget_opts -O "$geoip_file" "$geoip_url" || {
             print_error "Download failed"
             return 1
