@@ -121,36 +121,29 @@ export function useParsedLogs(lines: string[], showAll: boolean): ParsedLog[] {
   }, [lines, showAll]);
 }
 
-// Hook to filter logs
 export function useFilteredLogs(
   parsedLogs: ParsedLog[],
   filter: string
 ): ParsedLog[] {
   return useMemo(() => {
     const f = filter.trim().toLowerCase();
+    if (!f) return parsedLogs;
+
     const filters = f
       .split("+")
       .map((s) => s.trim())
       .filter((s) => s.length > 0);
+    if (filters.length === 0) return parsedLogs;
 
-    if (filters.length === 0) {
-      return parsedLogs;
-    }
-
-    // Group filters by field
     const fieldFilters: Record<string, string[]> = {};
     const globalFilters: string[] = [];
 
     for (const filterTerm of filters) {
       const colonIndex = filterTerm.indexOf(":");
-
       if (colonIndex > 0) {
         const field = filterTerm.substring(0, colonIndex);
         const value = filterTerm.substring(colonIndex + 1);
-
-        if (!fieldFilters[field]) {
-          fieldFilters[field] = [];
-        }
+        if (!fieldFilters[field]) fieldFilters[field] = [];
         fieldFilters[field].push(value);
       } else {
         globalFilters.push(filterTerm);
@@ -158,15 +151,12 @@ export function useFilteredLogs(
     }
 
     return parsedLogs.filter((log: ParsedLog) => {
-      // Check field-specific filters (OR within field, AND across fields)
       for (const [field, values] of Object.entries(fieldFilters)) {
         const fieldValue =
           log[field as keyof typeof log]?.toString().toLowerCase() || "";
-        const matches = values.some((value) => fieldValue.includes(value));
-        if (!matches) return false;
+        if (!values.some((value) => fieldValue.includes(value))) return false;
       }
 
-      // Check global filters (must match at least one field)
       for (const filterTerm of globalFilters) {
         const matches = [
           log.hostSet,
@@ -175,7 +165,7 @@ export function useFilteredLogs(
           log.source,
           log.protocol,
           log.destination,
-        ].some((value) => value?.toLowerCase().includes(filterTerm) ?? false);
+        ].some((value) => value?.toLowerCase().includes(filterTerm));
         if (!matches) return false;
       }
 

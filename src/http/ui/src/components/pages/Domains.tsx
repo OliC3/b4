@@ -17,6 +17,7 @@ import {
   loadSortState,
   saveSortState,
   generateIpVariants,
+  MAX_VISIBLE_ROWS,
 } from "@utils";
 import { colors } from "@design";
 import { useWebSocket } from "@ctx/B4WsProvider";
@@ -214,7 +215,7 @@ export default function Domains() {
         />
 
         <DomainsTable
-          data={sortedData}
+          data={sortedData.slice(-MAX_VISIBLE_ROWS)}
           sortColumn={sortColumn}
           sortDirection={sortDirection}
           onSort={handleSort}
