@@ -50,32 +50,6 @@ export const ApiSettings: React.FC<ApiSettingsProps> = ({
             />
           </B4Section>
         </Grid>
-        <Grid size={{ xs: 12, md: 6 }}>
-          <B4Section
-            title="BIGDATACLAOUD.COM Settings"
-            description="Configure your BIGDATACLAOUD.COM API token here."
-            icon={<SettingsIcon />}
-          >
-            <SettingTextField
-              label="BDC API Key"
-              value={config.system.api.bdc_key}
-              onChange={(e) => onChange("system.api.bdc_key", e.target.value)}
-              helperText={
-                <>
-                  Get the BDC Key from{" "}
-                  <a
-                    href="https://www.bigdatacloud.com/account"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    BIGDATACLAOUD.COM Dashboard
-                  </a>
-                </>
-              }
-              placeholder="abc_123456790abcdefghijklmnopqrstu"
-            />
-          </B4Section>
-        </Grid>
       </Grid>
     </Stack>
   );
