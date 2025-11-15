@@ -285,7 +285,6 @@ export const SetsManager: React.FC<SetsManagerProps> = ({
                     },
                   }}
                 >
-                  {/* Priority/Order indicator */}
                   <Box
                     sx={{
                       position: "absolute",
@@ -299,16 +298,13 @@ export const SetsManager: React.FC<SetsManagerProps> = ({
                     }}
                   />
 
-                  {/* Main Content */}
                   <Box sx={{ p: 2, pl: 3 }}>
-                    {/* Header Row */}
                     <Stack
                       direction="row"
                       alignItems="center"
                       justifyContent="space-between"
                     >
                       <Stack direction="row" alignItems="center" spacing={2}>
-                        {/* Priority Badge */}
                         <Chip
                           size="small"
                           label={isMain ? "MAIN" : `#${index + 1}`}
@@ -324,7 +320,6 @@ export const SetsManager: React.FC<SetsManagerProps> = ({
                           }}
                         />
 
-                        {/* Set Name */}
                         <Typography
                           variant="h6"
                           sx={{
@@ -335,7 +330,6 @@ export const SetsManager: React.FC<SetsManagerProps> = ({
                           {set.name}
                         </Typography>
 
-                        {/* Status Indicators */}
                         <Stack direction="row" spacing={1}>
                           {hasTargets && (
                             <Tooltip
@@ -396,7 +390,6 @@ export const SetsManager: React.FC<SetsManagerProps> = ({
                         </Stack>
                       </Stack>
 
-                      {/* Action Buttons */}
                       <Stack direction="row" spacing={0.5}>
                         <Tooltip title="Move up">
                           <IconButton
@@ -482,12 +475,14 @@ export const SetsManager: React.FC<SetsManagerProps> = ({
                       </Stack>
                     </Stack>
 
-                    {/* Quick Config Overview - Always visible */}
-                    <Grid container spacing={2} sx={{ mt: 1.5 }}>
-                      {/* TCP Config */}
-                      <Grid size={{ xs: 6, sm: 3 }}>
+                    <Grid container spacing={3} sx={{ mt: 2 }}>
+                      <Grid
+                        size={{ xs: 12, sm: 6, md: 3 }}
+                        sx={{ display: "flex" }}
+                      >
                         <Box
                           sx={{
+                            width: "100%",
                             p: 1,
                             borderRadius: radius.sm,
                             bgcolor: colors.background.dark,
@@ -528,10 +523,13 @@ export const SetsManager: React.FC<SetsManagerProps> = ({
                         </Box>
                       </Grid>
 
-                      {/* UDP Config */}
-                      <Grid size={{ xs: 6, sm: 3 }}>
+                      <Grid
+                        size={{ xs: 12, sm: 6, md: 3 }}
+                        sx={{ display: "flex" }}
+                      >
                         <Box
                           sx={{
+                            width: "100%",
                             p: 1,
                             borderRadius: radius.sm,
                             bgcolor: colors.background.dark,
@@ -570,10 +568,13 @@ export const SetsManager: React.FC<SetsManagerProps> = ({
                         </Box>
                       </Grid>
 
-                      {/* Fragmentation */}
-                      <Grid size={{ xs: 6, sm: 3 }}>
+                      <Grid
+                        size={{ xs: 12, sm: 6, md: 3 }}
+                        sx={{ display: "flex" }}
+                      >
                         <Box
                           sx={{
+                            width: "100%",
                             p: 1,
                             borderRadius: radius.sm,
                             bgcolor: colors.background.dark,
@@ -621,11 +622,13 @@ export const SetsManager: React.FC<SetsManagerProps> = ({
                           </Stack>
                         </Box>
                       </Grid>
-
-                      {/* Faking */}
-                      <Grid size={{ xs: 6, sm: 3 }}>
+                      <Grid
+                        size={{ xs: 12, sm: 6, md: 3 }}
+                        sx={{ display: "flex" }}
+                      >
                         <Box
                           sx={{
+                            width: "100%",
                             p: 1,
                             borderRadius: radius.sm,
                             bgcolor: colors.background.dark,
@@ -665,11 +668,9 @@ export const SetsManager: React.FC<SetsManagerProps> = ({
                       </Grid>
                     </Grid>
 
-                    {/* Expanded Details */}
                     <Collapse in={isExpanded}>
                       <Divider sx={{ my: 2 }} />
 
-                      {/* Target Domains/IPs Preview */}
                       {(set.targets.sni_domains.length > 0 ||
                         set.targets.geosite_categories.length > 0) && (
                         <Box sx={{ mb: 2 }}>

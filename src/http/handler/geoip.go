@@ -68,7 +68,7 @@ func (a *API) AddGeoIpTag(w http.ResponseWriter, r *http.Request) {
 			set.Name = "Set " + fmt.Sprintf("%d", len(a.cfg.Sets)+1)
 		}
 
-		a.cfg.Sets = append(a.cfg.Sets, set)
+		a.cfg.Sets = append([]*config.SetConfig{set}, a.cfg.Sets...)
 	}
 
 	if set == nil {
