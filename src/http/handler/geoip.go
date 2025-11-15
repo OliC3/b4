@@ -52,22 +52,25 @@ func (a *API) AddGeoIpTag(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.SetId == "" {
-		req.SetId = config.DefaultSetConfig.Id // Use default set ID if not provided
+		req.SetId = config.DefaultSetConfig.Id
 	}
 
 	set := a.cfg.GetSetById(req.SetId)
 
 	if set == nil && req.SetId == config.NEW_SET_ID {
-		set = &config.DefaultSetConfig
+		newSet := config.DefaultSetConfig
+		set = &newSet
 		set.Id = uuid.New().String()
 
-		a.cfg.Sets = append(a.cfg.Sets, set)
 		if req.SetName != "" {
 			set.Name = req.SetName
 		} else {
 			set.Name = "Set " + fmt.Sprintf("%d", len(a.cfg.Sets)+1)
 		}
+
+		a.cfg.Sets = append(a.cfg.Sets, set)
 	}
+
 	if set == nil {
 		http.Error(w, fmt.Sprintf("Set with ID '%s' not found", req.SetId), http.StatusBadRequest)
 		return
