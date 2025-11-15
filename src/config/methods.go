@@ -303,27 +303,34 @@ func (set *SetConfig) ResetToDefaults() {
 }
 
 func (t *TargetsConfig) AppendIP(ip []string) error {
-
-	for _, existingIP := range t.IPs {
-		for _, newIP := range ip {
+	for _, newIP := range ip {
+		exists := false
+		for _, existingIP := range t.IPs {
 			if existingIP == newIP {
-				return log.Errorf("IP '%s' already exists in the set", newIP)
+				exists = true
+				break
 			}
 		}
-	}
-	t.IPs = append(t.IPs, ip...)
-
-	for _, existingIP := range t.IpsToMatch {
-		for _, newIP := range ip {
-			if existingIP == newIP {
-				return log.Errorf("IP '%s' already exists in the set", newIP)
-			}
+		if !exists {
+			t.IPs = append(t.IPs, newIP)
 		}
 	}
-	t.IpsToMatch = append(t.IpsToMatch, ip...)
+
+	for _, newIP := range ip {
+		exists := false
+		for _, existingIP := range t.IpsToMatch {
+			if existingIP == newIP {
+				exists = true
+				break
+			}
+		}
+		if !exists {
+			t.IpsToMatch = append(t.IpsToMatch, newIP)
+		}
+	}
+
 	return nil
 }
-
 func (t *TargetsConfig) AppendSNI(sni string) error {
 
 	for _, existingDomain := range t.SNIDomains {

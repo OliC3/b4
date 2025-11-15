@@ -60,9 +60,15 @@ export const DomainsTable: React.FC<DomainsTableProps> = ({
   tableRef,
   onScroll,
 }) => {
-  const getAsnForIp = (ip: string) => {
-    return asnStorage.findAsnForIp(ip);
-  };
+  const asnCache = React.useMemo(() => {
+    const cache = new Map<string, ReturnType<typeof asnStorage.findAsnForIp>>();
+    data.forEach((log) => {
+      if (!cache.has(log.destination)) {
+        cache.set(log.destination, asnStorage.findAsnForIp(log.destination));
+      }
+    });
+    return cache;
+  }, [data]);
 
   return (
     <TableContainer
@@ -243,9 +249,12 @@ export const DomainsTable: React.FC<DomainsTableProps> = ({
                     </Box>
 
                     {(() => {
-                      const asn = getAsnForIp(log.destination);
+                      const asn = asnCache.get(log.destination);
                       return asn ? (
-                        <B4Badge badgeVariant="secondary" label={asn.name} />
+                        <B4Badge
+                          badgeVariant="yellowOutline"
+                          label={asn.name}
+                        />
                       ) : null;
                     })()}
                     <Box sx={{ flex: 1 }} />

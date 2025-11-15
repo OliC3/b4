@@ -1,7 +1,7 @@
 import { Chip, ChipProps } from "@mui/material";
 import { colors } from "@design";
 
-type BadgeVariant = "primary" | "secondary";
+type BadgeVariant = "primary" | "secondary" | "yellowOutline";
 
 interface B4BadgeProps extends Omit<ChipProps, "color" | "variant"> {
   badgeVariant?: BadgeVariant;
@@ -15,6 +15,10 @@ const variantStyles: Record<BadgeVariant, object> = {
   secondary: {
     bgcolor: `${colors.tertiary}`,
     borderColor: colors.tertiary,
+  },
+  yellowOutline: {
+    color: colors.accent,
+    borderColor: colors.accent,
   },
 };
 

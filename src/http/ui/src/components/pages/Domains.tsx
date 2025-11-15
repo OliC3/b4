@@ -83,25 +83,26 @@ export default function Domains() {
 
   const [ipInfoToken, setIpInfoToken] = useState<string>("");
 
-  useEffect(() => {
-    const fetchSets = async () => {
-      try {
-        const response = await fetch("/api/config");
-        if (response.ok) {
-          const data = (await response.json()) as B4Config;
-          if (data.sets && Array.isArray(data.sets)) {
-            setAvailableSets(data.sets);
-          }
-          if (data.system?.api?.ipinfo_token) {
-            setIpInfoToken(data.system.api.ipinfo_token);
-          }
+  const fetchSets = useCallback(async () => {
+    try {
+      const response = await fetch("/api/config");
+      if (response.ok) {
+        const data = (await response.json()) as B4Config;
+        if (data.sets && Array.isArray(data.sets)) {
+          setAvailableSets(data.sets);
         }
-      } catch (error) {
-        console.error("Failed to fetch sets:", error);
+        if (data.system?.api?.ipinfo_token) {
+          setIpInfoToken(data.system.api.ipinfo_token);
+        }
       }
-    };
-    void fetchSets();
+    } catch (error) {
+      console.error("Failed to fetch sets:", error);
+    }
   }, []);
+
+  useEffect(() => {
+    void fetchSets();
+  }, [fetchSets]);
 
   const handleScroll = () => {
     const el = tableRef.current;
@@ -235,7 +236,10 @@ export default function Domains() {
         onSelectVariant={selectVariant}
         sets={availableSets}
         onAdd={(...args) => {
-          void addDomain(...args);
+          void (async () => {
+            await addDomain(...args);
+            await fetchSets();
+          })();
         }}
       />
 
@@ -249,7 +253,10 @@ export default function Domains() {
         onClose={closeIpModal}
         onSelectVariant={selectIpVariant}
         onAdd={(...args) => {
-          void addIp(...args);
+          void (async () => {
+            await addIp(...args);
+            await fetchSets();
+          })();
         }}
         onAddHostname={(hostname) => {
           const variants = generateDomainVariants(hostname);
