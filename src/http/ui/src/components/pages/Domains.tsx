@@ -4,8 +4,6 @@ import { DomainsControlBar } from "@/components/organisms/domains/ControlBar";
 import { AddSniModal } from "@/components/organisms/domains/AddSniModal";
 import { DomainsTable, SortColumn } from "@organisms/domains/Table";
 import { SortDirection } from "@atoms/common/SortableTableCell";
-import { IpInfoModal } from "@organisms/api/IpInfoDialog";
-import { RipeDialog } from "@organisms/api/RipeDialog";
 import {
   useDomainActions,
   useParsedLogs,
@@ -82,39 +80,7 @@ export default function Domains() {
   const sortedData = useSortedLogs(filteredLogs, sortColumn, sortDirection);
   const [availableSets, setAvailableSets] = useState<B4SetConfig[]>([]);
 
-  const [ipInfoModalState, setIpInfoModalState] = useState<{
-    open: boolean;
-    ip: string;
-  }>({
-    open: false,
-    ip: "",
-  });
-
   const [ipInfoToken, setIpInfoToken] = useState<string>("");
-
-  const [ripeModalState, setRipeModalState] = useState<{
-    open: boolean;
-    ip: string;
-  }>({
-    open: false,
-    ip: "",
-  });
-
-  const handleRipeClick = (ip: string) => {
-    setRipeModalState({ open: true, ip });
-  };
-
-  const handleRipeClose = () => {
-    setRipeModalState({ open: false, ip: "" });
-  };
-
-  const handleAddPrefixesFromRipe = async (
-    setId: string,
-    prefixes: string[]
-  ) => {
-    modalIpState.selected = prefixes;
-    await addIp(setId);
-  };
 
   useEffect(() => {
     const fetchSets = async () => {
@@ -135,19 +101,6 @@ export default function Domains() {
     };
     void fetchSets();
   }, []);
-
-  const handleIpInfoClick = (ip: string) => {
-    setIpInfoModalState({ open: true, ip });
-  };
-
-  const handleIpInfoClose = () => {
-    setIpInfoModalState({ open: false, ip: "" });
-  };
-
-  const handleAddHostnameFromIpInfo = (hostname: string) => {
-    const variants = generateDomainVariants(hostname);
-    openModal(hostname, variants);
-  };
 
   const handleScroll = () => {
     const el = tableRef.current;
@@ -269,9 +222,6 @@ export default function Domains() {
           onIpClick={handleIpClick}
           tableRef={tableRef}
           onScroll={handleScroll}
-          hasIpInfoToken={!!ipInfoToken}
-          onIpInfoClick={handleIpInfoClick}
-          onRipeClick={handleRipeClick}
         />
       </Paper>
 
@@ -294,27 +244,16 @@ export default function Domains() {
         variants={modalIpState.variants}
         selected={modalIpState.selected as string}
         sets={availableSets}
+        ipInfoToken={ipInfoToken}
         onClose={closeIpModal}
         onSelectVariant={selectIpVariant}
         onAdd={(...args) => {
           void addIp(...args);
         }}
-      />
-
-      <IpInfoModal
-        open={ipInfoModalState.open}
-        ip={ipInfoModalState.ip}
-        token={ipInfoToken}
-        onClose={handleIpInfoClose}
-        onAddHostname={handleAddHostnameFromIpInfo}
-      />
-
-      <RipeDialog
-        open={ripeModalState.open}
-        ip={ripeModalState.ip}
-        sets={availableSets}
-        onClose={handleRipeClose}
-        onAdd={handleAddPrefixesFromRipe}
+        onAddHostname={(hostname) => {
+          const variants = generateDomainVariants(hostname);
+          openModal(hostname, variants);
+        }}
       />
 
       <Snackbar

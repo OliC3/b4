@@ -47,9 +47,6 @@ interface DomainsTableProps {
   onIpClick: (ip: string) => void;
   tableRef: React.RefObject<HTMLDivElement>;
   onScroll: () => void;
-  hasIpInfoToken: boolean;
-  onIpInfoClick: (ip: string) => void;
-  onRipeClick: (ip: string) => void;
 }
 
 export const DomainsTable: React.FC<DomainsTableProps> = ({
@@ -61,9 +58,6 @@ export const DomainsTable: React.FC<DomainsTableProps> = ({
   onIpClick,
   tableRef,
   onScroll,
-  hasIpInfoToken,
-  onIpInfoClick,
-  onRipeClick,
 }) => {
   return (
     <TableContainer
@@ -253,34 +247,6 @@ export const DomainsTable: React.FC<DomainsTableProps> = ({
                           borderRadius: "50%",
                           "&:hover": {
                             bgcolor: colors.secondary,
-                          },
-                        }}
-                      />
-                    )}
-                    <B4Badge
-                      onClick={() => onRipeClick(log.destination)}
-                      badgeVariant="primary"
-                      label="RIPE"
-                      sx={{
-                        bgcolor: colors.accent.tertiary,
-                        border: `1px solid ${colors.tertiary}`,
-                        color: colors.secondary,
-                        "& .MuiChip-deleteIcon": {
-                          color: colors.secondary,
-                        },
-                      }}
-                    />
-                    {hasIpInfoToken && (
-                      <B4Badge
-                        onClick={() => onIpInfoClick(log.destination)}
-                        badgeVariant="primary"
-                        label="IPI"
-                        sx={{
-                          bgcolor: colors.accent.primary,
-                          border: `1px solid ${colors.primary}`,
-                          color: colors.secondary,
-                          "& .MuiChip-deleteIcon": {
-                            color: colors.secondary,
                           },
                         }}
                       />

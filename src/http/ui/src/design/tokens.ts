@@ -73,3 +73,11 @@ export const button_secondary = {
     bgcolor: colors.accent.primaryHover,
   },
 } as const;
+
+export const button_yellow_outline = {
+  border: `1px solid ${colors.secondary}`,
+  color: colors.secondary,
+  "&:hover": {
+    bgcolor: colors.accent.secondaryHover,
+  },
+} as const;
