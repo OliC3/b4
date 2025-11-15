@@ -4,6 +4,7 @@ import { DomainsControlBar } from "@/components/organisms/domains/ControlBar";
 import { AddSniModal } from "@/components/organisms/domains/AddSniModal";
 import { DomainsTable, SortColumn } from "@organisms/domains/Table";
 import { SortDirection } from "@atoms/common/SortableTableCell";
+import { IpInfoModal } from "../organisms/api/IpInfoDialog";
 import {
   useDomainActions,
   useParsedLogs,
@@ -80,6 +81,16 @@ export default function Domains() {
   const sortedData = useSortedLogs(filteredLogs, sortColumn, sortDirection);
   const [availableSets, setAvailableSets] = useState<B4SetConfig[]>([]);
 
+  const [ipInfoModalState, setIpInfoModalState] = useState<{
+    open: boolean;
+    ip: string;
+  }>({
+    open: false,
+    ip: "",
+  });
+
+  const [ipInfoToken, setIpInfoToken] = useState<string>("");
+
   useEffect(() => {
     const fetchSets = async () => {
       try {
@@ -89,6 +100,9 @@ export default function Domains() {
           if (data.sets && Array.isArray(data.sets)) {
             setAvailableSets(data.sets);
           }
+          if (data.system?.api?.ipinfo_token) {
+            setIpInfoToken(data.system.api.ipinfo_token);
+          }
         }
       } catch (error) {
         console.error("Failed to fetch sets:", error);
@@ -96,6 +110,19 @@ export default function Domains() {
     };
     void fetchSets();
   }, []);
+
+  const handleIpInfoClick = (ip: string) => {
+    setIpInfoModalState({ open: true, ip });
+  };
+
+  const handleIpInfoClose = () => {
+    setIpInfoModalState({ open: false, ip: "" });
+  };
+
+  const handleAddHostnameFromIpInfo = (hostname: string) => {
+    const variants = generateDomainVariants(hostname);
+    openModal(hostname, variants);
+  };
 
   const handleScroll = () => {
     const el = tableRef.current;
@@ -217,6 +244,8 @@ export default function Domains() {
           onIpClick={handleIpClick}
           tableRef={tableRef}
           onScroll={handleScroll}
+          hasIpInfoToken={!!ipInfoToken}
+          onIpInfoClick={handleIpInfoClick}
         />
       </Paper>
 
@@ -244,6 +273,14 @@ export default function Domains() {
         onAdd={(...args) => {
           void addIp(...args);
         }}
+      />
+
+      <IpInfoModal
+        open={ipInfoModalState.open}
+        ip={ipInfoModalState.ip}
+        token={ipInfoToken}
+        onClose={handleIpInfoClose}
+        onAddHostname={handleAddHostnameFromIpInfo}
       />
 
       <Snackbar

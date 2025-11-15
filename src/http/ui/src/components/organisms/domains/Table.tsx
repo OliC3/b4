@@ -9,8 +9,12 @@ import {
   Typography,
   Stack,
   Box,
+  IconButton,
 } from "@mui/material";
-import AddIcon from "@mui/icons-material/Add";
+import {
+  Add as AddIcon,
+  InfoOutlined as InfoOutlinedIcon,
+} from "@mui/icons-material";
 import {
   SortableTableCell,
   SortDirection,
@@ -47,6 +51,8 @@ interface DomainsTableProps {
   onIpClick: (ip: string) => void;
   tableRef: React.RefObject<HTMLDivElement>;
   onScroll: () => void;
+  hasIpInfoToken: boolean;
+  onIpInfoClick: (ip: string) => void;
 }
 
 export const DomainsTable: React.FC<DomainsTableProps> = ({
@@ -58,6 +64,8 @@ export const DomainsTable: React.FC<DomainsTableProps> = ({
   onIpClick,
   tableRef,
   onScroll,
+  hasIpInfoToken,
+  onIpInfoClick,
 }) => {
   return (
     <TableContainer
@@ -200,34 +208,54 @@ export const DomainsTable: React.FC<DomainsTableProps> = ({
                     color: "text.primary",
                     fontWeight: 500,
                     borderBottom: `1px solid ${colors.border.light}`,
-                    cursor: "pointer",
-                    "&:hover": {
-                      bgcolor: colors.accent.primary,
-                      color: colors.secondary,
-                    },
                   }}
                 >
-                  <Stack
-                    direction="row"
-                    spacing={1}
-                    alignItems="center"
-                    onClick={() =>
-                      log.destination &&
-                      !log.ipSet &&
-                      onIpClick(log.destination)
-                    }
-                  >
-                    {log.destination}
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <Box
+                      sx={{
+                        cursor: "pointer",
+                        "&:hover": {
+                          bgcolor: colors.accent.primary,
+                          color: colors.secondary,
+                        },
+                      }}
+                      onClick={() =>
+                        log.destination &&
+                        !log.ipSet &&
+                        onIpClick(log.destination)
+                      }
+                    >
+                      {log.destination}
+                    </Box>
                     <Box sx={{ flex: 1 }} />
+                    {hasIpInfoToken && (
+                      <IconButton
+                        size="small"
+                        onClick={() => onIpInfoClick(log.destination)}
+                        sx={{
+                          color: colors.tertiary,
+                          "&:hover": {
+                            color: colors.secondary,
+                            bgcolor: colors.accent.secondaryHover,
+                          },
+                        }}
+                      >
+                        <InfoOutlinedIcon fontSize="small" />
+                      </IconButton>
+                    )}
                     {log.ipSet ? (
                       <B4Badge badgeVariant="secondary" label={log.ipSet} />
                     ) : (
                       <AddIcon
+                        onClick={() => onIpClick(log.destination)}
                         sx={{
                           fontSize: 16,
                           bgcolor: `${colors.secondary}88`,
                           color: colors.background.default,
                           borderRadius: "50%",
+                          "&:hover": {
+                            bgcolor: colors.secondary,
+                          },
                         }}
                       />
                     )}
