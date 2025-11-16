@@ -109,15 +109,23 @@ export function useDomainActions() {
   };
 }
 
+const parseCache = new WeakMap<string[], ParsedLog[]>();
+
 // Hook to parse logs
 export function useParsedLogs(lines: string[], showAll: boolean): ParsedLog[] {
   return useMemo(() => {
-    return lines
+    // ADD cache check
+    if (parseCache.has(lines)) {
+      const cached = parseCache.get(lines)!;
+      return showAll ? cached : cached.filter((log) => log.domain !== "");
+    }
+
+    const parsed = lines
       .map(parseSniLogLine)
-      .filter(
-        (log): log is ParsedLog =>
-          log !== null && (showAll || log.domain !== "")
-      );
+      .filter((log): log is ParsedLog => log !== null);
+
+    parseCache.set(lines, parsed);
+    return showAll ? parsed : parsed.filter((log) => log.domain !== "");
   }, [lines, showAll]);
 }
 

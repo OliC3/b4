@@ -33,6 +33,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
   const [pauseDomains, setPauseDomains] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const [unseenDomainsCount, setUnseenDomainsCount] = useState(0);
+  const [, setBuffer] = useState<string[]>([]);
 
   useEffect(() => {
     const ws = new WebSocket(
@@ -43,23 +44,36 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
 
     ws.onmessage = (ev) => {
       const line = String(ev.data);
-      if (!pauseLogs) {
-        setLogs((prev) => [...prev.slice(-999), line]);
-      }
-      if (!pauseDomains) {
-        setDomains((prev) => {
-          const newDomains = [...prev.slice(-999), line];
-          const log = parseSniLogLine(line);
-          if (log?.hostSet || log?.ipSet) {
-            setUnseenDomainsCount((count) => count + 1);
-          }
-          return newDomains;
-        });
-      }
+      setBuffer((prev) => [...prev, line]);
     };
     ws.onerror = () => setLogs((prev) => [...prev, "[WS ERROR]"]);
 
-    return () => ws.close();
+    const interval = setInterval(() => {
+      setBuffer((prev) => {
+        if (prev.length === 0) return prev;
+
+        if (!pauseLogs) {
+          setLogs((curr) => [...curr.slice(-999), ...prev]);
+        }
+        if (!pauseDomains) {
+          setDomains((curr) => {
+            const newDomains = [...curr.slice(-999), ...prev];
+            const newCount = prev.reduce((count, line) => {
+              const log = parseSniLogLine(line);
+              return log?.hostSet || log?.ipSet ? count + 1 : count;
+            }, 0);
+            setUnseenDomainsCount((c) => c + newCount);
+            return newDomains;
+          });
+        }
+        return [];
+      });
+    }, 100);
+
+    return () => {
+      clearInterval(interval);
+      ws.close();
+    };
   }, [pauseLogs, pauseDomains]);
 
   const clearLogs = useCallback(() => setLogs([]), []);

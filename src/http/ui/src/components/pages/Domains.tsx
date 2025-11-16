@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Container, Paper, Snackbar, Alert } from "@mui/material";
 import { DomainsControlBar } from "@/components/organisms/domains/ControlBar";
 import { AddSniModal } from "@/components/organisms/domains/AddSniModal";
@@ -76,7 +76,11 @@ export default function Domains() {
     }
   }, [domains, autoScroll]);
 
-  const parsedLogs = useParsedLogs(domains, showAll);
+  const recentDomains = useMemo(
+    () => domains.slice(-MAX_VISIBLE_ROWS * 2),
+    [domains]
+  );
+  const parsedLogs = useParsedLogs(recentDomains, showAll);
   const filteredLogs = useFilteredLogs(parsedLogs, filter);
   const sortedData = useSortedLogs(filteredLogs, sortColumn, sortDirection);
   const [availableSets, setAvailableSets] = useState<B4SetConfig[]>([]);
@@ -216,7 +220,7 @@ export default function Domains() {
         />
 
         <DomainsTable
-          data={sortedData.slice(-MAX_VISIBLE_ROWS)}
+          data={sortedData}
           sortColumn={sortColumn}
           sortDirection={sortDirection}
           onSort={handleSort}
