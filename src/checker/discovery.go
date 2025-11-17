@@ -134,7 +134,7 @@ func (ds *DiscoverySuite) RunDiscovery(domains []string) {
 			}
 
 			// Small delay to let config propagate to all workers
-			time.Sleep(500 * time.Millisecond)
+			time.Sleep(1000 * time.Millisecond)
 
 			var result CheckResult
 			for attempt := 0; attempt < 2; attempt++ {
@@ -254,6 +254,7 @@ func (ds *DiscoverySuite) buildTestConfig(preset ConfigPreset, testDomain string
 	mainSet := &config.SetConfig{
 		Id:            ds.originalConfig.MainSet.Id,
 		Name:          ds.originalConfig.MainSet.Name,
+		Enabled:       true,
 		TCP:           preset.Config.TCP,
 		UDP:           preset.Config.UDP,
 		Fragmentation: preset.Config.Fragmentation,
