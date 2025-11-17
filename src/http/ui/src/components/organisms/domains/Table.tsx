@@ -17,8 +17,8 @@ import {
 } from "@atoms/common/SortableTableCell";
 import { ProtocolChip } from "@atoms/common/ProtocolChip";
 import { colors } from "@design";
-import { B4Badge } from "@/components/atoms/common/B4Badge";
-import { asnStorage } from "@utils";
+import { B4Badge } from "@atoms/common/B4Badge";
+import { AsnBadge } from "@atoms/common/AsnBadge";
 
 export type SortColumn =
   | "timestamp"
@@ -238,15 +238,7 @@ export const DomainsTable: React.FC<DomainsTableProps> = ({
                       {log.destination}
                     </Box>
 
-                    {(() => {
-                      const asn = asnStorage.findAsnForIp(log.destination);
-                      return asn ? (
-                        <B4Badge
-                          badgeVariant="yellowOutline"
-                          label={asn.name}
-                        />
-                      ) : null;
-                    })()}
+                    <AsnBadge ip={log.destination} />
                     <Box sx={{ flex: 1 }} />
                     {!log.ipSet && (
                       <AddIcon

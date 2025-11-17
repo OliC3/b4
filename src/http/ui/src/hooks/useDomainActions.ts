@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from "react";
 import { ParsedLog, SortColumn } from "@organisms/domains/Table";
 import { SortDirection } from "@atoms/common/SortableTableCell";
-import { parseSniLogLine } from "@utils";
+import { parseSniLogLine, asnStorage } from "@utils";
 
 interface DomainModalState {
   open: boolean;
@@ -110,6 +110,29 @@ export function useDomainActions() {
 }
 
 const parseCache = new WeakMap<string[], ParsedLog[]>();
+const asnLookupCache = new Map<string, string | null>();
+
+export function useAsnLookup(destination: string): string | null {
+  return useMemo(() => {
+    if (!destination) return null;
+
+    const cached = asnLookupCache.get(destination);
+    if (cached !== undefined) return cached;
+
+    const asn = asnStorage.findAsnForIp(destination);
+    const result = asn?.name || null;
+
+    asnLookupCache.set(destination, result);
+
+    if (asnLookupCache.size > 1000) {
+      const entries = Array.from(asnLookupCache.entries());
+      asnLookupCache.clear();
+      entries.slice(-500).forEach(([k, v]) => asnLookupCache.set(k, v));
+    }
+
+    return result;
+  }, [destination]);
+}
 
 // Hook to parse logs
 export function useParsedLogs(lines: string[], showAll: boolean): ParsedLog[] {
