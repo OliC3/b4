@@ -89,6 +89,7 @@ func (api *API) RegisterEndpoints(mux *http.ServeMux, cfg *config.Config) {
 	api.RegisterCheckApi()
 	api.RegisterIntegrationApi()
 	api.RegisterGeodatApi()
+	api.RegisterCaptureApi()
 }
 
 func sendResponse(w http.ResponseWriter, response interface{}) {

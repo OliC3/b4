@@ -28,8 +28,9 @@ import {
   Monitor as MonitorIcon,
   Language as LanguageIcon,
   Cloud as ApiIcon,
+  CameraAlt as CaptureIcon,
 } from "@mui/icons-material";
-
+import { CaptureSettings } from "@organisms/settings/Capture";
 import { NetworkSettings } from "@organisms/settings/Network";
 import { LoggingSettings } from "@organisms/settings/Logging";
 import { FeatureSettings } from "@organisms/settings/Feature";
@@ -79,6 +80,7 @@ enum TABS {
   DOMAINS,
   TESTING,
   API,
+  CAPTURE,
 }
 
 // Settings categories with route paths
@@ -121,6 +123,14 @@ const SETTING_CATEGORIES = [
     label: "API",
     icon: <ApiIcon />,
     description: "API settings for various services",
+    requiresRestart: false,
+  },
+  {
+    id: TABS.CAPTURE,
+    path: "capture",
+    label: "Capture",
+    icon: <CaptureIcon />,
+    description: "Capture real payloads from live traffic",
     requiresRestart: false,
   },
 ];
@@ -533,6 +543,10 @@ export default function Settings() {
 
         <TabPanel value={validTab} index={TABS.TESTING}>
           <CheckerSettings config={config} onChange={handleChange} />
+        </TabPanel>
+
+        <TabPanel value={validTab} index={TABS.CAPTURE}>
+          <CaptureSettings />
         </TabPanel>
       </Box>
 

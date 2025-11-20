@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/daniellavrushin/b4/capture"
 	"github.com/daniellavrushin/b4/config"
 	"github.com/daniellavrushin/b4/log"
 	"github.com/daniellavrushin/b4/metrics"
@@ -191,6 +192,10 @@ func (w *Worker) Start() error {
 				if dport == HTTPSPort && len(payload) > 0 {
 					if h, ok := sni.ParseTLSClientHelloSNI(payload); ok {
 						host = h
+						if captureManager := capture.GetManager(); captureManager != nil {
+							go captureManager.CapturePayload(host, "tls", payload)
+						}
+
 						if mSNI, stSNI := matcher.MatchSNI(host); mSNI {
 							matchedSNI = true
 							matched = true
@@ -297,6 +302,10 @@ func (w *Worker) Start() error {
 							sniTarget = sniSet.Name
 						}
 					}
+				}
+
+				if captureManager := capture.GetManager(); captureManager != nil {
+					go captureManager.CapturePayload(host, "quic", payload)
 				}
 
 				shouldHandle := (matchedPort || matchedIP || matchedQUIC) && !(isSTUN && set.UDP.FilterSTUN)
