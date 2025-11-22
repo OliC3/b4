@@ -5,6 +5,7 @@
 - ADDED: `Out-of-Band` (OOB) data handling with configurable position, reverse order, and character.
 - UPDATED: Fake SNI payload now uses TLS 1.3 ClientHello structure with `staticcdn.duckduckgo.com`.
 - IMPROVED: SNI fragmentation for long domains (>30 bytes). Now splits 12 bytes before SNI end instead of middle, ensuring domain suffixes like `googlevideo.com` are properly fragmented across packets.
+- FIXED: Logs level can be switched witout reloading the app.
 
 ## [1.16.1] - 2024-11-20
 
