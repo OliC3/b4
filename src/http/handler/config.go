@@ -109,6 +109,13 @@ func (a *API) updateConfig(w http.ResponseWriter, r *http.Request) {
 	}
 
 	newConfig.ConfigPath = a.cfg.ConfigPath
+
+	// update logging level if changed
+	if newConfig.System.Logging.Level != log.Level(log.CurLevel.Load()) {
+		log.SetLevel(log.Level(newConfig.System.Logging.Level))
+		log.Infof("Log level changed to %s", newConfig.System.Logging.Level)
+	}
+
 	a.geodataManager.UpdatePaths(newConfig.System.Geo.GeoSitePath, newConfig.System.Geo.GeoIpPath)
 
 	// Calculate statistics for response

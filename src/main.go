@@ -25,13 +25,14 @@ import (
 )
 
 var (
-	cfg         = config.DefaultConfig
-	verboseFlag string
-	showVersion bool
-	clearTables bool
-	Version     = "dev"
-	Commit      = "none"
-	Date        = "unknown"
+	cfg             = config.DefaultConfig
+	verboseFlag     string
+	showVersion     bool
+	clearTables     bool
+	Version         = "dev"
+	Commit          = "none"
+	Date            = "unknown"
+	currentLogLevel = log.LevelInfo
 )
 
 var rootCmd = &cobra.Command{
@@ -49,6 +50,7 @@ func init() {
 	rootCmd.Flags().StringVar(&verboseFlag, "verbose", "info", "Set verbosity level (debug, trace, info, silent), default: info")
 	rootCmd.Flags().BoolVarP(&showVersion, "version", "v", false, "Show version and exit")
 	rootCmd.Flags().BoolVar(&clearTables, "clear-tables", false, "Perform only iptables/nftables cleanup and exit")
+
 }
 
 func main() {
@@ -67,16 +69,11 @@ func runB4(cmd *cobra.Command, args []string) error {
 	cfg.ApplyLogLevel(verboseFlag)
 
 	// Initialize logging first thing
-	if err := initLogging(&cfg); err != nil {
+	if err := initLogging(&cfg); err != nil { // init currentLogLevel from verboseFlag
 		return fmt.Errorf("logging initialization failed: %w", err)
 	}
 
 	if clearTables {
-		// Initialize logging first thing
-		if err := initLogging(&cfg); err != nil {
-			return fmt.Errorf("logging initialization failed: %w", err)
-		}
-
 		log.Infof("Clearing iptables rules as requested (--clear-iptables)")
 		tables.ClearRules(&cfg)
 		log.Infof("IPTables rules cleared successfully")
@@ -87,6 +84,12 @@ func runB4(cmd *cobra.Command, args []string) error {
 
 	cfg.LoadWithMigration(cfg.ConfigPath)
 	cfg.SaveToFile(cfg.ConfigPath)
+
+	if cmd.Flags().Changed("verbose") {
+		cfg.ApplyLogLevel(verboseFlag)
+		log.CurLevel.Store(int32(currentLogLevel))
+		log.Infof("Log level set to %s", verboseFlag)
+	}
 
 	// Validate configuration
 	if err := cfg.Validate(); err != nil {
@@ -296,6 +299,7 @@ func initLogging(cfg *config.Config) error {
 		log.Infof("Syslog enabled")
 	}
 
+	currentLogLevel = log.Level(cfg.System.Logging.Level)
 	return nil
 }
 

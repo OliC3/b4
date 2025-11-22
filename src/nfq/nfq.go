@@ -3,6 +3,7 @@ package nfq
 import (
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"net"
 	"os"
 	"strings"
@@ -190,12 +191,15 @@ func (w *Worker) Start() error {
 				sniTarget := ""
 
 				if dport == HTTPSPort && len(payload) > 0 {
-					if h, ok := sni.ParseTLSClientHelloSNI(payload); ok {
-						host = h
-						if captureManager := capture.GetManager(cfg); captureManager != nil {
-							go captureManager.CapturePayload(host, "tls", payload)
-						}
+					connKey := fmt.Sprintf("%s:%d->%s:%d", srcStr, sport, dstStr, dport)
 
+					host, _ = sni.ParseTLSClientHelloSNI(payload)
+
+					if captureManager := capture.GetManager(cfg); captureManager != nil {
+						go captureManager.CapturePayload(connKey, host, "tls", payload)
+					}
+
+					if host != "" {
 						if mSNI, stSNI := matcher.MatchSNI(host); mSNI {
 							matchedSNI = true
 							matched = true
@@ -251,6 +255,7 @@ func (w *Worker) Start() error {
 				payload := udp[8:]
 				sport := binary.BigEndian.Uint16(udp[0:2])
 				dport := binary.BigEndian.Uint16(udp[2:4])
+				connKey := fmt.Sprintf("%s:%d->%s:%d", srcStr, sport, dstStr, dport)
 
 				// Early exit for DNS
 				if dport == 53 || sport == 53 {
@@ -305,7 +310,7 @@ func (w *Worker) Start() error {
 				}
 
 				if captureManager := capture.GetManager(cfg); captureManager != nil {
-					go captureManager.CapturePayload(host, "quic", payload)
+					go captureManager.CapturePayload(connKey, host, "quic", payload)
 				}
 
 				shouldHandle := (matchedPort || matchedIP || matchedQUIC) && !(isSTUN && set.UDP.FilterSTUN)

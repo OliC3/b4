@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -21,11 +20,19 @@ var (
 )
 
 type Manager struct {
-	mu           sync.RWMutex
-	metadata     map[string]map[string]*CaptureMetadata
-	outputPath   string
-	metadataFile string
-	activeProbes map[string]time.Time
+	mu              sync.RWMutex
+	metadata        map[string]map[string]*CaptureMetadata
+	outputPath      string
+	metadataFile    string
+	activeProbes    map[string]time.Time
+	pendingCaptures map[string]*PendingCapture
+	connToDomain    map[string]string
+}
+
+type PendingCapture struct {
+	protocol  string
+	data      []byte
+	firstSeen time.Time
 }
 
 type CaptureMetadata struct {
@@ -50,10 +57,11 @@ func GetManager(cfg *config.Config) *Manager {
 		outputPath := filepath.Join(baseDirPath, "captures")
 
 		instance = &Manager{
-			metadata:     make(map[string]map[string]*CaptureMetadata),
-			outputPath:   outputPath,
-			metadataFile: filepath.Join(outputPath, "payloads.json"),
-			activeProbes: make(map[string]time.Time),
+			metadata:        make(map[string]map[string]*CaptureMetadata),
+			outputPath:      outputPath,
+			metadataFile:    filepath.Join(outputPath, "payloads.json"),
+			activeProbes:    make(map[string]time.Time),
+			pendingCaptures: make(map[string]*PendingCapture),
 		}
 
 		os.MkdirAll(instance.outputPath, 0755)
@@ -78,9 +86,10 @@ func (m *Manager) cleanupExpiredProbes() {
 		for key, expiry := range m.activeProbes {
 			if now.After(expiry) {
 				delete(m.activeProbes, key)
-				log.Tracef("Probe expired for %s", key)
+				log.Infof("Capture window expired for %s", key)
 			}
 		}
+
 		m.mu.Unlock()
 	}
 }
@@ -120,108 +129,134 @@ func (m *Manager) saveMetadata() error {
 	return nil
 }
 
-// CapturePayload called from nfq when packet matches
-func (m *Manager) CapturePayload(domain, protocol string, payload []byte) bool {
-	if domain == "" {
-		return false
-	}
-
+func (m *Manager) CapturePayload(connKey, domain, protocol string, payload []byte) bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	// Check if we're actively probing
-	var matchedKey string
-	now := time.Now()
+	// Initialize map if needed
+	if m.connToDomain == nil {
+		m.connToDomain = make(map[string]string)
+	}
+	log.Tracef("CapturePayload called for connKey=%s, domain=%s, protocol=%s, payloadLen=%d", connKey, domain, protocol, len(payload))
 
-	exactKey := fmt.Sprintf("%s:%s", protocol, domain)
-	if expiry, exists := m.activeProbes[exactKey]; exists && now.Before(expiry) {
-		matchedKey = exactKey
+	// If we have a domain, remember this connection
+	if domain != "" {
+		m.connToDomain[connKey] = domain
+		log.Tracef("Mapped connection %s to domain %s", connKey, domain)
 	} else {
-		// Try flexible matching
-		for key, expiry := range m.activeProbes {
-			if now.After(expiry) {
-				continue
-			}
-			parts := strings.SplitN(key, ":", 2)
-			if len(parts) != 2 {
-				continue
-			}
-			probeProtocol := parts[0]
-			probeDomain := parts[1]
-
-			if probeProtocol == protocol &&
-				(probeDomain == domain ||
-					strings.HasSuffix(domain, probeDomain) ||
-					strings.HasSuffix(probeDomain, domain)) {
-				matchedKey = key
-				break
-			}
+		// No domain in this segment - look it up
+		if mappedDomain, exists := m.connToDomain[connKey]; exists {
+			domain = mappedDomain
+		} else {
+			// We don't know this connection yet
+			return false
 		}
 	}
 
-	if matchedKey == "" {
+	normalizedDomain := strings.ToLower(strings.TrimSpace(domain))
+
+	// Check if we're probing for this specific domain
+	probeKey := fmt.Sprintf("%s:%s", protocol, normalizedDomain)
+	if expiry, exists := m.activeProbes[probeKey]; !exists || time.Now().After(expiry) {
 		return false
 	}
 
-	// Check if already captured
-	if m.metadata[domain] != nil && m.metadata[domain][protocol] != nil {
-		delete(m.activeProbes, matchedKey)
-		return false
+	// Use domain for accumulation
+	captureKey := fmt.Sprintf("capture:%s:%s", protocol, normalizedDomain)
+
+	// Get or create pending capture
+	pending, exists := m.pendingCaptures[captureKey]
+	if !exists {
+		pending = &PendingCapture{
+			protocol:  protocol,
+			data:      make([]byte, 0, 4096),
+			firstSeen: time.Now(),
+		}
+		m.pendingCaptures[captureKey] = pending
 	}
 
-	// Simple filename: protocol_domain.bin
-	filename := fmt.Sprintf("%s_%s.bin", protocol, sanitizeDomain(domain))
+	// Append new data
+	pending.data = append(pending.data, payload...)
+	log.Tracef("Accumulated %d bytes for %s, total now %d", len(payload), domain, len(pending.data))
+
+	if protocol == "tls" {
+		if len(pending.data) < 9 {
+			return false // Need header
+		}
+
+		if pending.data[0] != 0x16 || pending.data[5] != 0x01 {
+			// Not a TLS ClientHello - shouldn't happen
+			log.Errorf("Invalid TLS data: %02x %02x", pending.data[0], pending.data[5])
+			return false
+		}
+
+		handshakeLen := int(pending.data[6])<<16 | int(pending.data[7])<<8 | int(pending.data[8])
+		totalNeeded := 9 + handshakeLen
+
+		log.Tracef("TLS handshake length: %d, total needed: %d, have: %d", handshakeLen, totalNeeded, len(pending.data))
+
+		if len(pending.data) < totalNeeded {
+			return false // NEED MORE!
+		}
+
+		payload = pending.data[:totalNeeded]
+	} else {
+		// Non-TLS, use what we have
+		payload = pending.data
+	}
+
+	// Save capture
+	filename := fmt.Sprintf("%s_%s.bin", protocol, sanitizeDomain(normalizedDomain))
 	filepath := filepath.Join(m.outputPath, filename)
 
-	// Save binary only
 	if err := os.WriteFile(filepath, payload, 0644); err != nil {
 		log.Errorf("Failed to save capture: %v", err)
 		return false
 	}
 
 	// Update metadata
-	if m.metadata[domain] == nil {
-		m.metadata[domain] = make(map[string]*CaptureMetadata)
+	if m.metadata[normalizedDomain] == nil {
+		m.metadata[normalizedDomain] = make(map[string]*CaptureMetadata)
 	}
 
-	m.metadata[domain][protocol] = &CaptureMetadata{
+	m.metadata[normalizedDomain][protocol] = &CaptureMetadata{
 		Timestamp: time.Now(),
 		Size:      len(payload),
 		Filepath:  filename,
 	}
 
-	// Save metadata to JSON
-	if err := m.saveMetadata(); err != nil {
-		log.Errorf("Failed to save metadata: %v", err)
-	}
+	m.saveMetadata()
 
-	delete(m.activeProbes, matchedKey)
-	log.Infof("✓ Captured %s payload for %s (%d bytes)", protocol, domain, len(payload))
+	// Clean up
+	delete(m.pendingCaptures, captureKey)
+	delete(m.activeProbes, probeKey)
+	delete(m.connToDomain, connKey) // Clean up connection mapping
+
+	log.Infof("✓ Captured %s payload for %s (%d bytes)", protocol, normalizedDomain, len(payload))
 	return true
 }
 
-// ProbeCapture triggers traffic to capture payload
 func (m *Manager) ProbeCapture(domain, protocol string) error {
-	key := fmt.Sprintf("%s:%s", protocol, domain)
-
 	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	// Check if already captured
 	if m.metadata[domain] != nil && m.metadata[domain][protocol] != nil {
-		m.mu.Unlock()
 		return fmt.Errorf("already captured")
 	}
 
-	m.activeProbes[key] = time.Now().Add(10 * time.Second)
-	log.Infof("Enabled capture for %s (expires in 10s)", key)
-	m.mu.Unlock()
+	// Enable capture for 30 seconds to give time to open browser
+	if protocol == "both" {
+		m.activeProbes[fmt.Sprintf("tls:%s", domain)] = time.Now().Add(30 * time.Second)
+		m.activeProbes[fmt.Sprintf("quic:%s", domain)] = time.Now().Add(30 * time.Second)
+		log.Infof("Capture enabled for both TLS and QUIC on %s (expires in 30s)", domain)
+	} else {
+		key := fmt.Sprintf("%s:%s", protocol, domain)
+		m.activeProbes[key] = time.Now().Add(30 * time.Second)
+		log.Infof("Capture enabled for %s (expires in 30s)", key)
+	}
 
-	url := fmt.Sprintf("https://%s", domain)
-	cmd := exec.Command("curl", "-k", "--connect-timeout", "3", "-m", "5", url)
-	cmd.Stdout = nil
-	cmd.Stderr = nil
-
-	log.Infof("Probing %s to capture %s payload...", domain, protocol)
-	go cmd.Run()
+	log.Infof("Open https://%s in your browser NOW to capture real payload", domain)
 
 	return nil
 }
