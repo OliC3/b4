@@ -151,30 +151,24 @@ func (m *Manager) CapturePayload(connKey, domain, protocol string, payload []byt
 	log.Tracef("CapturePayload: connKey=%s, domain=%s, protocol=%s, len=%d",
 		connKey, domain, protocol, len(payload))
 
-	// Update domain mapping if we have a domain
 	if domain != "" {
 		domain = strings.ToLower(strings.TrimSpace(domain))
 		m.connToDomain[connKey] = domain
 		log.Tracef("Mapped connection %s -> %s", connKey, domain)
 	}
 
-	// Get or create pending capture FOR THIS CONNECTION
 	pending, exists := m.pendingCaptures[connKey]
 	if !exists {
-		// Check if this is actually a ClientHello for TLS
 		if protocol == "tls" {
 			if len(payload) < 6 || payload[0] != 0x16 || payload[5] != 0x01 {
-				// Not a TLS ClientHello, ignore
 				return false
 			}
 		}
 
-		// Try to get domain from mapping if not provided
 		if domain == "" {
 			if mappedDomain, ok := m.connToDomain[connKey]; ok {
 				domain = mappedDomain
 			} else {
-				// No domain yet for TLS, can't capture
 				if protocol == "tls" {
 					log.Tracef("No domain yet for TLS connection %s, ignoring", connKey)
 					return false
@@ -190,61 +184,49 @@ func (m *Manager) CapturePayload(connKey, domain, protocol string, payload []byt
 		}
 		m.pendingCaptures[connKey] = pending
 	} else {
-		// Update domain if we just learned it
 		if domain != "" && pending.domain == "" {
 			pending.domain = domain
 			log.Tracef("Updated pending capture domain to %s", domain)
 		}
 	}
 
-	// Check if we're actively probing for this domain
 	if pending.domain == "" {
 		return false
 	}
 
 	probeKey := fmt.Sprintf("%s:%s", protocol, pending.domain)
 	if expiry, exists := m.activeProbes[probeKey]; !exists || time.Now().After(expiry) {
-		// Not actively probing, ignore
 		return false
 	}
 
-	// Append data
 	pending.data = append(pending.data, payload...)
 	log.Tracef("Connection %s: accumulated %d bytes (total: %d)",
 		connKey, len(payload), len(pending.data))
 
-	// Check if we have enough data
 	var captureData []byte
-	if protocol == "tls" {
-		// Need at least TLS record header (5 bytes) + Handshake header (4 bytes)
+	switch protocol {
+	case "tls":
 		if len(pending.data) < 9 {
 			return false
 		}
 
-		// Verify TLS handshake record
 		if pending.data[0] != 0x16 {
 			log.Warnf("Not a TLS handshake: %02x", pending.data[0])
 			delete(m.pendingCaptures, connKey)
 			return false
 		}
 
-		// Verify ClientHello (must be at position 5)
 		if pending.data[5] != 0x01 {
 			log.Warnf("Not a ClientHello: %02x", pending.data[5])
 			delete(m.pendingCaptures, connKey)
 			return false
 		}
 
-		// Calculate total ClientHello size
-		// TLS record length at bytes 3-4
 		recordLen := int(pending.data[3])<<8 | int(pending.data[4])
-		// Handshake message length at bytes 6-8 (24-bit)
 		handshakeLen := int(pending.data[6])<<16 | int(pending.data[7])<<8 | int(pending.data[8])
 
-		// Total needed: 5 (TLS header) + 4 (Handshake header) + handshakeLen
 		totalNeeded := 9 + handshakeLen
 
-		// Sanity check - ClientHello shouldn't be huge
 		if totalNeeded > 4096 {
 			log.Warnf("ClientHello too large: %d bytes", totalNeeded)
 			delete(m.pendingCaptures, connKey)
@@ -264,15 +246,14 @@ func (m *Manager) CapturePayload(connKey, domain, protocol string, payload []byt
 		// Log size for debugging
 		log.Infof("Capturing TLS ClientHello for %s: %d bytes", pending.domain, totalNeeded)
 
-	} else if protocol == "quic" {
+	case "quic":
 		// QUIC Initial packet - capture first packet only
 		captureData = payload // Use only this packet, not accumulated
 		log.Infof("Capturing QUIC Initial for %s: %d bytes", pending.domain, len(captureData))
-	} else {
+	default:
 		captureData = pending.data
 	}
 
-	// Save capture
 	filename := fmt.Sprintf("%s_%s.bin", protocol, sanitizeDomain(pending.domain))
 	filepath := filepath.Join(m.outputPath, filename)
 
