@@ -67,6 +67,12 @@ func (w *Worker) dropAndInjectTCPv6(cfg *config.SetConfig, raw []byte, dst net.I
 		return
 	}
 
+	if cfg.Fragmentation.OOBPosition > 0 {
+		if w.sendWithOOBv6(cfg, raw, dst) {
+			return
+		}
+	}
+
 	ipv6HdrLen := 40
 	tcpHdrLen := int((raw[ipv6HdrLen+12] >> 4) * 4)
 	payloadStart := ipv6HdrLen + tcpHdrLen

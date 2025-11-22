@@ -64,7 +64,7 @@ func (w *Worker) sendWithOOB(cfg *config.SetConfig, packet []byte, dst net.IP) b
 
 	oobSeg[ipHdrLen+13] |= 0x20
 
-	binary.BigEndian.PutUint16(oobSeg[ipHdrLen+18:ipHdrLen+20], uint16(oobPos))
+	binary.BigEndian.PutUint16(oobSeg[ipHdrLen+18:ipHdrLen+20], uint16(oobPos+1))
 
 	binary.BigEndian.PutUint16(oobSeg[2:4], uint16(oobSegLen))
 
@@ -169,7 +169,7 @@ func (w *Worker) sendWithOOBv6(cfg *config.SetConfig, packet []byte, dst net.IP)
 
 	// Set URG flag
 	oobSeg[ipv6HdrLen+13] |= 0x20
-	binary.BigEndian.PutUint16(oobSeg[ipv6HdrLen+18:ipv6HdrLen+20], uint16(oobPos))
+	binary.BigEndian.PutUint16(oobSeg[ipv6HdrLen+18:ipv6HdrLen+20], uint16(oobPos+1))
 
 	// Update IPv6 payload length
 	binary.BigEndian.PutUint16(oobSeg[4:6], uint16(oobSegLen-ipv6HdrLen))
