@@ -25,6 +25,7 @@ export const FragmentationSettings: React.FC<FragmentationSettingsProps> = ({
   onChange,
 }) => {
   const hasOOB = (config.fragmentation.oob_position || 0) > 0;
+
   return (
     <SettingSection
       title="Fragmentation & OOB Strategy"
@@ -142,15 +143,6 @@ export const FragmentationSettings: React.FC<FragmentationSettingsProps> = ({
                 {config.fragmentation.oob_reverse
                   ? " (reverse order)"
                   : " (normal order)"}
-              </Typography>
-              <Typography
-                variant="caption"
-                sx={{ mt: 1, display: "block", fontStyle: "italic" }}
-              >
-                Equivalent to byedpi:
-                {config.fragmentation.oob_reverse
-                  ? ` -q${config.fragmentation.oob_position}`
-                  : ` -o${config.fragmentation.oob_position}`}
               </Typography>
             </Alert>
           </Grid>
