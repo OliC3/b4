@@ -10,7 +10,7 @@ var (
 	MAIN_SET_ID = "11111111-1111-1111-1111-111111111111"
 	NEW_SET_ID  = "00000000-0000-0000-0000-000000000000"
 
-	CurrentConfigVersion = 2
+	CurrentConfigVersion = 3
 	MinSupportedVersion  = 0
 )
 
@@ -50,12 +50,11 @@ var DefaultSetConfig = SetConfig{
 	},
 
 	Fragmentation: FragmentationConfig{
-		Strategy:          "tcp",
-		SNIReverse:        true,
+		Strategy:          "tcp", // "tcp", "ip", "tls", "oob", "none"
+		ReverseOrder:      true,
 		MiddleSNI:         true,
 		SNIPosition:       1,
 		OOBPosition:       0,
-		OOBReverse:        false,
 		OOBChar:           'x',
 		TLSRecordPosition: 0,
 	},

@@ -1,6 +1,6 @@
 # B4 - Bye Bye Big Bro
 
-## [1.17.0] - 2024-xx-xx
+## [1.17.0] - 2025-11-23
 
 - ADDED: `Out-of-Band` (OOB) data handling with configurable position, reverse order, and character (`--frag=oob`).
 - ADDED: `Out-of-Band` (OOB) strategies to `B4Discovery`.
@@ -12,8 +12,9 @@
 - IMPROVED: `Geodat` download workflow - files now immediately available in sets manager without restart, config auto-reloads after download.
 - IMPROVED: Set `Fragmentation` tab refactored.
 - FIXED: Logs level can be switched witout reloading the app.
+- CHANGED: Renamed `--frag-sni-reverse` to `--frag-reverse` and update related configurations.
 
-## [1.16.1] - 2024-11-20
+## [1.16.1] - 2025-11-20
 
 - ADDED: Asynchronous packet injection for TCP and UDP traffic. Verdict is now sent to kernel immediately, with packet manipulation performed in parallel. Eliminates kernel queue blocking that previously caused video streaming hangs and site loading delays.
 - FIXED: Critical performance bottleneck where each QUIC/UDP packet with default configuration (FakeSeqLength: 6) would block the kernel for 6ms minimum. This caused YouTube and other video services to buffer or hang intermittently.
@@ -21,7 +22,7 @@
 - FIXED: New configuration sets created from the Domains page were not saving custom names, defaulting to generic "Set 1/2/3" names instead.
 - IMPROVED: Removed unnecessary `1ms` sleep delays when `Seg2Delay` is set to `0`, reducing packet processing latency by up to `6ms` per QUIC packet.
 
-## [1.16.0] - 2024-11-17
+## [1.16.0] - 2025-11-17
 
 - ADDED: Configuration sets can now be enabled/disabled without deletion.
 - ADDED: Clear button next to the IP/CIDR list in the set configuration.

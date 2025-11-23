@@ -44,7 +44,7 @@ func (w *Worker) sendOOBFragments(cfg *config.SetConfig, packet []byte, dst net.
 		oobPos = 1 // Default to 1 byte
 	}
 
-	log.Tracef("OOB: Splitting at position %d (reverse=%v)", oobPos, cfg.Fragmentation.OOBReverse)
+	log.Tracef("OOB: Splitting at position %d (reverse=%v)", oobPos, cfg.Fragmentation.ReverseOrder)
 
 	// Get OOB character
 	oobChar := cfg.Fragmentation.OOBChar
@@ -78,7 +78,7 @@ func (w *Worker) sendOOBFragments(cfg *config.SetConfig, packet []byte, dst net.
 	seq := binary.BigEndian.Uint32(packet[ipHdrLen+4 : ipHdrLen+8])
 	id := binary.BigEndian.Uint16(packet[4:6])
 
-	if cfg.Fragmentation.OOBReverse {
+	if cfg.Fragmentation.ReverseOrder {
 		binary.BigEndian.PutUint32(oobSeg[ipHdrLen+4:ipHdrLen+8], seq)
 		binary.BigEndian.PutUint16(oobSeg[4:6], id+1)
 		binary.BigEndian.PutUint32(regularSeg[ipHdrLen+4:ipHdrLen+8], seq+uint32(oobPos))
@@ -97,7 +97,7 @@ func (w *Worker) sendOOBFragments(cfg *config.SetConfig, packet []byte, dst net.
 
 	seg2delay := cfg.TCP.Seg2Delay
 
-	if cfg.Fragmentation.OOBReverse {
+	if cfg.Fragmentation.ReverseOrder {
 		_ = w.sock.SendIPv4(regularSeg, dst)
 		if seg2delay > 0 {
 			time.Sleep(time.Duration(seg2delay) * time.Millisecond)
@@ -146,7 +146,7 @@ func (w *Worker) sendOOBFragmentsV6(cfg *config.SetConfig, packet []byte, dst ne
 		oobPos = 1
 	}
 
-	log.Tracef("OOB v6: Splitting at position %d (reverse=%v)", oobPos, cfg.Fragmentation.OOBReverse)
+	log.Tracef("OOB v6: Splitting at position %d (reverse=%v)", oobPos, cfg.Fragmentation.ReverseOrder)
 
 	oobChar := cfg.Fragmentation.OOBChar
 	if oobChar == 0 {
@@ -171,7 +171,7 @@ func (w *Worker) sendOOBFragmentsV6(cfg *config.SetConfig, packet []byte, dst ne
 	// Handle sequence numbers
 	seq := binary.BigEndian.Uint32(packet[ipv6HdrLen+4 : ipv6HdrLen+8])
 
-	if cfg.Fragmentation.OOBReverse {
+	if cfg.Fragmentation.ReverseOrder {
 		binary.BigEndian.PutUint32(oobSeg[ipv6HdrLen+4:ipv6HdrLen+8], seq)
 		binary.BigEndian.PutUint32(regularSeg[ipv6HdrLen+4:ipv6HdrLen+8], seq+uint32(oobPos))
 	} else {
@@ -186,7 +186,7 @@ func (w *Worker) sendOOBFragmentsV6(cfg *config.SetConfig, packet []byte, dst ne
 
 	seg2delay := cfg.TCP.Seg2Delay
 
-	if cfg.Fragmentation.OOBReverse {
+	if cfg.Fragmentation.ReverseOrder {
 		_ = w.sock.SendIPv6(regularSeg, dst)
 		if seg2delay > 0 {
 			time.Sleep(time.Duration(seg2delay) * time.Millisecond)

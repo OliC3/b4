@@ -431,7 +431,7 @@ func (w *Worker) dropAndInjectQUIC(cfg *config.SetConfig, raw []byte, dst net.IP
 		return
 	}
 
-	if cfg.Fragmentation.SNIReverse {
+	if cfg.Fragmentation.ReverseOrder {
 		_ = w.sock.SendIPv4(frags[0], dst)
 		if seg2d > 0 {
 			time.Sleep(time.Duration(seg2d) * time.Millisecond)
@@ -558,7 +558,7 @@ func (w *Worker) sendTCPFragments(cfg *config.SetConfig, packet []byte, dst net.
 		sock.FixIPv4Checksum(seg3[:ipHdrLen])
 		sock.FixTCPChecksum(seg3)
 
-		if cfg.Fragmentation.SNIReverse {
+		if cfg.Fragmentation.ReverseOrder {
 			_ = w.sock.SendIPv4(seg2, dst)
 			if seg2d > 0 {
 				time.Sleep(time.Duration(seg2d) * time.Millisecond)
@@ -607,7 +607,7 @@ func (w *Worker) sendTCPFragments(cfg *config.SetConfig, packet []byte, dst net.
 	sock.FixIPv4Checksum(seg2[:ipHdrLen])
 	sock.FixTCPChecksum(seg2)
 
-	if cfg.Fragmentation.SNIReverse {
+	if cfg.Fragmentation.ReverseOrder {
 		_ = w.sock.SendIPv4(seg2, dst)
 		if seg2d > 0 {
 			time.Sleep(time.Duration(seg2d) * time.Millisecond)
@@ -668,7 +668,7 @@ func (w *Worker) sendIPFragments(cfg *config.SetConfig, packet []byte, dst net.I
 	binary.BigEndian.PutUint16(frag2[2:4], uint16(frag2Len))
 	sock.FixIPv4Checksum(frag2[:ipHdrLen])
 
-	if cfg.Fragmentation.SNIReverse {
+	if cfg.Fragmentation.ReverseOrder {
 		_ = w.sock.SendIPv4(frag2, dst)
 		if seg2d > 0 {
 			time.Sleep(time.Duration(seg2d) * time.Millisecond)

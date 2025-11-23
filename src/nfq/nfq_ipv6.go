@@ -45,7 +45,7 @@ func (w *Worker) dropAndInjectQUICV6(cfg *config.SetConfig, raw []byte, dst net.
 		return
 	}
 
-	if cfg.Fragmentation.SNIReverse {
+	if cfg.Fragmentation.ReverseOrder {
 		_ = w.sock.SendIPv6(frags[0], dst)
 		if seg2d > 0 {
 			time.Sleep(time.Duration(seg2d) * time.Millisecond)
@@ -172,7 +172,7 @@ func (w *Worker) sendTCPSegmentsv6(cfg *config.SetConfig, packet []byte, dst net
 		binary.BigEndian.PutUint16(seg3[4:6], uint16(seg3Len-ipv6HdrLen))
 		sock.FixTCPChecksumV6(seg3)
 
-		if cfg.Fragmentation.SNIReverse {
+		if cfg.Fragmentation.ReverseOrder {
 			_ = w.sock.SendIPv6(seg2, dst)
 			if seg2d > 0 {
 				time.Sleep(time.Duration(seg2d) * time.Millisecond)
@@ -221,7 +221,7 @@ func (w *Worker) sendTCPSegmentsv6(cfg *config.SetConfig, packet []byte, dst net
 	binary.BigEndian.PutUint16(seg2[4:6], uint16(seg2Len-ipv6HdrLen))
 	sock.FixTCPChecksumV6(seg2)
 
-	if cfg.Fragmentation.SNIReverse {
+	if cfg.Fragmentation.ReverseOrder {
 		_ = w.sock.SendIPv6(seg2, dst)
 		if seg2d > 0 {
 			time.Sleep(time.Duration(seg2d) * time.Millisecond)
@@ -251,7 +251,7 @@ func (w *Worker) sendIPFragmentsv6(cfg *config.SetConfig, packet []byte, dst net
 		return
 	}
 
-	if cfg.Fragmentation.SNIReverse {
+	if cfg.Fragmentation.ReverseOrder {
 		_ = w.sock.SendIPv6(fragments[1], dst)
 		if seg2d > 0 {
 			time.Sleep(time.Duration(seg2d) * time.Millisecond)

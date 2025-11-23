@@ -74,7 +74,7 @@ func (w *Worker) sendTLSFragments(cfg *config.SetConfig, packet []byte, dst net.
 
 	seg2d := cfg.TCP.Seg2Delay
 
-	if cfg.Fragmentation.SNIReverse {
+	if cfg.Fragmentation.ReverseOrder {
 		_ = w.sock.SendIPv4(pkt2, dst)
 		if seg2d > 0 {
 			time.Sleep(time.Duration(seg2d) * time.Millisecond)
@@ -144,7 +144,7 @@ func (w *Worker) sendTLSFragmentsV6(cfg *config.SetConfig, packet []byte, dst ne
 
 	seg2d := cfg.TCP.Seg2Delay
 
-	if cfg.Fragmentation.SNIReverse {
+	if cfg.Fragmentation.ReverseOrder {
 		_ = w.sock.SendIPv6(pkt2, dst)
 		if seg2d > 0 {
 			time.Sleep(time.Duration(seg2d) * time.Millisecond)

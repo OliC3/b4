@@ -12,9 +12,9 @@ type MigrationFunc func(*Config) error
 
 var migrationRegistry = map[int]MigrationFunc{
 	0: migrateV0to1, // Add enabled field to sets
+	1: migrateV1to2,
 }
 
-// Migration Methods
 // Migration: v0 -> v1 (add enabled field to sets)
 func migrateV0to1(c *Config) error {
 	log.Tracef("Migration v0->v1: Adding 'enabled' field to all sets")
@@ -26,6 +26,12 @@ func migrateV0to1(c *Config) error {
 	if c.MainSet != nil {
 		c.MainSet.Enabled = true
 	}
+
+	return nil
+}
+
+func migrateV1to2(c *Config) error {
+	log.Tracef("Migration v1->v2: Renaming sni_reverse to reverse_order")
 
 	return nil
 }

@@ -20,16 +20,17 @@ export interface FakingConfig {
   custom_payload: string;
 }
 
-export type FragmentationStrategy = "tcp" | "ip" | "oob" | "none";
+export type FragmentationStrategy = "tcp" | "ip" | "tls" | "oob" | "none";
 
 export interface FragmentationConfig {
   strategy: FragmentationStrategy;
   sni_position: number;
-  sni_reverse: boolean;
+  reverse_order: boolean;
   middle_sni: boolean;
   oob_position: number;
-  oob_reverse: boolean;
   oob_char: number;
+
+  tlsrec_pos: number;
 }
 
 export enum LogLevel {
@@ -101,6 +102,7 @@ export interface TcpConfig {
   seg2delay: number;
   syn_fake: boolean;
   syn_fake_len: number;
+  drop_sack: boolean;
 }
 
 export interface WebServerConfig {

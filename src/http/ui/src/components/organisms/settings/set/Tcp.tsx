@@ -44,7 +44,28 @@ export const TcpSettings: React.FC<TcpSettingsProps> = ({
             helperText="Delay between segments"
           />
         </Grid>
-
+        <Grid size={{ xs: 12, md: 6 }}>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={config.tcp.drop_sack || false}
+                onChange={(e) => onChange("tcp.drop_sack", e.target.checked)}
+                color="primary"
+              />
+            }
+            label={
+              <div>
+                <Typography variant="body1" fontWeight={500}>
+                  Drop SACK Options
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Strip Selective Acknowledgment from TCP headers to confuse
+                  stateful DPI
+                </Typography>
+              </div>
+            }
+          />
+        </Grid>
         {/* SYN Fake Settings */}
         <Grid size={{ xs: 12, md: 6 }}>
           <FormControlLabel

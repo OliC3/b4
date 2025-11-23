@@ -136,7 +136,7 @@ func GetTestPresets() []ConfigPreset {
 			Config: config.SetConfig{
 				TCP:           config.TCPConfig{ConnBytesLimit: 19, Seg2Delay: 0},
 				UDP:           config.UDPConfig{Mode: "fake", FakeSeqLength: 6, FakeLen: 64, FakingStrategy: "none", FilterQUIC: "disabled", FilterSTUN: true, ConnBytesLimit: 8},
-				Fragmentation: config.FragmentationConfig{Strategy: "tcp", SNIPosition: fc.pos, SNIReverse: fc.reverse, MiddleSNI: fc.middle},
+				Fragmentation: config.FragmentationConfig{Strategy: "tcp", SNIPosition: fc.pos, ReverseOrder: fc.reverse, MiddleSNI: fc.middle},
 				Faking:        config.FakingConfig{SNI: true, TTL: 8, Strategy: "pastseq", SeqOffset: 10000, SNISeqLength: 1, SNIType: 2},
 			},
 		})
@@ -168,7 +168,7 @@ func GetTestPresets() []ConfigPreset {
 			Config: config.SetConfig{
 				TCP:           config.TCPConfig{ConnBytesLimit: 19},
 				UDP:           config.UDPConfig{Mode: "fake", FakeSeqLength: 6, FakeLen: 64, FakingStrategy: "none", FilterQUIC: "disabled", FilterSTUN: true, ConnBytesLimit: 8},
-				Fragmentation: config.FragmentationConfig{Strategy: "oob", OOBPosition: oc.pos, OOBReverse: oc.reverse, OOBChar: oc.char},
+				Fragmentation: config.FragmentationConfig{Strategy: "oob", OOBPosition: oc.pos, ReverseOrder: oc.reverse, OOBChar: oc.char},
 				Faking:        config.FakingConfig{SNI: true, TTL: 8, Strategy: "pastseq", SeqOffset: 10000, SNISeqLength: 1, SNIType: 2},
 			},
 		})
@@ -196,11 +196,75 @@ func GetTestPresets() []ConfigPreset {
 			Config: config.SetConfig{
 				TCP:           config.TCPConfig{ConnBytesLimit: 19},
 				UDP:           config.UDPConfig{Mode: "fake", FakeSeqLength: 6, FakeLen: 64, FakingStrategy: "none", FilterQUIC: "disabled", FilterSTUN: true, ConnBytesLimit: 8},
-				Fragmentation: config.FragmentationConfig{Strategy: "oob", OOBPosition: ofc.pos, OOBReverse: false, OOBChar: 'x'},
+				Fragmentation: config.FragmentationConfig{Strategy: "oob", OOBPosition: ofc.pos, ReverseOrder: false, OOBChar: 'x'},
 				Faking:        config.FakingConfig{SNI: true, TTL: ofc.ttl, Strategy: ofc.strategy, SeqOffset: 10000, SNISeqLength: ofc.seqLen, SNIType: 2},
 			},
 		})
 	}
+
+	// 7a. SACK Dropping Variations
+	sackConfigs := []struct {
+		strategy string
+		fragPos  int
+		reverse  bool
+	}{
+		{"tcp", 1, false},
+		{"tcp", 1, true},
+		{"tcp", 3, false},
+		{"ip", 1, false},
+		{"oob", 1, false},
+		{"oob", 2, true},
+	}
+
+	for _, sc := range sackConfigs {
+		name := fmt.Sprintf("sack-%s", sc.strategy)
+		if sc.reverse {
+			name += "-rev"
+		}
+		if sc.fragPos > 1 {
+			name += fmt.Sprintf("-pos%d", sc.fragPos)
+		}
+
+		fragConfig := config.FragmentationConfig{Strategy: sc.strategy, SNIPosition: sc.fragPos, ReverseOrder: sc.reverse}
+		if sc.strategy == "oob" {
+			fragConfig.OOBPosition = sc.fragPos
+			fragConfig.OOBChar = 'x'
+		}
+
+		presets = append(presets, ConfigPreset{
+			Name:        name,
+			Description: fmt.Sprintf("SACK drop + %s frag pos=%d", sc.strategy, sc.fragPos),
+			Config: config.SetConfig{
+				TCP:           config.TCPConfig{ConnBytesLimit: 19, DropSACK: true},
+				UDP:           config.UDPConfig{Mode: "fake", FakeSeqLength: 6, FakeLen: 64, FakingStrategy: "none", FilterQUIC: "disabled", FilterSTUN: true, ConnBytesLimit: 8},
+				Fragmentation: fragConfig,
+				Faking:        config.FakingConfig{SNI: true, TTL: 8, Strategy: "pastseq", SeqOffset: 10000, SNISeqLength: 1, SNIType: 2},
+			},
+		})
+	}
+
+	// 7b. SACK + SYN Fake combinations
+	presets = append(presets, ConfigPreset{
+		Name:        "sack-syn-aggressive",
+		Description: "SACK drop + SYN fake + TCP frag",
+		Config: config.SetConfig{
+			TCP:           config.TCPConfig{ConnBytesLimit: 19, DropSACK: true, SynFake: true, SynFakeLen: 256},
+			UDP:           config.UDPConfig{Mode: "fake", FakeSeqLength: 6, FakeLen: 64, FakingStrategy: "none", FilterQUIC: "disabled", FilterSTUN: true, ConnBytesLimit: 8},
+			Fragmentation: config.FragmentationConfig{Strategy: "tcp", SNIPosition: 1, ReverseOrder: true},
+			Faking:        config.FakingConfig{SNI: true, TTL: 5, Strategy: "pastseq", SeqOffset: 10000, SNISeqLength: 2, SNIType: 2},
+		},
+	})
+
+	presets = append(presets, ConfigPreset{
+		Name:        "sack-oob-ultra",
+		Description: "SACK drop + OOB + immediate trigger",
+		Config: config.SetConfig{
+			TCP:           config.TCPConfig{ConnBytesLimit: 1, DropSACK: true},
+			UDP:           config.UDPConfig{Mode: "fake", FakeSeqLength: 6, FakeLen: 64, FakingStrategy: "none", FilterQUIC: "disabled", FilterSTUN: true, ConnBytesLimit: 1},
+			Fragmentation: config.FragmentationConfig{Strategy: "oob", OOBPosition: 1, ReverseOrder: true, OOBChar: 'x'},
+			Faking:        config.FakingConfig{SNI: true, TTL: 3, Strategy: "pastseq", SeqOffset: 50000, SNISeqLength: 3, SNIType: 2},
+		},
+	})
 
 	// 8. OOB + Early Triggering
 	presets = append(presets, ConfigPreset{
@@ -209,7 +273,7 @@ func GetTestPresets() []ConfigPreset {
 		Config: config.SetConfig{
 			TCP:           config.TCPConfig{ConnBytesLimit: 1},
 			UDP:           config.UDPConfig{Mode: "fake", FakeSeqLength: 6, FakeLen: 64, FakingStrategy: "none", FilterQUIC: "disabled", FilterSTUN: true, ConnBytesLimit: 1},
-			Fragmentation: config.FragmentationConfig{Strategy: "oob", OOBPosition: 1, OOBReverse: false, OOBChar: 'x'},
+			Fragmentation: config.FragmentationConfig{Strategy: "oob", OOBPosition: 1, ReverseOrder: false, OOBChar: 'x'},
 			Faking:        config.FakingConfig{SNI: true, TTL: 8, Strategy: "pastseq", SeqOffset: 10000, SNISeqLength: 2, SNIType: 2},
 		},
 	})
@@ -308,11 +372,116 @@ func GetTestPresets() []ConfigPreset {
 			Config: config.SetConfig{
 				TCP:           config.TCPConfig{ConnBytesLimit: 19},
 				UDP:           config.UDPConfig{Mode: "fake", FakeSeqLength: 6, FakeLen: 64, FakingStrategy: "none", FilterQUIC: "disabled", FilterSTUN: true, ConnBytesLimit: 8},
-				Fragmentation: config.FragmentationConfig{Strategy: "ip", SNIPosition: ifc.pos, SNIReverse: ifc.reverse},
+				Fragmentation: config.FragmentationConfig{Strategy: "ip", SNIPosition: ifc.pos, ReverseOrder: ifc.reverse},
 				Faking:        config.FakingConfig{SNI: true, TTL: 8, Strategy: "pastseq", SeqOffset: 10000, SNISeqLength: 1, SNIType: 2},
 			},
 		})
 	}
+
+	// 11a. TLS Record Splitting Variations
+	tlsConfigs := []struct {
+		pos     int
+		reverse bool
+		name    string
+	}{
+		{1, false, "early"},
+		{1, true, "early-rev"},
+		{5, false, "mid"},
+		{5, true, "mid-rev"},
+		{10, false, "deep"},
+		{20, false, "late"},
+		{50, true, "late-rev"},
+		{100, false, "extreme"},
+	}
+
+	for _, tc := range tlsConfigs {
+		presets = append(presets, ConfigPreset{
+			Name:        fmt.Sprintf("tls-%s", tc.name),
+			Description: fmt.Sprintf("TLS record split at %d bytes reverse=%v", tc.pos, tc.reverse),
+			Config: config.SetConfig{
+				TCP:           config.TCPConfig{ConnBytesLimit: 19},
+				UDP:           config.UDPConfig{Mode: "fake", FakeSeqLength: 6, FakeLen: 64, FakingStrategy: "none", FilterQUIC: "disabled", FilterSTUN: true, ConnBytesLimit: 8},
+				Fragmentation: config.FragmentationConfig{Strategy: "tls", TLSRecordPosition: tc.pos, ReverseOrder: tc.reverse},
+				Faking:        config.FakingConfig{SNI: true, TTL: 8, Strategy: "pastseq", SeqOffset: 10000, SNISeqLength: 1, SNIType: 2},
+			},
+		})
+	}
+
+	// 11b. TLS + Faking Strategy combinations
+	tlsFakeConfigs := []struct {
+		tlsPos   int
+		strategy string
+		ttl      uint8
+		seqLen   int
+	}{
+		{1, "ttl", 3, 1},
+		{5, "ttl", 5, 2},
+		{1, "pastseq", 8, 2},
+		{10, "pastseq", 5, 3},
+		{1, "randseq", 8, 1},
+		{5, "tcp_check", 8, 2},
+		{20, "md5sum", 8, 1},
+	}
+
+	for _, tfc := range tlsFakeConfigs {
+		presets = append(presets, ConfigPreset{
+			Name:        fmt.Sprintf("tls-pos%d-%s", tfc.tlsPos, tfc.strategy),
+			Description: fmt.Sprintf("TLS pos=%d + fake %s TTL=%d", tfc.tlsPos, tfc.strategy, tfc.ttl),
+			Config: config.SetConfig{
+				TCP:           config.TCPConfig{ConnBytesLimit: 19},
+				UDP:           config.UDPConfig{Mode: "fake", FakeSeqLength: 6, FakeLen: 64, FakingStrategy: "none", FilterQUIC: "disabled", FilterSTUN: true, ConnBytesLimit: 8},
+				Fragmentation: config.FragmentationConfig{Strategy: "tls", TLSRecordPosition: tfc.tlsPos, ReverseOrder: false},
+				Faking:        config.FakingConfig{SNI: true, TTL: tfc.ttl, Strategy: tfc.strategy, SeqOffset: 10000, SNISeqLength: tfc.seqLen, SNIType: 2},
+			},
+		})
+	}
+
+	// 11c. TLS + SYN Fake combinations
+	tlsSynConfigs := []struct {
+		tlsPos int
+		synLen int
+		ttl    uint8
+	}{
+		{1, 64, 3},
+		{5, 256, 5},
+		{10, 512, 8},
+	}
+
+	for _, tsc := range tlsSynConfigs {
+		presets = append(presets, ConfigPreset{
+			Name:        fmt.Sprintf("tls-syn-pos%d-len%d", tsc.tlsPos, tsc.synLen),
+			Description: fmt.Sprintf("TLS pos=%d + SYN fake len=%d", tsc.tlsPos, tsc.synLen),
+			Config: config.SetConfig{
+				TCP:           config.TCPConfig{ConnBytesLimit: 19, SynFake: true, SynFakeLen: tsc.synLen},
+				UDP:           config.UDPConfig{Mode: "fake", FakeSeqLength: 6, FakeLen: 64, FakingStrategy: "none", FilterQUIC: "disabled", FilterSTUN: true, ConnBytesLimit: 8},
+				Fragmentation: config.FragmentationConfig{Strategy: "tls", TLSRecordPosition: tsc.tlsPos, ReverseOrder: true},
+				Faking:        config.FakingConfig{SNI: true, TTL: tsc.ttl, Strategy: "pastseq", SeqOffset: 10000, SNISeqLength: 2, SNIType: 2},
+			},
+		})
+	}
+
+	// 11d. TLS + SACK combinations
+	presets = append(presets, ConfigPreset{
+		Name:        "tls-sack-basic",
+		Description: "TLS record split + SACK drop",
+		Config: config.SetConfig{
+			TCP:           config.TCPConfig{ConnBytesLimit: 19, DropSACK: true},
+			UDP:           config.UDPConfig{Mode: "fake", FakeSeqLength: 6, FakeLen: 64, FakingStrategy: "none", FilterQUIC: "disabled", FilterSTUN: true, ConnBytesLimit: 8},
+			Fragmentation: config.FragmentationConfig{Strategy: "tls", TLSRecordPosition: 1, ReverseOrder: false},
+			Faking:        config.FakingConfig{SNI: true, TTL: 8, Strategy: "pastseq", SeqOffset: 10000, SNISeqLength: 1, SNIType: 2},
+		},
+	})
+
+	presets = append(presets, ConfigPreset{
+		Name:        "tls-sack-aggressive",
+		Description: "TLS + SACK + SYN fake + immediate trigger",
+		Config: config.SetConfig{
+			TCP:           config.TCPConfig{ConnBytesLimit: 1, DropSACK: true, SynFake: true, SynFakeLen: 256},
+			UDP:           config.UDPConfig{Mode: "fake", FakeSeqLength: 10, FakeLen: 128, FakingStrategy: "checksum", FilterQUIC: "all", FilterSTUN: true, ConnBytesLimit: 1},
+			Fragmentation: config.FragmentationConfig{Strategy: "tls", TLSRecordPosition: 5, ReverseOrder: true},
+			Faking:        config.FakingConfig{SNI: true, TTL: 3, Strategy: "randseq", SeqOffset: 100000, SNISeqLength: 3, SNIType: 0},
+		},
+	})
 
 	// 12. Delay variations
 	delays := []int{5, 10, 20, 50}
@@ -323,7 +492,7 @@ func GetTestPresets() []ConfigPreset {
 			Config: config.SetConfig{
 				TCP:           config.TCPConfig{ConnBytesLimit: 19, Seg2Delay: delay},
 				UDP:           config.UDPConfig{Mode: "fake", FakeSeqLength: 6, FakeLen: 64, FakingStrategy: "none", FilterQUIC: "disabled", FilterSTUN: true, ConnBytesLimit: 8, Seg2Delay: delay},
-				Fragmentation: config.FragmentationConfig{Strategy: "tcp", SNIPosition: 1, SNIReverse: true},
+				Fragmentation: config.FragmentationConfig{Strategy: "tcp", SNIPosition: 1, ReverseOrder: true},
 				Faking:        config.FakingConfig{SNI: true, TTL: 5, Strategy: "randseq", SeqOffset: 50000, SNISeqLength: 3, SNIType: 2},
 			},
 		})
@@ -341,21 +510,36 @@ func GetTestPresets() []ConfigPreset {
 		{"max-oob", 512, 20, 1, "oob"},
 		{"ultra-tcp", 512, 20, 1, "tcp"},
 		{"ultra-oob", 512, 25, 1, "oob"},
+		{"max-tls", 256, 15, 3, "tls"},
+		{"max-tls-sack", 512, 20, 1, "tls"},
+		{"ultra-tls", 512, 20, 1, "tls"},
 	}
 
 	for _, ac := range aggressiveConfigs {
 		var fragConfig config.FragmentationConfig
-		if ac.strat == "oob" {
-			fragConfig = config.FragmentationConfig{Strategy: "oob", OOBPosition: 1, OOBReverse: true, OOBChar: 'x'}
-		} else {
-			fragConfig = config.FragmentationConfig{Strategy: "tcp", SNIPosition: 1, SNIReverse: true, MiddleSNI: true}
+		var tcpConfig config.TCPConfig
+
+		switch ac.strat {
+		case "oob":
+			fragConfig = config.FragmentationConfig{Strategy: "oob", OOBPosition: 1, ReverseOrder: true, OOBChar: 'x'}
+			tcpConfig = config.TCPConfig{ConnBytesLimit: 1, Seg2Delay: 10, SynFake: true, SynFakeLen: ac.synLen}
+		case "tls":
+			fragConfig = config.FragmentationConfig{Strategy: "tls", TLSRecordPosition: 5, ReverseOrder: true}
+			tcpConfig = config.TCPConfig{ConnBytesLimit: 1, Seg2Delay: 10, SynFake: true, SynFakeLen: ac.synLen}
+			// Add SACK for "sack" variants
+			if len(ac.name) > 4 && ac.name[len(ac.name)-4:] == "sack" {
+				tcpConfig.DropSACK = true
+			}
+		default:
+			fragConfig = config.FragmentationConfig{Strategy: "tcp", SNIPosition: 1, ReverseOrder: true, MiddleSNI: true}
+			tcpConfig = config.TCPConfig{ConnBytesLimit: 1, Seg2Delay: 10, SynFake: true, SynFakeLen: ac.synLen}
 		}
 
 		presets = append(presets, ConfigPreset{
 			Name:        fmt.Sprintf("aggressive-%s", ac.name),
 			Description: fmt.Sprintf("%s bypass: all techniques", ac.name),
 			Config: config.SetConfig{
-				TCP:           config.TCPConfig{ConnBytesLimit: 1, Seg2Delay: 10, SynFake: true, SynFakeLen: ac.synLen},
+				TCP:           tcpConfig,
 				UDP:           config.UDPConfig{Mode: "fake", FakeSeqLength: ac.udpSeq, FakeLen: 256, FakingStrategy: "checksum", FilterQUIC: "all", FilterSTUN: true, ConnBytesLimit: 1},
 				Fragmentation: fragConfig,
 				Faking:        config.FakingConfig{SNI: true, TTL: ac.ttl, Strategy: "pastseq", SeqOffset: 100000, SNISeqLength: 5, SNIType: 0},
@@ -365,12 +549,34 @@ func GetTestPresets() []ConfigPreset {
 
 	// 14. Special edge cases
 	presets = append(presets, ConfigPreset{
-		Name:        "no-sni-fake",
-		Description: "Fragmentation only, no fake SNI",
+		Name:        "tls-only",
+		Description: "TLS record split only, no fake SNI",
 		Config: config.SetConfig{
 			TCP:           config.TCPConfig{ConnBytesLimit: 19},
 			UDP:           config.UDPConfig{Mode: "fake", FakeSeqLength: 6, FakeLen: 64, FakingStrategy: "none", FilterQUIC: "disabled", FilterSTUN: true, ConnBytesLimit: 8},
-			Fragmentation: config.FragmentationConfig{Strategy: "tcp", SNIPosition: 1, SNIReverse: true, MiddleSNI: true},
+			Fragmentation: config.FragmentationConfig{Strategy: "tls", TLSRecordPosition: 1, ReverseOrder: false},
+			Faking:        config.FakingConfig{SNI: false},
+		},
+	})
+
+	presets = append(presets, ConfigPreset{
+		Name:        "sack-only",
+		Description: "SACK drop only, no fragmentation",
+		Config: config.SetConfig{
+			TCP:           config.TCPConfig{ConnBytesLimit: 19, DropSACK: true},
+			UDP:           config.UDPConfig{Mode: "fake", FakeSeqLength: 0, FakeLen: 0, FakingStrategy: "none", FilterQUIC: "disabled", FilterSTUN: true, ConnBytesLimit: 8},
+			Fragmentation: config.FragmentationConfig{Strategy: "none"},
+			Faking:        config.FakingConfig{SNI: false},
+		},
+	})
+
+	presets = append(presets, ConfigPreset{
+		Name:        "tls-sack-only",
+		Description: "TLS + SACK only, no fake SNI",
+		Config: config.SetConfig{
+			TCP:           config.TCPConfig{ConnBytesLimit: 19, DropSACK: true},
+			UDP:           config.UDPConfig{Mode: "fake", FakeSeqLength: 0, FakeLen: 0, FakingStrategy: "none", FilterQUIC: "disabled", FilterSTUN: true, ConnBytesLimit: 8},
+			Fragmentation: config.FragmentationConfig{Strategy: "tls", TLSRecordPosition: 5, ReverseOrder: false},
 			Faking:        config.FakingConfig{SNI: false},
 		},
 	})
@@ -381,7 +587,7 @@ func GetTestPresets() []ConfigPreset {
 		Config: config.SetConfig{
 			TCP:           config.TCPConfig{ConnBytesLimit: 19},
 			UDP:           config.UDPConfig{Mode: "fake", FakeSeqLength: 6, FakeLen: 64, FakingStrategy: "none", FilterQUIC: "disabled", FilterSTUN: true, ConnBytesLimit: 8},
-			Fragmentation: config.FragmentationConfig{Strategy: "oob", OOBPosition: 1, OOBReverse: false, OOBChar: 'x'},
+			Fragmentation: config.FragmentationConfig{Strategy: "oob", OOBPosition: 1, ReverseOrder: false, OOBChar: 'x'},
 			Faking:        config.FakingConfig{SNI: false},
 		},
 	})

@@ -112,12 +112,12 @@ export const SetsManager: React.FC<SetsManagerProps> = ({
       } as B4SetConfig["udp"],
       fragmentation: {
         strategy: "tcp",
-        sni_reverse: true,
+        reverse_order: true,
         middle_sni: true,
         sni_position: 1,
         oob_position: 0,
-        oob_reverse: false,
         oob_char: 120,
+        tlsrec_pos: 1,
       } as B4SetConfig["fragmentation"],
       faking: {
         sni: true,
@@ -637,7 +637,7 @@ export const SetsManager: React.FC<SetsManagerProps> = ({
                               {set.fragmentation.strategy.toUpperCase()}
                             </Typography>
                             <Stack direction="row" spacing={0.5}>
-                              {set.fragmentation.sni_reverse && (
+                              {set.fragmentation.reverse_order && (
                                 <Chip
                                   label="REV"
                                   size="small"

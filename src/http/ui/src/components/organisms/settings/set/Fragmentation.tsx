@@ -17,6 +17,7 @@ const fragmentationOptions: { label: string; value: FragmentationStrategy }[] =
   [
     { label: "TCP Segmentation", value: "tcp" },
     { label: "IP Fragmentation", value: "ip" },
+    { label: "TLS Record Splitting", value: "tls" },
     { label: "OOB (Out-of-Band)", value: "oob" },
     { label: "No Fragmentation", value: "none" },
   ];
@@ -24,6 +25,7 @@ const fragmentationOptions: { label: string; value: FragmentationStrategy }[] =
 const strategyDescriptions = {
   tcp: "Splits packets at TCP layer - works with most servers, no MTU issues",
   ip: "Fragments at IP layer - bypasses some TCP-aware DPI but may cause MTU problems",
+  tls: "Splits TLS ClientHello into multiple TLS records - bypasses DPI expecting single-record handshakes",
   oob: "Sends data with URG flag (Out-of-Band) - confuses stateful DPI inspection",
   none: "No fragmentation applied - packets sent as-is",
 };
@@ -35,6 +37,7 @@ export const FragmentationSettings: React.FC<FragmentationSettingsProps> = ({
   const strategy = config.fragmentation.strategy;
   const isTcpOrIp = strategy === "tcp" || strategy === "ip";
   const isOob = strategy === "oob";
+  const isTls = strategy === "tls";
   const isActive = strategy !== "none";
 
   return (
@@ -45,7 +48,7 @@ export const FragmentationSettings: React.FC<FragmentationSettingsProps> = ({
     >
       <Grid container spacing={3}>
         {/* Strategy Selection */}
-        <Grid size={{ xs: 12 }}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <SettingSelect
             label="Fragmentation Method"
             value={strategy}
@@ -56,33 +59,52 @@ export const FragmentationSettings: React.FC<FragmentationSettingsProps> = ({
             helperText={strategyDescriptions[strategy]}
           />
         </Grid>
-
+        <Grid size={{ xs: 12, md: 6 }}>
+          <SettingSwitch
+            label="Reverse Fragment Order"
+            checked={config.fragmentation.reverse_order}
+            onChange={(checked) =>
+              onChange("fragmentation.reverse_order", checked)
+            }
+            description="Send fragments in reverse order (applies to TCP/IP/TLS strategies)"
+          />
+        </Grid>
         {isActive && (
-          <Grid size={{ xs: 12 }}>
-            <Alert severity="info">
-              <Typography variant="body2">
-                {strategy === "tcp" && (
-                  <>
-                    <strong>TCP Segmentation:</strong> Splits packets at TCP
-                    layer. Most compatible, works with firewalls and NAT.
-                  </>
-                )}
-                {strategy === "ip" && (
-                  <>
-                    <strong>IP Fragmentation:</strong> Splits at IP layer.
-                    Bypasses TCP-aware DPI but may fail with strict MTU limits.
-                  </>
-                )}
-                {strategy === "oob" && (
-                  <>
-                    <strong>OOB (Out-of-Band):</strong> Sends extra byte with
-                    URG flag. Highly effective against stateful DPI, may confuse
-                    older middleboxes.
-                  </>
-                )}
-              </Typography>
-            </Alert>
-          </Grid>
+          <>
+            <Grid size={{ xs: 12 }}>
+              <Alert severity="info">
+                <Typography variant="body2">
+                  {strategy === "tcp" && (
+                    <>
+                      <strong>TCP Segmentation:</strong> Splits packets at TCP
+                      layer. Most compatible, works with firewalls and NAT.
+                    </>
+                  )}
+                  {strategy === "ip" && (
+                    <>
+                      <strong>IP Fragmentation:</strong> Splits at IP layer.
+                      Bypasses TCP-aware DPI but may fail with strict MTU
+                      limits.
+                    </>
+                  )}
+                  {strategy === "tls" && (
+                    <>
+                      <strong>TLS Record Splitting:</strong> Splits ClientHello
+                      into multiple TLS records. Highly effective against DPI
+                      expecting single-record handshakes.
+                    </>
+                  )}
+                  {strategy === "oob" && (
+                    <>
+                      <strong>OOB (Out-of-Band):</strong> Sends extra byte with
+                      URG flag. Highly effective against stateful DPI, may
+                      confuse older middleboxes.
+                    </>
+                  )}
+                </Typography>
+              </Alert>
+            </Grid>
+          </>
         )}
 
         {/* TCP/IP Fragmentation Settings */}
@@ -118,17 +140,6 @@ export const FragmentationSettings: React.FC<FragmentationSettingsProps> = ({
                 description="Split at SNI midpoint instead of start"
               />
             </Grid>
-
-            <Grid size={{ xs: 12, md: 6 }}>
-              <SettingSwitch
-                label="Reverse Fragment Order"
-                checked={config.fragmentation.sni_reverse}
-                onChange={(checked) =>
-                  onChange("fragmentation.sni_reverse", checked)
-                }
-                description="Send second fragment before first"
-              />
-            </Grid>
           </>
         )}
 
@@ -156,17 +167,6 @@ export const FragmentationSettings: React.FC<FragmentationSettingsProps> = ({
             </Grid>
 
             <Grid size={{ xs: 12, md: 4 }}>
-              <SettingSwitch
-                label="Reverse Order"
-                checked={config.fragmentation.oob_reverse || false}
-                onChange={(checked) =>
-                  onChange("fragmentation.oob_reverse", checked)
-                }
-                description="Send OOB segment after main data"
-              />
-            </Grid>
-
-            <Grid size={{ xs: 12, md: 4 }}>
               <B4TextField
                 label="OOB Character"
                 value={String.fromCharCode(
@@ -184,17 +184,30 @@ export const FragmentationSettings: React.FC<FragmentationSettingsProps> = ({
                 inputProps={{ maxLength: 1 }}
               />
             </Grid>
+          </>
+        )}
 
+        {/* TLS Record Splitting Settings */}
+        {isTls && (
+          <>
             <Grid size={{ xs: 12 }}>
-              <Alert severity="success">
-                <Typography variant="body2">
-                  <strong>Active:</strong> Sending{" "}
-                  {config.fragmentation.oob_position} byte(s), then '
-                  {String.fromCharCode(config.fragmentation.oob_char || 120)}'
-                  with URG flag
-                  {config.fragmentation.oob_reverse && " in reverse order"}
-                </Typography>
-              </Alert>
+              <Divider sx={{ my: 2 }}>
+                <Chip label="TLS Record Configuration" size="small" />
+              </Divider>
+            </Grid>
+
+            <Grid size={{ xs: 12, md: 6 }}>
+              <B4Slider
+                label="TLS Record Split Position"
+                value={config.fragmentation.tlsrec_pos || 1}
+                onChange={(value) =>
+                  onChange("fragmentation.tlsrec_pos", value)
+                }
+                min={1}
+                max={100}
+                step={1}
+                helperText="Where to split TLS ClientHello record (bytes into handshake data)"
+              />
             </Grid>
           </>
         )}

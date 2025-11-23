@@ -41,16 +41,15 @@ type UDPConfig struct {
 }
 
 type FragmentationConfig struct {
-	Strategy string `json:"strategy" bson:"strategy"` // Values: "tcp", "ip", "oob", "none"
+	Strategy     string `json:"strategy" bson:"strategy"` // Values: "tcp", "ip", "oob", "none"
+	ReverseOrder bool   `json:"reverse_order" bson:"reverse_order"`
 
 	TLSRecordPosition int `json:"tlsrec_pos" bson:"tlsrec_pos"` // where to split TLS record
 
 	MiddleSNI   bool `json:"middle_sni" bson:"middle_sni"`
 	SNIPosition int  `json:"sni_position" bson:"sni_position"`
-	SNIReverse  bool `json:"sni_reverse" bson:"sni_reverse"`
 
 	OOBPosition int  `json:"oob_position" bson:"oob_position"` // Position for OOB (0=disabled)
-	OOBReverse  bool `json:"oob_reverse" bson:"oob_reverse"`   // Send in reverse order
 	OOBChar     byte `json:"oob_char" bson:"oob_char"`         // Character for OOB data
 }
 

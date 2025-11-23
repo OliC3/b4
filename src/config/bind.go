@@ -33,11 +33,10 @@ func (c *Config) BindFlags(cmd *cobra.Command) {
 
 	// Fragmentation configuration
 	cmd.Flags().StringVar(&c.MainSet.Fragmentation.Strategy, "frag", c.MainSet.Fragmentation.Strategy, "Fragmentation strategy (tcp|ip|tls|oob|none)")
-	cmd.Flags().BoolVar(&c.MainSet.Fragmentation.SNIReverse, "frag-sni-reverse", c.MainSet.Fragmentation.SNIReverse, "Reverse fragment order")
+	cmd.Flags().BoolVar(&c.MainSet.Fragmentation.ReverseOrder, "frag-reverse", c.MainSet.Fragmentation.ReverseOrder, "Reverse fragment order")
 	cmd.Flags().BoolVar(&c.MainSet.Fragmentation.MiddleSNI, "frag-middle-sni", c.MainSet.Fragmentation.MiddleSNI, "Fragment in middle of SNI")
 	cmd.Flags().IntVar(&c.MainSet.Fragmentation.SNIPosition, "frag-sni-pos", c.MainSet.Fragmentation.SNIPosition, "SNI fragment position")
 	cmd.Flags().IntVar(&c.MainSet.Fragmentation.OOBPosition, "frag-oob-pos", c.MainSet.Fragmentation.OOBPosition, "OOB data position")
-	cmd.Flags().BoolVar(&c.MainSet.Fragmentation.OOBReverse, "frag-oob-reverse", c.MainSet.Fragmentation.OOBReverse, "Send OOB fragments in reverse order")
 	cmd.Flags().Uint8Var(&c.MainSet.Fragmentation.OOBChar, "frag-oob-char", c.MainSet.Fragmentation.OOBChar, "OOB character (ASCII code)")
 	cmd.Flags().IntVar(&c.MainSet.Fragmentation.TLSRecordPosition, "frag-tlsrec-pos", c.MainSet.Fragmentation.TLSRecordPosition, "TLS record split position")
 
