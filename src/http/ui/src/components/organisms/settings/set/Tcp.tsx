@@ -218,65 +218,77 @@ export const TcpSettings = ({ config, onChange }: TcpSettingsProps) => {
                 : "Random values will be picked from this list"}
             </Typography>
 
-            <Box sx={{ display: "flex", gap: 1, mt: 1, alignItems: "center" }}>
-              <SettingTextField
-                label="Add Value (0-65535)"
-                value={newWinValue}
-                onChange={(e) => setNewWinValue(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    handleAddWinValue();
-                  }
-                }}
-                type="number"
-                sx={{ maxWidth: 200 }}
-              />
-              <IconButton
-                onClick={handleAddWinValue}
-                sx={{
-                  bgcolor: colors.accent.secondary,
-                  color: colors.secondary,
-                  "&:hover": { bgcolor: colors.accent.secondaryHover },
-                }}
-              >
-                <AddIcon />
-              </IconButton>
-            </Box>
-
-            <Box
-              sx={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: 1,
-                mt: 2,
-                p: 1,
-                border: `1px solid ${colors.border.default}`,
-                borderRadius: 1,
-                bgcolor: colors.background.paper,
-                minHeight: 40,
-              }}
-            >
-              {winValues.length === 0 ? (
-                <Typography variant="body2" color="text.secondary">
-                  No values configured - defaults will be used
-                </Typography>
-              ) : (
-                winValues.map((val) => (
-                  <Chip
-                    key={val}
-                    label={val.toLocaleString()}
-                    onDelete={() => handleRemoveWinValue(val)}
-                    size="small"
-                    sx={{
-                      bgcolor: colors.accent.primary,
-                      color: colors.secondary,
-                      "& .MuiChip-deleteIcon": { color: colors.secondary },
+            <Grid container spacing={2} alignItems="center">
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    gap: 2,
+                    mt: 1,
+                    alignItems: "center",
+                  }}
+                >
+                  <SettingTextField
+                    label="Add Value (0-65535)"
+                    value={newWinValue}
+                    onChange={(e) => setNewWinValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddWinValue();
+                      }
                     }}
+                    type="number"
                   />
-                ))
-              )}
-            </Box>
+                  <IconButton
+                    onClick={handleAddWinValue}
+                    sx={{
+                      bgcolor: colors.accent.secondary,
+                      color: colors.secondary,
+                      "&:hover": { bgcolor: colors.accent.secondaryHover },
+                    }}
+                  >
+                    <AddIcon />
+                  </IconButton>
+                </Box>
+              </Grid>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    gap: 1,
+                    mt: 1,
+                    alignItems: "center",
+                    flexWrap: "wrap",
+                    p: 1,
+                    border: `1px solid ${colors.border.default}`,
+                    borderRadius: 1,
+                    bgcolor: colors.background.paper,
+                    minHeight: 40,
+                  }}
+                >
+                  {winValues.length === 0 ? (
+                    <Typography variant="body2" color="text.secondary">
+                      No values configured - defaults will be used
+                    </Typography>
+                  ) : (
+                    winValues.map((val) => (
+                      <Chip
+                        key={val}
+                        label={val.toLocaleString()}
+                        onDelete={() => handleRemoveWinValue(val)}
+                        size="small"
+                        sx={{
+                          bgcolor: colors.accent.primary,
+                          color: colors.secondary,
+                          "& .MuiChip-deleteIcon": { color: colors.secondary },
+                        }}
+                      />
+                    ))
+                  )}
+                </Box>
+              </Grid>
+            </Grid>
           </Grid>
         )}
       </Grid>
