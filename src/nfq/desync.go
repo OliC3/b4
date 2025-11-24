@@ -464,9 +464,10 @@ func (w *Worker) sendDesyncACKv6(packet []byte, dst net.IP, da *DesyncAttacker) 
 		futureAck := origAck + uint32(100000*(i+1))
 		binary.BigEndian.PutUint32(fake[ipv6HdrLen+8:ipv6HdrLen+12], futureAck)
 
-		fake[7] = da.ttl - uint8(i)
-		if fake[7] < 1 {
+		if uint8(i) >= da.ttl {
 			fake[7] = 1
+		} else {
+			fake[7] = da.ttl - uint8(i)
 		}
 
 		binary.BigEndian.PutUint16(fake[4:6], 20)

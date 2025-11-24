@@ -171,10 +171,11 @@ func (w *Worker) Start() error {
 
 						if v == IPv4 {
 							w.sendFakeSyn(set, raw, ihl, datOff)
+							_ = w.sock.SendIPv4(raw, dst)
 						} else {
 							w.sendFakeSynV6(set, raw, ihl, datOff)
+							_ = w.sock.SendIPv6(raw, dst)
 						}
-
 						_ = q.SetVerdict(id, nfqueue.NfDrop)
 						return 0
 					}
