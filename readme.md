@@ -3,17 +3,20 @@
 ![GitHub Release](https://img.shields.io/github/v/release/daniellavrushin/b4)
 ![GitHub Downloads](https://img.shields.io/github/downloads/daniellavrushin/b4/total)
 
-[[русский язык](readme_ru.md)] [[telegram](https://t.me/byebyebigbro)]
+[[русский язык](readme_ru.md)]
 
 Network packet processor that bypasses Deep Packet Inspection (DPI) using netfilter queue manipulation.
 
-<a href="https://t.me/byebyebigbro" target="_blank">
-<img height="80" alt="image" src="https://github.com/user-attachments/assets/db8dea32-03c2-476d-b350-aeff349e853e" style="float:left"/> 
-B4 Telegram Group - join!</a>
-
 ![alt text](image.png)
 
-## Quick Install
+## Requirements
+
+- Linux-system (desktop, server or router)
+- Root-access (sudo)
+
+That's it. The installer will take care of the rest
+
+## Installation
 
 > [!NOTE]
 > In some systems you need to run `sudo b4install.sh`.
@@ -33,43 +36,34 @@ Or pass `--help` to get more information about the possible options.
 ```bash
 wget -O ~/b4install.sh https://raw.githubusercontent.com/DanielLavrushin/b4/main/install.sh && chmod +x ~/b4install.sh && ~/b4install.sh --help
 ```
-
-## Usage
+### Installer options
 
 ```bash
+# Install latest b4 version
+./b4install.sh
 
-# Systemd
-sudo systemctl start b4
-sudo systemctl enable b4
+# Show help message
+./b4install.sh -h
 
-# OpenWRT
-/etc/init.d/b4 restart
+# Show system diagnostics and b4 status
+./b4install.sh --sysinfo
 
-# Entware/MerlinWRT
-/opt/etc/init.d/S99b4 restart
+# Install specific version
+./b4install.sh v1.10.0
+
+# Quiet mode (suppress output except for errors)
+./b4install.sh --quiet
+
+# Specify geosite.dat source URL and destination
+./b4install.sh --geosite-src=--geosite-src=https://example.com/geosite.dat --geosite-dst=/opt/etc/b4
+
+# Update b4 to latest version
+./b4install.sh --update
+
+# Uninstall b4
+./b4install.sh --remove
 ```
 
-### Web UI
-
-```
-http://your-device-ip:7000
-```
-
-### Command Line
-
-````bash
-# Custom config
-b4 --config /path/to/config.json
-
-# Basic - manual domains
-b4 --sni-domains youtube.com,netflix.com
-
-# With geosite categories
-b4 --geosite /etc/b4/geosite.dat --geosite-categories youtube,netflix
-
-# Print help
-b4 --help
-``
 ### Building from Source
 
 ```bash
@@ -89,7 +83,62 @@ make build-all
 
 # Or build specific
 make linux-amd64
+make linux-arm64
+make linux-armv7
 ````
+
+## Usage
+
+### Starting B4
+
+```bash
+
+# Standard Linux (systemd)
+sudo systemctl start b4
+sudo systemctl enable b4 # Start on load
+
+# OpenWRT
+/etc/init.d/b4 restart # start | stop
+
+# Entware/MerlinWRT
+/opt/etc/init.d/S99b4 restart # start | stop
+```
+
+### Web UI
+
+```
+http://your-device-ip:7000
+```
+
+### Command Line
+
+```bash
+
+# Print help
+b4 --help
+
+# Basic - manual domains
+b4 --sni-domains youtube.com,netflix.com
+
+# With geosite categories
+b4 --geosite /etc/b4/geosite.dat --geosite-categories youtube,netflix
+
+# Custom config
+b4 --config /path/to/config.json
+```
+
+## Web interface
+
+The web interface is available at `http://your-ip:7000` (default port, can be changed in `config` file).
+
+**Features:**
+
+- Realtime metrics (connections, packets, bandwidth)
+- Logs streaming with filtering and keybinds (p to pause streaming, del to clear logs)
+- Domain/ip configuration on the go (Add domain or ip to a set by clicking it in the Domains tab)
+- Quick domain tests and domain-specific bypass strat discovery
+- ipinfo.io api integration for ASN scanning
+- Custom payload capturing for faking
 
 ## Geosite Integration
 
