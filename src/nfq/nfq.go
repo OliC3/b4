@@ -240,19 +240,13 @@ func (w *Worker) Start() error {
 
 					_ = q.SetVerdict(id, nfqueue.NfDrop)
 
-					select {
-					case w.injectSem <- struct{}{}:
-						go func(s *config.SetConfig, pkt []byte, d net.IP) {
-							defer func() { <-w.injectSem }()
-							if v == 4 {
-								w.dropAndInjectTCP(s, pkt, d)
-							} else {
-								w.dropAndInjectTCPv6(s, pkt, d)
-							}
-						}(setCopy, packetCopy, dstCopy)
-					default:
-						_ = w.sock.SendIPv4(raw, dst)
-					}
+					go func(s *config.SetConfig, pkt []byte, d net.IP) {
+						if v == 4 {
+							w.dropAndInjectTCP(s, pkt, d)
+						} else {
+							w.dropAndInjectTCPv6(s, pkt, d)
+						}
+					}(setCopy, packetCopy, dstCopy)
 					return 0
 				}
 
@@ -367,23 +361,13 @@ func (w *Worker) Start() error {
 
 					_ = q.SetVerdict(id, nfqueue.NfDrop)
 
-					select {
-					case w.injectSem <- struct{}{}:
-						go func(s *config.SetConfig, pkt []byte, d net.IP) {
-							defer func() { <-w.injectSem }()
-							if v == IPv4 {
-								w.dropAndInjectQUIC(s, pkt, d)
-							} else {
-								w.dropAndInjectQUICV6(s, pkt, d)
-							}
-						}(setCopy, packetCopy, dstCopy)
-					default:
+					go func(s *config.SetConfig, pkt []byte, d net.IP) {
 						if v == IPv4 {
-							_ = w.sock.SendIPv4(raw, dst)
+							w.dropAndInjectQUIC(s, pkt, d)
 						} else {
-							_ = w.sock.SendIPv6(raw, dst)
+							w.dropAndInjectQUICV6(s, pkt, d)
 						}
-					}
+					}(setCopy, packetCopy, dstCopy)
 					return 0
 
 				default:

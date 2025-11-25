@@ -49,7 +49,7 @@ var DefaultSetConfig = SetConfig{
 		WinMode:   "off",
 		WinValues: []int{0, 1460, 8192, 65535},
 
-		DesyncMode:  "combo",
+		DesyncMode:  "off",
 		DesyncTTL:   3,
 		DesyncCount: 3,
 	},

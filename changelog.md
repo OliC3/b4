@@ -1,5 +1,10 @@
 # B4 - Bye Bye Big Bro
 
+## [1.18.4] - 2025-11-25
+
+- CHANGED: update set default `desync` mode to 'off'.
+- FIXED: simplify package handling.
+
 ## [1.18.3] - 2025-11-25
 
 - FIXED: `Domains` table not updating with new packets due to React state reference issue.
