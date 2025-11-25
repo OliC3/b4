@@ -269,6 +269,19 @@ func (ds *DiscoverySuite) buildTestConfig(preset ConfigPreset, testDomain string
 		},
 	}
 
+	if mainSet.Faking.SNIMutation.Mode == "" {
+		mainSet.Faking.SNIMutation.Mode = "off"
+	}
+	if mainSet.TCP.WinMode == "" {
+		mainSet.TCP.WinMode = "off"
+	}
+	if mainSet.TCP.DesyncMode == "" {
+		mainSet.TCP.DesyncMode = "off"
+	}
+	if mainSet.TCP.WinValues == nil {
+		mainSet.TCP.WinValues = []int{0, 1460, 8192, 65535}
+	}
+
 	cfg.MainSet = mainSet
 	cfg.Sets = []*config.SetConfig{mainSet}
 

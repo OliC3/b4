@@ -750,22 +750,15 @@ func locateSNI(payload []byte) (start, end int, ok bool) {
 	if len(payload) < 5 || payload[0] != TLSHandshakeType {
 		return 0, 0, false
 	}
-	recLen := int(binary.BigEndian.Uint16(payload[3:5]))
-	// Be tolerant if the full record isn't present yet
-	if 5+recLen > len(payload) {
-		recLen = len(payload) - 5
-	}
+
 	p := 5 // handshake starts right after record header
 
 	// Handshake header: HandshakeType(1)=client_hello(1), Length(3)
 	if p+4 > len(payload) || payload[p] != TLSClientHello {
 		return 0, 0, false
 	}
-	hsLen := int(payload[p+1])<<16 | int(payload[p+2])<<8 | int(payload[p+3])
+
 	p += 4
-	if p+hsLen > len(payload) {
-		hsLen = len(payload) - p
-	}
 
 	if p+2+32 > len(payload) {
 		return 0, 0, false

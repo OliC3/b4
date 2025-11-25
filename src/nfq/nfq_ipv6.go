@@ -77,6 +77,10 @@ func (w *Worker) dropAndInjectTCPv6(cfg *config.SetConfig, raw []byte, dst net.I
 		return
 	}
 
+	if cfg.Faking.SNIMutation.Mode != "off" {
+		raw = w.MutateClientHelloV6(cfg, raw, dst)
+	}
+
 	if cfg.TCP.DesyncMode != "off" {
 		w.ExecuteDesyncIPv6(cfg, raw, dst)
 		time.Sleep(time.Duration(cfg.TCP.Seg2Delay) * time.Millisecond)

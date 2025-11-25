@@ -1,5 +1,10 @@
 # B4 - Bye Bye Big Bro
 
+## [1.18.2] - 2025-11-25
+
+- ADDED: `ClientHello Mutation` support for `IPv6`.
+- FIXED: Discovery presets missing default values for `SNI Mutation`, `TCP Window`, and `Desync` settings.
+
 ## [1.18.1] - 2025-11-25
 
 - FIXED: Unable to change `ClientHello Mutation` mode in the Faking settings.

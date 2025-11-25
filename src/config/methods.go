@@ -239,7 +239,6 @@ func (c *Config) GetSetById(id string) *SetConfig {
 func (set *SetConfig) ResetToDefaults() {
 	defaultSet := DefaultSetConfig
 
-	// Preserve data
 	id := set.Id
 	name := set.Name
 	targets := set.Targets
@@ -249,6 +248,12 @@ func (set *SetConfig) ResetToDefaults() {
 	set.Id = id
 	set.Name = name
 	set.Targets = targets
+
+	set.TCP.WinValues = make([]int, len(defaultSet.TCP.WinValues))
+	copy(set.TCP.WinValues, defaultSet.TCP.WinValues)
+
+	set.Faking.SNIMutation.FakeSNIs = make([]string, len(defaultSet.Faking.SNIMutation.FakeSNIs))
+	copy(set.Faking.SNIMutation.FakeSNIs, defaultSet.Faking.SNIMutation.FakeSNIs)
 }
 
 func (t *TargetsConfig) AppendIP(ip []string) error {

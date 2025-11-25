@@ -213,6 +213,12 @@ func (api *API) handleAddPresetAsSet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	set.Id = uuid.New().String()
+
+	if len(set.Targets.SNIDomains) == 0 {
+		log.Errorf("At least one SNI domain is required")
+		http.Error(w, "At least one SNI domain is required", http.StatusBadRequest)
+		return
+	}
 	set.Name = set.Targets.SNIDomains[0]
 	set.Targets.DomainsToMatch = []string{set.Targets.SNIDomains[0]}
 
@@ -229,6 +235,8 @@ func (api *API) handleAddPresetAsSet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	setJsonHeader(w)
+	w.WriteHeader(http.StatusAccepted)
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
 		"message": fmt.Sprintf("Added '%s' configuration", set.Name),
