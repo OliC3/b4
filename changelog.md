@@ -1,6 +1,6 @@
 # B4 - Bye Bye Big Bro
 
-## [1.18.0] - 2025-11-25
+## [1.18.1] - 2025-11-25
 
 - FIXED: Unable to change `ClientHello Mutation` mode in the Faking settings.
 
