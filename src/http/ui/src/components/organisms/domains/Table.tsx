@@ -1,4 +1,10 @@
-import React from "react";
+import React, {
+  useRef,
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+} from "react";
 import {
   Table,
   TableBody,
@@ -18,7 +24,7 @@ import {
 import { ProtocolChip } from "@atoms/common/ProtocolChip";
 import { colors } from "@design";
 import { B4Badge } from "@atoms/common/B4Badge";
-import { AsnBadge } from "@atoms/common/AsnBadge";
+import { asnStorage } from "@utils";
 
 export type SortColumn =
   | "timestamp"
@@ -46,27 +52,240 @@ interface DomainsTableProps {
   onSort: (column: SortColumn) => void;
   onDomainClick: (domain: string) => void;
   onIpClick: (ip: string) => void;
-  tableRef: React.RefObject<HTMLDivElement>;
-  onScroll: () => void;
+  onScrollStateChange: (isAtBottom: boolean) => void;
 }
 
-export const DomainsTable: React.FC<DomainsTableProps> = ({
+const ROW_HEIGHT = 41;
+const OVERSCAN = 5;
+
+// Memoized row component to prevent unnecessary re-renders
+const TableRowMemo = React.memo<{
+  log: ParsedLog;
+  onDomainClick: (domain: string) => void;
+  onIpClick: (ip: string) => void;
+}>(
+  ({ log, onDomainClick, onIpClick }) => {
+    // Compute ASN inline with simple cache lookup - no hook
+    const asnName = useMemo(() => {
+      if (!log.destination) return null;
+      const asn = asnStorage.findAsnForIp(log.destination);
+      return asn?.name || null;
+    }, [log.destination]);
+
+    return (
+      <TableRow
+        sx={{
+          height: ROW_HEIGHT,
+          "&:hover": {
+            bgcolor: colors.accent.primaryStrong,
+          },
+        }}
+      >
+        <TableCell
+          sx={{
+            color: "text.secondary",
+            fontFamily: "monospace",
+            fontSize: 12,
+            borderBottom: `1px solid ${colors.border.light}`,
+            py: 1,
+          }}
+        >
+          {log.timestamp.split(" ")[1]}
+        </TableCell>
+        <TableCell
+          sx={{
+            borderBottom: `1px solid ${colors.border.light}`,
+            py: 1,
+          }}
+        >
+          <ProtocolChip protocol={log.protocol} />
+        </TableCell>
+        <TableCell
+          sx={{
+            borderBottom: `1px solid ${colors.border.light}`,
+            py: 1,
+          }}
+        >
+          {(log.ipSet || log.hostSet) && (
+            <B4Badge
+              badgeVariant="secondary"
+              label={log.ipSet || log.hostSet}
+            />
+          )}
+        </TableCell>
+        <TableCell
+          sx={{
+            color: "text.primary",
+            fontWeight: 500,
+            borderBottom: `1px solid ${colors.border.light}`,
+            cursor: log.domain && !log.hostSet ? "pointer" : "default",
+            py: 1,
+            "&:hover":
+              log.domain && !log.hostSet
+                ? {
+                    bgcolor: colors.accent.primary,
+                    color: colors.secondary,
+                  }
+                : {},
+          }}
+          onClick={() =>
+            log.domain && !log.hostSet && onDomainClick(log.domain)
+          }
+        >
+          <Stack direction="row" spacing={1} alignItems="center">
+            {log.domain && <Typography>{log.domain}</Typography>}
+            <Box sx={{ flex: 1 }} />
+            {log.domain && !log.hostSet && (
+              <AddIcon
+                sx={{
+                  fontSize: 16,
+                  bgcolor: `${colors.secondary}88`,
+                  color: colors.background.default,
+                  borderRadius: "50%",
+                }}
+              />
+            )}
+          </Stack>
+        </TableCell>
+        <TableCell
+          sx={{
+            color: "text.secondary",
+            fontFamily: "monospace",
+            fontSize: 12,
+            borderBottom: `1px solid ${colors.border.light}`,
+            py: 1,
+          }}
+        >
+          {log.source}
+        </TableCell>
+        <TableCell
+          sx={{
+            color: "text.primary",
+            fontWeight: 500,
+            borderBottom: `1px solid ${colors.border.light}`,
+            py: 1,
+          }}
+        >
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Box
+              sx={{
+                cursor: !log.ipSet ? "pointer" : "default",
+                "&:hover": !log.ipSet
+                  ? {
+                      bgcolor: colors.accent.primary,
+                      color: colors.secondary,
+                    }
+                  : {},
+              }}
+              onClick={() =>
+                log.destination && !log.ipSet && onIpClick(log.destination)
+              }
+            >
+              {log.destination}
+            </Box>
+            {asnName && (
+              <B4Badge badgeVariant="yellowOutline" label={asnName} />
+            )}
+            <Box sx={{ flex: 1 }} />
+            {!log.ipSet && (
+              <AddIcon
+                onClick={() => onIpClick(log.destination)}
+                sx={{
+                  fontSize: 16,
+                  bgcolor: `${colors.secondary}88`,
+                  color: colors.background.default,
+                  borderRadius: "50%",
+                  cursor: "pointer",
+                  "&:hover": {
+                    bgcolor: colors.secondary,
+                  },
+                }}
+              />
+            )}
+          </Stack>
+        </TableCell>
+      </TableRow>
+    );
+  },
+  (prev, next) => prev.log.raw === next.log.raw
+);
+
+TableRowMemo.displayName = "TableRowMemo";
+
+export const DomainsTable = ({
   data,
   sortColumn,
   sortDirection,
   onSort,
   onDomainClick,
   onIpClick,
-  tableRef,
-  onScroll,
-}) => {
+  onScrollStateChange,
+}: DomainsTableProps) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [scrollTop, setScrollTop] = useState(0);
+  const [containerHeight, setContainerHeight] = useState(600);
+
+  const startIndex = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - OVERSCAN);
+  const visibleCount = Math.ceil(containerHeight / ROW_HEIGHT) + OVERSCAN * 2;
+  const endIndex = Math.min(data.length, startIndex + visibleCount);
+
+  const visibleData = useMemo(
+    () => data.slice(startIndex, endIndex),
+    [data, startIndex, endIndex]
+  );
+
+  const handleScroll = useCallback(
+    (e: React.UIEvent<HTMLDivElement>) => {
+      const target = e.currentTarget;
+      setScrollTop(target.scrollTop);
+
+      const isAtBottom =
+        target.scrollHeight - target.scrollTop - target.clientHeight < 50;
+      onScrollStateChange(isAtBottom);
+    },
+    [onScrollStateChange]
+  );
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setContainerHeight(entry.contentRect.height);
+      }
+    });
+
+    observer.observe(container);
+    setContainerHeight(container.clientHeight);
+
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    // Use a small delay to let the DOM update with new rows
+    requestAnimationFrame(() => {
+      const isAtBottom =
+        container.scrollHeight - container.scrollTop - container.clientHeight <
+        100;
+      if (isAtBottom) {
+        container.scrollTop = container.scrollHeight;
+        setScrollTop(container.scrollTop);
+      }
+    });
+  }, [data.length]);
+
   return (
     <TableContainer
-      ref={tableRef}
-      onScroll={onScroll}
+      ref={containerRef}
+      onScroll={handleScroll}
       sx={{
         flex: 1,
         backgroundColor: colors.background.dark,
+        overflow: "auto",
       }}
     >
       <Table stickyHeader size="small">
@@ -83,7 +302,7 @@ export const DomainsTable: React.FC<DomainsTableProps> = ({
               active={sortColumn === "protocol"}
               direction={sortColumn === "protocol" ? sortDirection : null}
               onSort={() => onSort("protocol")}
-            />{" "}
+            />
             <SortableTableCell
               label="Set"
               active={sortColumn === "set"}
@@ -128,133 +347,45 @@ export const DomainsTable: React.FC<DomainsTableProps> = ({
               </TableCell>
             </TableRow>
           ) : (
-            data.map((log) => (
-              <TableRow
-                key={log.raw}
-                sx={{
-                  "&:hover": {
-                    bgcolor: colors.accent.primaryStrong,
-                  },
-                }}
-              >
-                <TableCell
-                  sx={{
-                    color: "text.secondary",
-                    fontFamily: "monospace",
-                    fontSize: 12,
-                    borderBottom: `1px solid ${colors.border.light}`,
-                  }}
-                >
-                  {log.timestamp.split(" ")[1]}
-                </TableCell>
-                <TableCell
-                  sx={{
-                    borderBottom: `1px solid ${colors.border.light}`,
-                  }}
-                >
-                  <ProtocolChip protocol={log.protocol} />
-                </TableCell>
-                <TableCell
-                  sx={{
-                    borderBottom: `1px solid ${colors.border.light}`,
-                  }}
-                >
-                  {(log.ipSet || log.hostSet) && (
-                    <B4Badge
-                      badgeVariant="secondary"
-                      label={log.ipSet || log.hostSet}
-                    />
-                  )}
-                </TableCell>
-                <TableCell
-                  sx={{
-                    color: "text.primary",
-                    fontWeight: 500,
-                    borderBottom: `1px solid ${colors.border.light}`,
-                    cursor: "pointer",
-                    "&:hover": {
-                      bgcolor: colors.accent.primary,
-                      color: colors.secondary,
-                    },
-                  }}
-                >
-                  <Stack
-                    direction="row"
-                    spacing={1}
-                    alignItems="center"
-                    onClick={() =>
-                      log.domain && !log.hostSet && onDomainClick(log.domain)
-                    }
-                  >
-                    {log.domain && <Typography>{log.domain}</Typography>}
-                    <Box sx={{ flex: 1 }} />
-                    {log.domain && !log.hostSet && (
-                      <AddIcon
-                        sx={{
-                          fontSize: 16,
-                          bgcolor: `${colors.secondary}88`,
-                          color: colors.background.default,
-                          borderRadius: "50%",
-                        }}
-                      />
-                    )}
-                  </Stack>
-                </TableCell>
-                <TableCell
-                  sx={{
-                    color: "text.secondary",
-                    fontFamily: "monospace",
-                    fontSize: 12,
-                    borderBottom: `1px solid ${colors.border.light}`,
-                  }}
-                >
-                  {log.source}
-                </TableCell>
-                <TableCell
-                  sx={{
-                    color: "text.primary",
-                    fontWeight: 500,
-                    borderBottom: `1px solid ${colors.border.light}`,
-                  }}
-                >
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    <Box
-                      sx={{
-                        cursor: "pointer",
-                        "&:hover": {
-                          bgcolor: colors.accent.primary,
-                          color: colors.secondary,
-                        },
-                      }}
-                      onClick={() =>
-                        log.destination &&
-                        !log.ipSet &&
-                        onIpClick(log.destination)
-                      }
-                    >
-                      {log.destination}
-                    </Box>
+            <>
+              {/* Spacer for items above viewport */}
+              {startIndex > 0 && (
+                <TableRow>
+                  <TableCell
+                    colSpan={6}
+                    sx={{
+                      height: startIndex * ROW_HEIGHT,
+                      p: 0,
+                      border: "none",
+                    }}
+                  />
+                </TableRow>
+              )}
 
-                    <AsnBadge ip={log.destination} />
-                    <Box sx={{ flex: 1 }} />
-                    {!log.ipSet && (
-                      <AddIcon
-                        onClick={() => onIpClick(log.destination)}
-                        sx={{
-                          fontSize: 16,
-                          bgcolor: `${colors.secondary}88`,
-                          color: colors.background.default,
-                          borderRadius: "50%",
-                          "&:hover": {
-                            bgcolor: colors.secondary,
-                          },
-                        }}
-                      />
-                    )}
-                  </Stack>
-                </TableCell>
-              </TableRow>
-            ))
+              {/* Visible rows */}
+              {visibleData.map((log) => (
+                <TableRowMemo
+                  key={log.raw}
+                  log={log}
+                  onDomainClick={onDomainClick}
+                  onIpClick={onIpClick}
+                />
+              ))}
+
+              {/* Spacer for items below viewport */}
+              {endIndex < data.length && (
+                <TableRow>
+                  <TableCell
+                    colSpan={6}
+                    sx={{
+                      height: (data.length - endIndex) * ROW_HEIGHT,
+                      p: 0,
+                      border: "none",
+                    }}
+                  />
+                </TableRow>
+              )}
+            </>
           )}
         </TableBody>
       </Table>

@@ -2,10 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { Container, Paper, Snackbar, Alert } from "@mui/material";
 import { DomainsControlBar } from "@/components/organisms/domains/ControlBar";
 import { AddSniModal } from "@/components/organisms/domains/AddSniModal";
-import {
-  VirtualizedDomainsTable,
-  SortColumn,
-} from "@organisms/domains/VirtualizedTable";
+import { DomainsTable, SortColumn } from "@/components/organisms/domains/Table";
 import { SortDirection } from "@atoms/common/SortableTableCell";
 import {
   useDomainActions,
@@ -216,7 +213,7 @@ export default function Domains() {
           onReset={clearDomains}
         />
 
-        <VirtualizedDomainsTable
+        <DomainsTable
           data={sortedData}
           sortColumn={sortColumn}
           sortDirection={sortDirection}

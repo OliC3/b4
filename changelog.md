@@ -1,5 +1,10 @@
 # B4 - Bye Bye Big Bro
 
+## [1.18.3] - 2025-11-25
+
+- FIXED: `Domains` table not updating with new packets due to React state reference issue.
+- FIXED: `Domains` table columns layout being cramped with fixed widths.
+
 ## [1.18.2] - 2025-11-25
 
 - ADDED: `ClientHello Mutation` support for `IPv6`.

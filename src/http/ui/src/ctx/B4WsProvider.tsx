@@ -44,7 +44,7 @@ class RingBuffer {
   }
 
   getAll(): string[] {
-    return this.buffer;
+    return [...this.buffer];
   }
 
   clear(): void {
