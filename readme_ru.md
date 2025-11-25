@@ -3,6 +3,8 @@
 ![GitHub Release](https://img.shields.io/github/v/release/daniellavrushin/b4)
 ![GitHub Downloads](https://img.shields.io/github/downloads/daniellavrushin/b4/total)
 
+[[English](readme.md)] [[telegram](https://t.me/byebyebigbro)]
+
 Процессор сетевых пакетов для обхода систем глубокой инспекции пакетов (DPI).
 
 ![alt text](image.png)
