@@ -23,7 +23,7 @@ get_service_status() {
     fi
 
     # Check systemd service
-    if [ -f "/etc/systemd/system/b4.service" ] && command_exists systemctl >/dev/null 2>&1; then
+    if [ -f "/etc/systemd/system/b4.service" ] && command_exists systemctl; then
         if systemctl is-active --quiet b4 2>/dev/null; then
             echo "running (systemd)"
             return 0

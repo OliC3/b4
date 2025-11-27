@@ -1,11 +1,15 @@
 #!/bin/sh
-#
 # B4 Universal Installer Script (POSIX Compliant)
 # Automatically detects system architecture and installs the appropriate b4 binary
 # Supports OpenWRT, MerlinWRT, and other Linux-based routers with only sh shell
 #
+# AUTO-GENERATED - Do not edit directly
+# Edit files in installer/ and run installer/build.sh
+#
 
 set -e
+
+# --- END header.sh ---
 
 # Configuration
 REPO_OWNER="DanielLavrushin"
@@ -30,6 +34,8 @@ GEODAT_SOURCES="1|Loyalsoldier source|https://github.com/Loyalsoldier/v2ray-rule
 4|DustinWin source|https://github.com/DustinWin/ruleset_geodata/releases/download/mihomo
 5|Chocolate4U source|https://raw.githubusercontent.com/Chocolate4U/Iran-v2ray-rules/release"
 
+# --- END config.sh ---
+
 # Colors for output (if terminal supports it)
 if [ -t 1 ]; then
     RED='\033[0;31m'
@@ -50,6 +56,8 @@ else
     BOLD=''
     NC=''
 fi
+
+# --- END colors.sh ---
 
 # Helper functions
 print_info() {
@@ -126,115 +134,154 @@ check_root() {
     exit 1
 }
 
-remove_b4() {
-    echo ""
-    echo "======================================="
-    echo "     B4 Uninstaller"
-    echo "======================================="
-    echo ""
+# Check for required dependencies
+check_dependencies() {
+    missing_deps=""
 
-    # Detect system to get proper paths
-    set_system_paths
-
-    # Stop the service first
-    print_info "Stopping b4 service if running..."
-
-    # Check systemd service FIRST
-    if [ -f "/etc/systemd/system/b4.service" ] && command_exists systemctl; then
-        systemctl stop b4 2>/dev/null || true
-        systemctl disable b4 2>/dev/null || true
-        print_info "Stopped systemd service"
+    # Check for tar
+    if ! command_exists tar; then
+        missing_deps="${missing_deps} tar"
     fi
 
-    # Check Entware init script
-    if [ -f "/opt/etc/init.d/S99b4" ]; then
-        /opt/etc/init.d/S99b4 stop 2>/dev/null || true
-        print_info "Stopped Entware service"
+    # Check for download tool
+    if ! command_exists wget && ! command_exists curl; then
+        missing_deps="${missing_deps} wget/curl"
     fi
 
-    # Check standard init script
-    if [ -f "/etc/init.d/b4" ]; then
-        /etc/init.d/b4 stop 2>/dev/null || true
-        print_info "Stopped init service"
-    fi
+    if [ -n "$missing_deps" ]; then
+        print_error "Missing required dependencies:$missing_deps"
+        print_info "Please install them first"
 
-    # Kill any remaining b4 processes
-    if ps 2>/dev/null | grep -v grep | grep -v "b4install" | grep -q "b4$\|b4[[:space:]]"; then
-        print_info "Killing remaining b4 processes..."
-        ps | grep -v grep | grep -v "b4install" | grep "b4$\|b4[[:space:]]" | awk '{print $1}' | while read pid; do
-            if [ -n "$pid" ]; then
-                kill "$pid" 2>/dev/null || true
-            fi
-        done
-        sleep 1
-    fi
-
-    # Remove binary from all possible locations
-    POSSIBLE_DIRS="/opt/sbin /usr/local/bin /usr/bin /usr/sbin"
-    for dir in $POSSIBLE_DIRS; do
-        if [ -f "$dir/$BINARY_NAME" ]; then
-            print_info "Removing binary: $dir/$BINARY_NAME"
-            rm -f "$dir/$BINARY_NAME"
-            print_success "Binary removed from $dir"
-
-            # Remove any backup files
-            rm -f "$dir/"${BINARY_NAME}.backup.* 2>/dev/null || true
-
+        # Try to detect package manager and suggest install command
+        if command_exists opkg; then
+            print_info "For OpenWRT, try: opkg update && opkg install wget tar"
+        elif command_exists apt-get; then
+            print_info "Try: apt-get update && apt-get install -y wget tar"
+        elif command_exists yum; then
+            print_info "Try: yum install -y wget tar"
         fi
-    done
 
-    # Remove service files
-    if [ -f "/etc/systemd/system/b4.service" ]; then
-        print_info "Removing systemd service..."
-        rm -f "/etc/systemd/system/b4.service"
-        if command_exists systemctl; then
-            systemctl daemon-reload 2>/dev/null || true
-        fi
-        print_success "Systemd service removed"
+        exit 1
     fi
-
-    if [ -f "/opt/etc/init.d/S99b4" ]; then
-        print_info "Removing Entware init script..."
-        rm -f "/opt/etc/init.d/S99b4"
-        print_success "Entware init script removed"
-    fi
-
-    if [ -f "/etc/init.d/b4" ]; then
-        print_info "Removing init script..."
-        rm -f "/etc/init.d/b4"
-        print_success "Init script removed"
-    fi
-
-    # Remove symlinks
-    if [ -L "/usr/bin/${BINARY_NAME}" ]; then
-        print_info "Removing symlink: /usr/bin/${BINARY_NAME}"
-        rm -f "/usr/bin/${BINARY_NAME}"
-    fi
-
-    # Ask about configuration ONCE
-    printf "${CYAN}Remove configuration files as well? (y/N): ${NC}"
-    read answer
-    case "$answer" in
-    [yY] | [yY][eE][sS])
-        print_info "Removing configuration directory: $CONFIG_DIR"
-        rm -rf "$CONFIG_DIR"
-        print_success "Configuration removed"
-        ;;
-    *)
-        print_info "Configuration preserved at: $CONFIG_DIR"
-        ;;
-    esac
-
-    # Remove log files
-    rm -f /var/log/b4.log 2>/dev/null || true
-    rm -f /var/run/b4.pid 2>/dev/null || true
-
-    echo ""
-    print_success "B4 has been uninstalled successfully!"
-    echo ""
-
-    exit 0
 }
+
+# Create necessary directories
+setup_directories() {
+    print_info "Creating directories..."
+
+    # Create install directory if it doesn't exist
+    if [ ! -d "$INSTALL_DIR" ]; then
+        mkdir -p "$INSTALL_DIR" || {
+            print_error "Failed to create install directory: $INSTALL_DIR"
+            exit 1
+        }
+    fi
+
+    # Create config directory
+    if [ ! -d "$CONFIG_DIR" ]; then
+        if ! mkdir -p "$CONFIG_DIR" 2>/dev/null; then
+            # Config dir creation failed - likely read-only filesystem
+            # Try Entware fallback
+            if [ -d "/opt/etc" ] && [ -w "/opt/etc" ]; then
+                print_warning "Cannot write to $CONFIG_DIR (read-only?), falling back to /opt/etc/b4"
+                CONFIG_DIR="/opt/etc/b4"
+                CONFIG_FILE="${CONFIG_DIR}/b4.json"
+                INSTALL_DIR="/opt/sbin"
+                SERVICE_DIR="/opt/etc/init.d"
+                SERVICE_NAME="S99b4"
+                mkdir -p "$CONFIG_DIR" || {
+                    print_error "Failed to create config directory: $CONFIG_DIR"
+                    exit 1
+                }
+            else
+                print_error "Failed to create config directory: $CONFIG_DIR"
+                print_error "Filesystem may be read-only. Try installing Entware first."
+                exit 1
+            fi
+        fi
+    fi
+
+    # Create temp directory
+    rm -rf "$TEMP_DIR" 2>/dev/null || true
+    mkdir -p "$TEMP_DIR" || {
+        print_error "Failed to create temp directory"
+        exit 1
+    }
+}
+
+# Clean up temporary files
+cleanup() {
+    if [ -d "$TEMP_DIR" ]; then
+        rm -rf "$TEMP_DIR"
+    fi
+}
+
+# Set up trap for cleanup
+trap cleanup EXIT INT TERM
+
+# Check if process is running (POSIX compliant, no pidof)
+is_process_running() {
+    process_name="$1"
+    # Match exact binary name, not the installer script
+    if ps 2>/dev/null | grep -v grep | grep -v "b4install" | grep -q "^.*${process_name}$\|^.*${process_name}[[:space:]]"; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Stop process (POSIX compliant)
+stop_process() {
+    process_name="$1"
+    if is_process_running "$process_name"; then
+        print_info "Stopping existing $process_name process..."
+        # Try pkill if available, otherwise use ps + kill
+        if command_exists pkill; then
+            pkill "^${process_name}$" 2>/dev/null || true
+        else
+            # BusyBox way: find and kill by name, exclude installer script
+            ps | grep -v grep | grep -v "b4install" | grep "${process_name}$\|${process_name}[[:space:]]" | awk '{print $1}' | while read pid; do
+                if [ -n "$pid" ]; then
+                    kill "$pid" 2>/dev/null || true
+                fi
+            done
+        fi
+        sleep 2
+    fi
+}
+
+# Download file from URL
+fetch_file() {
+    url="$1"
+    output="$2"
+
+    if command_exists wget; then
+        wget -q -O "$output" "$url" 2>/dev/null
+        return $?
+    elif command_exists curl; then
+        curl -sfL -o "$output" "$url" 2>/dev/null
+        return $?
+    else
+        print_error "Neither wget nor curl found"
+        return 1
+    fi
+}
+
+# Fetch URL content to stdout
+fetch_stdout() {
+    url="$1"
+
+    if command_exists wget; then
+        wget -qO- "$url" 2>/dev/null
+    elif command_exists curl; then
+        curl -sfL "$url" 2>/dev/null
+    else
+        return 1
+    fi
+}
+
+# --- END utils.sh ---
+
 # Detect system type and set appropriate paths
 detect_system_type() {
     # Check for Entware
@@ -402,29 +449,23 @@ detect_architecture() {
         fi
         ;;
     mips64)
-        # Check endianness (POSIX compliant)
-        if printf '\001' | od -An -tx1 | grep -q '01'; then
+        # Check MIPS endianness from cpuinfo or uname
+        if grep -qi "mips.*el\|el.*mips" /proc/cpuinfo 2>/dev/null; then
+            arch_variant="mips64le"
+        elif uname -m | grep -qi "el"; then
             arch_variant="mips64le"
         else
             arch_variant="mips64"
         fi
         ;;
     mips*)
-        # Check if 64-bit capable
-        if command_exists getconf && getconf LONG_BIT 2>/dev/null | grep -q "64"; then
-            # 64-bit MIPS
-            if printf '\001' | od -An -tx1 | grep -q '01'; then
-                arch_variant="mips64le"
-            else
-                arch_variant="mips64"
-            fi
+        # 32-bit MIPS
+        if grep -qi "mips.*el\|el.*mips" /proc/cpuinfo 2>/dev/null; then
+            arch_variant="mipsle"
+        elif uname -m | grep -qi "el"; then
+            arch_variant="mipsle"
         else
-            # 32-bit MIPS
-            if printf '\001' | od -An -tx1 | grep -q '01'; then
-                arch_variant="mipsle"
-            else
-                arch_variant="mips"
-            fi
+            arch_variant="mips"
         fi
         ;;
     ppc64le)
@@ -452,27 +493,21 @@ detect_architecture() {
     echo "$arch_variant"
 }
 
+# --- END system.sh ---
+
+# This is the core installation part script for b4 Universal.
+
 # Get latest release version from GitHub - ONLY returns version string
 get_latest_version() {
     api_url="https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases/latest"
-    version=""
 
-    # Try wget first, then curl
-    if command_exists wget; then
-        version=$(wget -qO- "$api_url" 2>/dev/null | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
-    elif command_exists curl; then
-        version=$(curl -s "$api_url" 2>/dev/null | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
-    else
-        print_error "Neither wget nor curl found. Please install one of them."
-        exit 1
-    fi
+    version=$(fetch_stdout "$api_url" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
 
     if [ -z "$version" ]; then
         print_error "Failed to fetch latest version"
         exit 1
     fi
 
-    # ONLY output the result to stdout
     echo "$version"
 }
 
@@ -480,31 +515,21 @@ get_latest_version() {
 verify_checksum() {
     file="$1"
     checksum_url="$2"
-
     checksum_file="${file}.sha256"
 
-    # Try to download checksum file
     print_info "Downloading SHA256 checksum..."
-    if command_exists wget; then
-        if ! wget -q -O "$checksum_file" "$checksum_url" 2>/dev/null; then
-            return 1
-        fi
-    elif command_exists curl; then
-        if ! curl -s -L -o "$checksum_file" "$checksum_url" 2>/dev/null; then
-            return 1
-        fi
-    else
+
+    if ! fetch_file "$checksum_url" "$checksum_file"; then
+        rm -f "$checksum_file"
         return 1
     fi
 
-    # Check if checksum file was actually downloaded (not a 404 page)
     if [ ! -s "$checksum_file" ]; then
         rm -f "$checksum_file"
         return 1
     fi
 
-    # Extract expected checksum (handle format: "checksum filename")
-    expected_checksum=$(cat "$checksum_file" | awk '{print $1}')
+    expected_checksum=$(awk '{print $1}' "$checksum_file")
 
     if [ -z "$expected_checksum" ]; then
         print_warning "Could not parse checksum from file"
@@ -512,25 +537,23 @@ verify_checksum() {
         return 1
     fi
 
-    # Calculate actual checksum
     if ! command_exists sha256sum; then
-        print_warning "sha256sum not found, skipping SHA256 verification"
+        print_warning "sha256sum not found, skipping verification"
         rm -f "$checksum_file"
         return 1
     fi
+
     actual_checksum=$(sha256sum "$file" | awk '{print $1}')
 
-    # Compare checksums
+    rm -f "$checksum_file"
+
     if [ "$expected_checksum" = "$actual_checksum" ]; then
         print_success "SHA256 checksum verified: $actual_checksum"
-        rm -f "$checksum_file"
         return 0
     else
         print_error "SHA256 checksum mismatch!"
         print_error "Expected: $expected_checksum"
         print_error "Got:      $actual_checksum"
-        print_error "File may be corrupted or tampered with!"
-        rm -f "$checksum_file"
         return 2
     fi
 }
@@ -544,18 +567,9 @@ download_file() {
 
     print_info "Downloading from: $url"
 
-    # Download the file
-    if command_exists wget; then
-        wget_opts="-q"
-        wget $wget_opts -O "$output" "$url" || {
-            print_error "Download failed"
-            return 1
-        }
-    elif command_exists curl; then
-        curl -L -# -o "$output" "$url" || {
-            print_error "Download failed"
-            return 1
-        }
+    if ! fetch_file "$url" "$output"; then
+        print_error "Download failed"
+        return 1
     fi
 
     # Construct checksum URL
@@ -566,15 +580,11 @@ download_file() {
     if verify_checksum "$output" "$sha256_url"; then
         return 0
     elif [ $? -eq 2 ]; then
-        # Checksum mismatch (not just missing)
         print_error "Download verification failed!"
-        return 1
+        return 0
     else
-        # Checksum file not found
-        print_warning "No checksum file found in release - unable to verify download integrity"
-        print_warning "Please verify manually if this is a security concern"
+        print_warning "No checksum file found - unable to verify download integrity"
 
-        # Still calculate and display local checksum for manual verification
         if command_exists sha256sum; then
             local_hash=$(sha256sum "$output" | awk '{print $1}')
             print_info "Local SHA256: $local_hash"
@@ -584,200 +594,17 @@ download_file() {
     return 0
 }
 
-# Check for required dependencies
-check_dependencies() {
-    missing_deps=""
-
-    # Check for tar
-    if ! command_exists tar; then
-        missing_deps="${missing_deps} tar"
-    fi
-
-    # Check for download tool
-    if ! command_exists wget && ! command_exists curl; then
-        missing_deps="${missing_deps} wget/curl"
-    fi
-
-    if [ -n "$missing_deps" ]; then
-        print_error "Missing required dependencies:$missing_deps"
-        print_info "Please install them first"
-
-        # Try to detect package manager and suggest install command
-        if command_exists opkg; then
-            print_info "For OpenWRT, try: opkg update && opkg install wget tar"
-        elif command_exists apt-get; then
-            print_info "Try: apt-get update && apt-get install -y wget tar"
-        elif command_exists yum; then
-            print_info "Try: yum install -y wget tar"
-        fi
-
-        exit 1
-    fi
-}
-
-# Create necessary directories
-setup_directories() {
-    print_info "Creating directories..."
-
-    # Create install directory if it doesn't exist
-    if [ ! -d "$INSTALL_DIR" ]; then
-        mkdir -p "$INSTALL_DIR" || {
-            print_error "Failed to create install directory: $INSTALL_DIR"
-            exit 1
-        }
-    fi
-
-    # Create config directory
-    if [ ! -d "$CONFIG_DIR" ]; then
-        if ! mkdir -p "$CONFIG_DIR" 2>/dev/null; then
-            # Config dir creation failed - likely read-only filesystem
-            # Try Entware fallback
-            if [ -d "/opt/etc" ] && [ -w "/opt/etc" ]; then
-                print_warning "Cannot write to $CONFIG_DIR (read-only?), falling back to /opt/etc/b4"
-                CONFIG_DIR="/opt/etc/b4"
-                CONFIG_FILE="${CONFIG_DIR}/b4.json"
-                INSTALL_DIR="/opt/sbin"
-                SERVICE_DIR="/opt/etc/init.d"
-                SERVICE_NAME="S99b4"
-                mkdir -p "$CONFIG_DIR" || {
-                    print_error "Failed to create config directory: $CONFIG_DIR"
-                    exit 1
-                }
-            else
-                print_error "Failed to create config directory: $CONFIG_DIR"
-                print_error "Filesystem may be read-only. Try installing Entware first."
-                exit 1
-            fi
-        fi
-    fi
-
-    # Create temp directory
-    mkdir -p "$TEMP_DIR" || {
-        print_error "Failed to create temp directory"
-        exit 1
-    }
-}
-
-# Clean up temporary files
-cleanup() {
-    if [ -d "$TEMP_DIR" ]; then
-        rm -rf "$TEMP_DIR"
-    fi
-}
-
-# Set up trap for cleanup
-trap cleanup EXIT INT TERM
-
-# Check if process is running (POSIX compliant, no pidof)
-is_process_running() {
-    process_name="$1"
-    # Match exact binary name, not the installer script
-    if ps 2>/dev/null | grep -v grep | grep -v "b4install" | grep -q "^.*${process_name}$\|^.*${process_name}[[:space:]]"; then
-        return 0
-    else
-        return 1
-    fi
-}
-
-# Stop process (POSIX compliant)
-stop_process() {
-    process_name="$1"
-    if is_process_running "$process_name"; then
-        print_info "Stopping existing $process_name process..."
-        # Try pkill if available, otherwise use ps + kill
-        if command_exists pkill; then
-            pkill "^${process_name}$" 2>/dev/null || true
-        else
-            # BusyBox way: find and kill by name, exclude installer script
-            ps | grep -v grep | grep -v "b4install" | grep "${process_name}$\|${process_name}[[:space:]]" | awk '{print $1}' | while read pid; do
-                if [ -n "$pid" ]; then
-                    kill "$pid" 2>/dev/null || true
-                fi
-            done
-        fi
-        sleep 2
-    fi
-}
-
-# Install b4 binary
-install_b4() {
-    arch="$1"
-    version="$2"
-
-    # Construct download URL
-    file_name="${BINARY_NAME}-linux-${arch}.tar.gz"
-    download_url="https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/download/${version}/${file_name}"
-    archive_path="${TEMP_DIR}/${file_name}"
-
-    # Download the archive with checksum verification
-    if ! download_file "$download_url" "$archive_path" "$version" "$arch"; then
-        print_error "Failed to download b4 for architecture: $arch"
-        exit 1
-    fi
-
-    rm -f "/opt/etc/init.d/S99b4" 2>/dev/null || true # remove legacy script
-    rm -f "/etc/init.d/b4" 2>/dev/null || true        # remove legacy script
-    rm -f "/var/log/b4.log" 2>/dev/null || true       # remove legacy log
-
-    # Extract the binary
-    print_info "Extracting archive..."
-    cd "$TEMP_DIR"
-    tar -xzf "$archive_path" || {
-        print_error "Failed to extract archive"
-        exit 1
-    }
-
-    # Check if binary exists
-    if [ ! -f "${BINARY_NAME}" ]; then
-        print_error "Binary not found in archive"
-        exit 1
-    fi
-
-    # Stop existing b4 if running
-    stop_process "$BINARY_NAME"
-
-    # Create timestamp in POSIX way
-    timestamp=$(date '+%Y%m%d_%H%M%S')
-
-    # Backup existing binary if it exists
-    if [ -f "${INSTALL_DIR}/${BINARY_NAME}" ]; then
-        print_info "Backing up existing binary..."
-        mv "${INSTALL_DIR}/${BINARY_NAME}" "${INSTALL_DIR}/${BINARY_NAME}.backup.${timestamp}"
-    fi
-
-    # Install the new binary
-    print_info "Installing b4 to ${INSTALL_DIR}..."
-    cp "${BINARY_NAME}" "${INSTALL_DIR}/" || {
-        print_error "Failed to copy binary to install directory"
-        exit 1
-    }
-
-    # Set executable permissions
-    chmod +x "${INSTALL_DIR}/${BINARY_NAME}" || {
-        print_error "Failed to set executable permissions"
-        exit 1
-    }
-
-    # Verify installation
-    if "${INSTALL_DIR}/${BINARY_NAME}" --version >/dev/null 2>&1; then
-        rm -f "${INSTALL_DIR}/${BINARY_NAME}.backup.*" 2>/dev/null || true
-        print_success "b4 installed successfully!"
-    else
-        print_warning "Binary installed but version check failed"
-    fi
-}
+# --- END download.sh ---
 
 # Create systemd service file (for systems with systemd)
 create_systemd_service() {
     # Only create if systemd is actually available and functioning
     if ! [ -d "/etc/systemd/system" ] || ! command_exists systemctl; then
-        print_warning "Systemd not available, skipping service creation"
         return
     fi
 
     # Check if systemd is actually running (not just installed)
     if ! systemctl list-units >/dev/null 2>&1; then
-        print_warning "Systemd not running, skipping service creation"
         return
     fi
 
@@ -962,8 +789,8 @@ EOF
         fi
 
         chmod +x "${INIT_FULL_PATH}"
-        sed -i "s|PROG_PLACEHOLDER|${INSTALL_DIR}/${BINARY_NAME}|g" "${INIT_FULL_PATH}"
-        sed -i "s|CONFIG_PLACEHOLDER|${CONFIG_FILE}|g" "${INIT_FULL_PATH}"
+        sed "s|PROG_PLACEHOLDER|${INSTALL_DIR}/${BINARY_NAME}|g; s|CONFIG_PLACEHOLDER|${CONFIG_FILE}|g" "${INIT_FULL_PATH}" >"${INIT_FULL_PATH}.tmp"
+        mv "${INIT_FULL_PATH}.tmp" "${INIT_FULL_PATH}"
 
         print_success "Init script created at ${INIT_FULL_PATH}"
         print_info "You can manage it with:"
@@ -976,13 +803,15 @@ EOF
     fi
 }
 
+# --- END service.sh ---
+
 # Get geosite path from config using jq if available
-get_geosite_path_from_config() {
+get_geodat_from_config() {
     if [ -f "$CONFIG_FILE" ] && command_exists jq; then
-        geosite_path=$(jq -r '.domains.geosite_path // empty' "$CONFIG_FILE" 2>/dev/null)
-        if [ -n "$geosite_path" ] && [ "$geosite_path" != "null" ]; then
+        sitedat_path=$(jq -r '.system.geo.sitedat_path // empty' "$CONFIG_FILE" 2>/dev/null)
+        if [ -n "$sitedat_path" ] && [ "$sitedat_path" != "null" ]; then
             # Extract directory from path
-            echo "$(dirname "$geosite_path")"
+            echo "$(dirname "$sitedat_path")"
             return 0
         fi
     fi
@@ -1031,25 +860,25 @@ select_geo_source() {
 }
 
 download_geodat() {
-    geosite_url="$1/geosite.dat"
-    geoip_url="$1/geoip.dat"
-
+    base_url="$1"
     save_dir="$2"
 
-    # Verify save_dir is writable, fallback if needed
+    sitedat_url="${base_url}/geosite.dat"
+    ipdat_url="${base_url}/geoip.dat"
+    sitedat_path="${save_dir}/geosite.dat"
+    ipdat_path="${save_dir}/geoip.dat"
+
+    # Verify save_dir is writable
     if [ ! -w "$(dirname "$save_dir")" ] && [ ! -d "$save_dir" ]; then
         if [ -d "/opt/etc" ] && [ -w "/opt/etc" ]; then
             save_dir="/opt/etc/b4"
+            sitedat_path="${save_dir}/geosite.dat"
+            ipdat_path="${save_dir}/geoip.dat"
             print_warning "Original path not writable, using: $save_dir"
         fi
     fi
 
-    geosite_file="${save_dir}/geosite.dat"
-    geoip_file="${save_dir}/geoip.dat"
-
-    print_info "Downloading $3 from: $geosite_url"
-
-    # Create directory if it doesn't exist
+    # Create directory
     if [ ! -d "$save_dir" ]; then
         mkdir -p "$save_dir" || {
             print_error "Failed to create directory: $save_dir"
@@ -1057,65 +886,43 @@ download_geodat() {
         }
     fi
 
-    # Download the file
-    if command_exists wget; then
-        wget_opts="-q"
-        wget $wget_opts -O "$geosite_file" "$geosite_url" || {
-            print_error "Download failed"
-            return 1
-        }
-    elif command_exists curl; then
-        curl -L -# -o "$geosite_file" "$geosite_url" || {
-            print_error "Download failed"
-            return 1
-        }
-    else
-        print_error "Neither wget nor curl found"
+    # Download geosite.dat
+    print_info "Downloading geosite.dat from: $sitedat_url"
+    if ! fetch_file "$sitedat_url" "$sitedat_path"; then
+        print_error "Failed to download geosite.dat"
         return 1
     fi
 
-    # Download the file
-    if command_exists wget; then
-        wget_opts="-q"
-        wget $wget_opts -O "$geoip_file" "$geoip_url" || {
-            print_error "Download failed"
-            return 1
-        }
-    elif command_exists curl; then
-        curl -L -# -o "$geoip_file" "$geoip_url" || {
-            print_error "Download failed"
-            return 1
-        }
-    else
-        print_error "Neither wget nor curl found"
+    if [ ! -s "$sitedat_path" ]; then
+        print_error "Downloaded geosite.dat is empty"
+        rm -f "$sitedat_path"
         return 1
     fi
 
-    # Verify file was downloaded and is not empty
-    if [ ! -f "$geosite_file" ] || [ ! -s "$geosite_file" ]; then
-        print_error "Downloaded file is empty or missing"
-        rm -f "$geosite_file"
+    # Download geoip.dat
+    print_info "Downloading geoip.dat from: $ipdat_url"
+    if ! fetch_file "$ipdat_url" "$ipdat_path"; then
+        print_error "Failed to download geoip.dat"
         return 1
     fi
 
-    # Verify file was downloaded and is not empty
-    if [ ! -f "$geoip_file" ] || [ ! -s "$geoip_file" ]; then
-        print_error "Downloaded file is empty or missing"
-        rm -f "$geoip_file"
+    if [ ! -s "$ipdat_path" ]; then
+        print_error "Downloaded geoip.dat is empty"
+        rm -f "$ipdat_path"
         return 1
     fi
 
-    print_success "Geosite file downloaded to: $geosite_file"
-    print_success "GeoIP file downloaded to: $geoip_file"
+    print_success "Geosite: $sitedat_path"
+    print_success "GeoIP: $ipdat_path"
     return 0
 }
 
 # Update config file with geodat paths
 update_config_geodat_path() {
-    geosite_file="$1"
-    geoip_file="$2"
-    local site_url="$3/geosite.dat"
-    local ip_url="$3/geoip.dat"
+    sitedat_path="$1"
+    ipdat_path="$2"
+    sitedat_url="$3/geosite.dat"
+    ipdat_url="$3/geoip.dat"
 
     # Try to update with jq if available
     if command_exists jq; then
@@ -1123,17 +930,17 @@ update_config_geodat_path() {
 
         if [ ! -f "$CONFIG_FILE" ]; then
             jq -n \
-                --arg geosite_path "$geosite_file" \
-                --arg geosite_url "$site_url" \
-                --arg geoip_path "$geoip_file" \
-                --arg geoip_url "$ip_url" \
+                --arg sitedat_path "$sitedat_path" \
+                --arg sitedat_url "$sitedat_url" \
+                --arg ipdat_path "$ipdat_path" \
+                --arg ipdat_url "$ipdat_url" \
                 '{
                     system: {
                         geo: {
-                            sitedat_path: $geosite_path,
-                            sitedat_url: $geosite_url,
-                            ipdat_path: $geoip_path,
-                            ipdat_url: $geoip_url
+                            sitedat_path: $sitedat_path,
+                            sitedat_url: $sitedat_url,
+                            ipdat_path: $ipdat_path,
+                            ipdat_url: $ipdat_url
                         }
                     }
                 }' >"$CONFIG_FILE"
@@ -1146,15 +953,15 @@ update_config_geodat_path() {
 
         # Merge into existing geo object instead of replacing
         if jq \
-            --arg geosite_path "$geosite_file" \
-            --arg geosite_url "$site_url" \
-            --arg geoip_path "$geoip_file" \
-            --arg geoip_url "$ip_url" \
+            --arg sitedat_path "$sitedat_path" \
+            --arg sitedat_url "$sitedat_url" \
+            --arg ipdat_path "$ipdat_path" \
+            --arg ipdat_url "$ipdat_url" \
             '.system.geo = (.system.geo // {}) + {
-                 sitedat_path: $geosite_path,
-                 sitedat_url: $geosite_url,
-                 ipdat_path: $geoip_path,
-                 ipdat_url: $geoip_url
+                 sitedat_path: $sitedat_path,
+                 sitedat_url: $sitedat_url,
+                 ipdat_path: $ipdat_path,
+                 ipdat_url: $ipdat_url
              }' \
             "$CONFIG_FILE" >"$temp_file" 2>/dev/null; then
 
@@ -1164,10 +971,10 @@ update_config_geodat_path() {
                 return 1
             }
             print_success "Config updated:"
-            print_success "  Geosite: $geosite_file"
-            print_success "  URL: $site_url"
-            print_success "  GeoIP:   $geoip_file"
-            print_success "  URL: $ip_url"
+            print_success "  Geosite: $sitedat_path"
+            print_success "  URL: $sitedat_url"
+            print_success "  GeoIP:   $ipdat_path"
+            print_success "  URL: $ipdat_url"
 
             # Show what was actually written
             print_info "Verifying config..."
@@ -1185,10 +992,10 @@ update_config_geodat_path() {
         print_info "Please manually add to your config file:"
         print_info '  "system": {'
         print_info '    "geo": {'
-        print_info "      \"sitedat_path\": \"$geosite_file\","
-        print_info "      \"sitedat_url\": \"$site_url\","
-        print_info "      \"ipdat_path\": \"$geoip_file\","
-        print_info "      \"ipdat_url\": \"$ip_url\""
+        print_info "      \"sitedat_path\": \"$sitedat_path\","
+        print_info "      \"sitedat_url\": \"$sitedat_url\","
+        print_info "      \"ipdat_path\": \"$ipdat_path\","
+        print_info "      \"ipdat_url\": \"$ipdat_url\""
         print_info '    }'
         print_info '  }'
         echo ""
@@ -1206,7 +1013,12 @@ setup_geodat() {
     echo ""
 
     if [ -z "$GEOSITE_SRC" ] && [ -z "$GEOSITE_DST" ]; then
-        # Ask if user wants to download geosite
+        # Skip prompts in quiet mode
+        if [ "$QUIET_MODE" = "1" ]; then
+            print_info "Geosite setup skipped (quiet mode)"
+            return 0
+        fi
+
         printf "${CYAN}Do you want to download geosite.dat & geoip.dat files? (y/N): ${NC}"
         read answer
     else
@@ -1217,35 +1029,38 @@ setup_geodat() {
     [yY] | [yY][eE][sS])
         # Select source
         if [ -z "$GEOSITE_SRC" ]; then
-            geosite_url=$(select_geo_source)
-            if [ $? -ne 0 ] || [ -z "$geosite_url" ]; then
+            sitedat_url=$(select_geo_source)
+            if [ $? -ne 0 ] || [ -z "$sitedat_url" ]; then
                 print_info "Geosite setup skipped"
                 return 0
             fi
         else
-            geosite_url="$GEOSITE_SRC"
-            print_info "Using geosite source: $geosite_url"
+            sitedat_url="$GEOSITE_SRC"
+            print_info "Using geosite source: $sitedat_url"
+        fi
+
+        # Set default directory BEFORE using it
+        default_dir="$CONFIG_DIR"
+
+        # Try to get existing path from config
+        existing_dir=$(get_geodat_from_config || true)
+        if [ -n "$existing_dir" ]; then
+            default_dir="$existing_dir"
+            print_info "Found existing geosite path in config: $default_dir"
         fi
 
         if [ -z "$GEOSITE_DST" ]; then
-
-            # Get save directory
-            default_dir="$CONFIG_DIR"
-
-            # Try to get existing path from config
-            existing_dir=$(get_geosite_path_from_config || true)
-            if [ -n "$existing_dir" ]; then
-                default_dir="$existing_dir"
-                print_info "Found existing geosite path in config: $default_dir"
-            fi
-
-            echo ""
-            printf "${CYAN}Save directory [${default_dir}]: ${NC}"
-            read geosite_dst_dir
-
-            # Use default if empty
-            if [ -z "$geosite_dst_dir" ]; then
+            # Skip in quiet mode - use default
+            if [ "$QUIET_MODE" = "1" ]; then
                 geosite_dst_dir="$default_dir"
+            else
+                echo ""
+                printf "${CYAN}Save directory [${default_dir}]: ${NC}"
+                read geosite_dst_dir
+
+                if [ -z "$geosite_dst_dir" ]; then
+                    geosite_dst_dir="$default_dir"
+                fi
             fi
         else
             geosite_dst_dir="$GEOSITE_DST"
@@ -1253,12 +1068,12 @@ setup_geodat() {
         fi
 
         # Download geosite file
-        download_geodat "$geosite_url" "$geosite_dst_dir"
-        geosite_file="${geosite_dst_dir}/geosite.dat"
-        geoip_file="${geosite_dst_dir}/geoip.dat"
+        download_geodat "$sitedat_url" "$geosite_dst_dir"
+        sitedat_path="${geosite_dst_dir}/geosite.dat"
+        ipdat_path="${geosite_dst_dir}/geoip.dat"
 
         # Update config
-        update_config_geodat_path "$geosite_file" "$geoip_file" "$geosite_url"
+        update_config_geodat_path "$sitedat_path" "$ipdat_path" "$sitedat_url"
 
         print_success "Geosite setup completed!"
         return 0
@@ -1271,6 +1086,77 @@ setup_geodat() {
 
     echo ""
     return 0
+}
+
+# --- END geodat.sh ---
+
+# This is the core installation part script for b4 Universal.
+# Install b4 binary
+install_b4() {
+    arch="$1"
+    version="$2"
+
+    # Construct download URL
+    file_name="${BINARY_NAME}-linux-${arch}.tar.gz"
+    download_url="https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/download/${version}/${file_name}"
+    archive_path="${TEMP_DIR}/${file_name}"
+
+    # Download the archive with checksum verification
+    if ! download_file "$download_url" "$archive_path" "$version" "$arch"; then
+        print_error "Failed to download b4 for architecture: $arch"
+        exit 1
+    fi
+
+    rm -f "/opt/etc/init.d/S99b4" 2>/dev/null || true # remove legacy script
+    rm -f "/etc/init.d/b4" 2>/dev/null || true        # remove legacy script
+    rm -f "/var/log/b4.log" 2>/dev/null || true       # remove legacy log
+
+    # Extract the binary
+    print_info "Extracting archive..."
+    cd "$TEMP_DIR"
+    tar -xzf "$archive_path" || {
+        print_error "Failed to extract archive"
+        exit 1
+    }
+
+    # Check if binary exists
+    if [ ! -f "${BINARY_NAME}" ]; then
+        print_error "Binary not found in archive"
+        exit 1
+    fi
+
+    # Stop existing b4 if running
+    stop_process "$BINARY_NAME"
+
+    # Create timestamp in POSIX way
+    timestamp=$(date '+%Y%m%d_%H%M%S')
+
+    # Backup existing binary if it exists
+    if [ -f "${INSTALL_DIR}/${BINARY_NAME}" ]; then
+        print_info "Backing up existing binary..."
+        mv "${INSTALL_DIR}/${BINARY_NAME}" "${INSTALL_DIR}/${BINARY_NAME}.backup.${timestamp}"
+    fi
+
+    # Install the new binary
+    print_info "Installing b4 to ${INSTALL_DIR}..."
+    cp "${BINARY_NAME}" "${INSTALL_DIR}/" || {
+        print_error "Failed to copy binary to install directory"
+        exit 1
+    }
+
+    # Set executable permissions
+    chmod +x "${INSTALL_DIR}/${BINARY_NAME}" || {
+        print_error "Failed to set executable permissions"
+        exit 1
+    }
+
+    # Verify installation
+    if "${INSTALL_DIR}/${BINARY_NAME}" --version >/dev/null 2>&1; then
+        rm -f "${INSTALL_DIR}/${BINARY_NAME}.backup.*" 2>/dev/null || true
+        print_success "b4 installed successfully!"
+    else
+        print_warning "Binary installed but version check failed"
+    fi
 }
 
 # Print web interface access information
@@ -1454,6 +1340,140 @@ main_install() {
 
 }
 
+# --- END core.sh ---
+
+# B4 DPI Bypass Uninstaller Script
+remove_b4() {
+    echo ""
+    echo "======================================="
+    echo "     B4 Uninstaller"
+    echo "======================================="
+    echo ""
+
+    # Detect system to get proper paths
+    set_system_paths
+
+    # Stop the service first
+    print_info "Stopping b4 service if running..."
+
+    # Check systemd service FIRST
+    if [ -f "/etc/systemd/system/b4.service" ] && command_exists systemctl; then
+        systemctl stop b4 2>/dev/null || true
+        systemctl disable b4 2>/dev/null || true
+        print_info "Stopped systemd service"
+    fi
+
+    # Check Entware init script
+    if [ -f "/opt/etc/init.d/S99b4" ]; then
+        /opt/etc/init.d/S99b4 stop 2>/dev/null || true
+        print_info "Stopped Entware service"
+    fi
+
+    # Check standard init script
+    if [ -f "/etc/init.d/b4" ]; then
+        /etc/init.d/b4 stop 2>/dev/null || true
+        print_info "Stopped init service"
+    fi
+
+    # Kill any remaining b4 processes
+    kill_b4_processes
+
+    # Remove binary from all possible locations
+    POSSIBLE_DIRS="/opt/sbin /usr/local/bin /usr/bin /usr/sbin"
+    for dir in $POSSIBLE_DIRS; do
+        if [ -f "$dir/$BINARY_NAME" ]; then
+            print_info "Removing binary: $dir/$BINARY_NAME"
+            rm -f "$dir/$BINARY_NAME"
+            print_success "Binary removed from $dir"
+
+            # Remove any backup files
+            rm -f "$dir/"${BINARY_NAME}.backup.* 2>/dev/null || true
+
+        fi
+    done
+
+    # Remove service files
+    if [ -f "/etc/systemd/system/b4.service" ]; then
+        print_info "Removing systemd service..."
+        rm -f "/etc/systemd/system/b4.service"
+        if command_exists systemctl; then
+            systemctl daemon-reload 2>/dev/null || true
+        fi
+        print_success "Systemd service removed"
+    fi
+
+    if [ -f "/opt/etc/init.d/S99b4" ]; then
+        print_info "Removing Entware init script..."
+        rm -f "/opt/etc/init.d/S99b4"
+        print_success "Entware init script removed"
+    fi
+
+    if [ -f "/etc/init.d/b4" ]; then
+        print_info "Removing init script..."
+        rm -f "/etc/init.d/b4"
+        print_success "Init script removed"
+    fi
+
+    # Remove symlinks
+    if [ -L "/usr/bin/${BINARY_NAME}" ]; then
+        print_info "Removing symlink: /usr/bin/${BINARY_NAME}"
+        rm -f "/usr/bin/${BINARY_NAME}"
+    fi
+
+    # Ask about configuration ONCE
+    printf "${CYAN}Remove configuration files as well? (y/N): ${NC}"
+    read answer
+    case "$answer" in
+    [yY] | [yY][eE][sS])
+        print_info "Removing configuration directory: $CONFIG_DIR"
+        rm -rf "$CONFIG_DIR"
+        print_success "Configuration removed"
+        ;;
+    *)
+        print_info "Configuration preserved at: $CONFIG_DIR"
+        ;;
+    esac
+
+    # Remove log files
+    rm -f /var/log/b4.log 2>/dev/null || true
+    rm -f /var/run/b4.pid 2>/dev/null || true
+
+    echo ""
+    print_success "B4 has been uninstalled successfully!"
+    echo ""
+
+    exit 0
+}
+
+# Kill any remaining b4 processes
+kill_b4_processes() {
+    # Collect PIDs first, avoid subshell issues
+    pids=$(ps 2>/dev/null | grep -v grep | grep -v "b4install" | grep "b4$\|b4[[:space:]]" | awk '{print $1}' | tr '\n' ' ')
+
+    if [ -n "$pids" ]; then
+        print_info "Killing remaining b4 processes: $pids"
+
+        # SIGTERM first
+        for pid in $pids; do
+            kill "$pid" 2>/dev/null || true
+        done
+
+        sleep 2
+
+        # SIGKILL stubborn processes
+        for pid in $pids; do
+            if kill -0 "$pid" 2>/dev/null; then
+                print_warning "Force killing PID $pid"
+                kill -9 "$pid" 2>/dev/null || true
+            fi
+        done
+
+        sleep 1
+    fi
+}
+
+# --- END remove.sh ---
+
 # Perform update - stops service, updates, and restarts
 perform_update() {
     QUIET_MODE=1 # Force quiet mode during updates
@@ -1515,10 +1535,10 @@ perform_update() {
     GEOSITE_SRC=""
     GEOSITE_DST=""
     if [ -f "$CONFIG_FILE" ] && command_exists jq; then
-        GEOSITE_SRC=$(jq -r '.domains.geosite_url // empty' "$CONFIG_FILE" 2>/dev/null)
-        geosite_path=$(jq -r '.domains.geosite_path // empty' "$CONFIG_FILE" 2>/dev/null)
-        if [ -n "$geosite_path" ] && [ "$geosite_path" != "null" ]; then
-            GEOSITE_DST=$(dirname "$geosite_path")
+        GEOSITE_SRC=$(jq -r '.system.geo.sitedat_url // empty' "$CONFIG_FILE" 2>/dev/null)
+        sitedat_path=$(jq -r '.system.geo.sitedat_path // empty' "$CONFIG_FILE" 2>/dev/null)
+        if [ -n "$sitedat_path" ] && [ "$sitedat_path" != "null" ]; then
+            GEOSITE_DST=$(dirname "$sitedat_path")
         fi
     fi
 
@@ -1580,6 +1600,8 @@ perform_update() {
     fi
 }
 
+# --- END update.sh ---
+
 # Check kernel module status
 check_kernel_module() {
     module_name="$1"
@@ -1604,7 +1626,7 @@ get_service_status() {
     fi
 
     # Check systemd service
-    if [ -f "/etc/systemd/system/b4.service" ] && which systemctl >/dev/null 2>&1; then
+    if [ -f "/etc/systemd/system/b4.service" ] && command_exists systemctl; then
         if systemctl is-active --quiet b4 2>/dev/null; then
             echo "running (systemd)"
             return 0
@@ -1632,19 +1654,18 @@ get_service_status() {
 
 # Get network interfaces info
 get_network_info() {
-    # Get primary IP
     primary_ip=""
     if command_exists ip; then
-        primary_ip=$(ip -4 route get 1 2>/dev/null | grep -oP 'src \K\S+' | head -1 || true)
+        primary_ip=$(ip -4 route get 1 2>/dev/null | awk '/src/{print $7}' | head -1 || true)
     elif command_exists ifconfig; then
         primary_ip=$(ifconfig 2>/dev/null | grep 'inet addr:' | grep -v '127.0.0.1' | head -1 | awk '{print $2}' | cut -d':' -f2 || true)
     fi
 
     echo "$primary_ip"
 }
+
 # Detect firewall backend
 detect_firewall_backend() {
-    # Check if nft exists and has rules
     if which nft >/dev/null 2>&1; then
         out=$(nft list tables 2>/dev/null || true)
         if [ -n "$out" ]; then
@@ -1655,7 +1676,6 @@ detect_firewall_backend() {
 
     # Check for iptables
     if which iptables >/dev/null 2>&1; then
-        # Check if iptables-legacy or iptables-nft
         out=$(iptables --version 2>/dev/null || true)
         if echo "$out" | grep -q "nf_tables"; then
             echo "iptables-nft"
@@ -1679,7 +1699,6 @@ show_system_info() {
     echo "       B4 System Information"
     echo "======================================="
 
-    # System Information
     print_header "System Information"
 
     # OS Detection
@@ -1726,12 +1745,6 @@ show_system_info() {
         mem_free=$(grep '^MemFree:' /proc/meminfo | awk '{printf "%.0f MB", $2/1024}')
         print_detail "Memory" "$mem_total (Free: $mem_free)"
     fi
-
-    # Network Info
-    # primary_ip=$(get_network_info)
-    # if [ -n "$primary_ip" ]; then
-    #     print_detail "Primary IP" "$primary_ip"
-    # fi
 
     # B4 Installation Status
     print_header "B4 Status"
@@ -1780,10 +1793,10 @@ show_system_info() {
 
     # Check for geosite data
     if [ -f "$CONFIG_FILE" ] && command_exists jq; then
-        geosite_path=$(jq -r '.domains.geosite_path // empty' "$CONFIG_FILE" 2>/dev/null)
-        if [ -n "$geosite_path" ] && [ "$geosite_path" != "null" ] && [ -f "$geosite_path" ]; then
-            geosite_size=$(du -h "$geosite_path" 2>/dev/null | cut -f1)
-            print_detail "Geosite Data" "$geosite_path ($geosite_size)"
+        sitedat_path=$(jq -r '.system.geo.sitedat_path // empty' "$CONFIG_FILE" 2>/dev/null)
+        if [ -n "$sitedat_path" ] && [ "$sitedat_path" != "null" ] && [ -f "$sitedat_path" ]; then
+            geosite_size=$(du -h "$sitedat_path" 2>/dev/null | cut -f1)
+            print_detail "Geosite Data" "$sitedat_path ($geosite_size)"
         fi
     fi
 
@@ -1978,6 +1991,8 @@ show_system_info() {
 
 }
 
+# --- END sysinfo.sh ---
+
 # Main function - parse arguments
 main() {
     # Check for remove flag first
@@ -2024,5 +2039,9 @@ main() {
     # No remove/update flag found, proceed with installation
     main_install "$@"
 }
+
 # Run main function
 main "$@"
+
+# --- END main.sh ---
+
