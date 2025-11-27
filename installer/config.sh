@@ -17,7 +17,7 @@ GEOSITE_DST=""
 
 # geodat sources (pipe-delimited: number|name|url)
 GEODAT_SOURCES="1|Loyalsoldier source|https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download
-2|RUNET Freedom source|https://raw.githubusercontent.com/runetfreedom/russia-v2ray-rules-dat/release
+2|RUNET Freedom source (recommended)|https://raw.githubusercontent.com/runetfreedom/russia-v2ray-rules-dat/release
 3|Nidelon source|https://github.com/Nidelon/ru-block-v2ray-rules/releases/latest/download
 4|DustinWin source|https://github.com/DustinWin/ruleset_geodata/releases/download/mihomo
 5|Chocolate4U source|https://raw.githubusercontent.com/Chocolate4U/Iran-v2ray-rules/release"
