@@ -3,6 +3,7 @@
 ## [1.1x.x] - 2025-1x-xx
 
 - ADDED: Filter for configuration sets - search by `name`, `SNI` domains, `geosite` categories, or `geoip` categories.
+- ADDED: Compare sets feature - side-by-side diff view showing differences between two configuration sets, grouped by section (TCP, UDP, Fragmentation, Faking, Targets).
 - FIXED: Settings tab navigation losing selected tab on page refresh.
 
 ## [1.18.5] - 2025-11-27

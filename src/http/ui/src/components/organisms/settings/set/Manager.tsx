@@ -36,6 +36,7 @@ import {
   Security as SecurityIcon,
   Category as CategoryIcon,
   Language as LanguageIcon,
+  CompareArrows as CompareIcon,
 } from "@mui/icons-material";
 import { v4 as uuidv4 } from "uuid";
 
@@ -45,6 +46,7 @@ import { SetEditor } from "./Editor";
 
 import { colors, radius, button_secondary } from "@design";
 import { B4Config, B4SetConfig, MAIN_SET_ID } from "@models/Config";
+import { SetCompare } from "./Comparte";
 
 export interface SetStats {
   manual_domains: number;
@@ -68,10 +70,7 @@ interface SetsManagerProps {
   ) => void;
 }
 
-export const SetsManager: React.FC<SetsManagerProps> = ({
-  config,
-  onChange,
-}) => {
+export const SetsManager = ({ config, onChange }: SetsManagerProps) => {
   const [filterText, setFilterText] = useState("");
   const [expandedSet, setExpandedSet] = useState<string | null>(null);
   const [editDialog, setEditDialog] = useState<{
@@ -95,6 +94,12 @@ export const SetsManager: React.FC<SetsManagerProps> = ({
   const setsStats = setsData.map((s) =>
     "stats" in s ? s.stats : null
   ) as SetStats[];
+
+  const [compareDialog, setCompareDialog] = useState<{
+    open: boolean;
+    setA: B4SetConfig | null;
+    setB: B4SetConfig | null;
+  }>({ open: false, setA: null, setB: null });
 
   const handleAddSet = () => {
     const newSet: B4SetConfig = {
@@ -544,6 +549,23 @@ export const SetsManager: React.FC<SetsManagerProps> = ({
                           </IconButton>
                         </Tooltip>
 
+                        <Tooltip title="Compare with another set">
+                          <IconButton
+                            size="small"
+                            onClick={() =>
+                              setCompareDialog({
+                                open: true,
+                                setA: set,
+                                setB: null,
+                              })
+                            }
+                            disabled={sets.length < 2}
+                            sx={{ "&:hover": { color: colors.primary } }}
+                          >
+                            <CompareIcon />
+                          </IconButton>
+                        </Tooltip>
+
                         <Tooltip title="Edit set">
                           <IconButton
                             size="small"
@@ -935,6 +957,47 @@ export const SetsManager: React.FC<SetsManagerProps> = ({
             `Set: ${sets.find((s) => s.id === deleteDialog.setId)?.name}`}
         </Typography>
       </B4Dialog>
+
+      {/* Compare Dialog - Set Selection */}
+      <B4Dialog
+        open={compareDialog.open && !compareDialog.setB}
+        onClose={() =>
+          setCompareDialog({ open: false, setA: null, setB: null })
+        }
+        title="Select Set to Compare"
+        subtitle={`Comparing with: ${compareDialog.setA?.name}`}
+        icon={<CompareIcon />}
+      >
+        <List>
+          {sets
+            .filter((s) => s.id !== compareDialog.setA?.id)
+            .map((s) => (
+              <ListItem
+                key={s.id}
+                component="div"
+                onClick={() =>
+                  setCompareDialog((prev) => ({ ...prev, setB: s }))
+                }
+                sx={{
+                  cursor: "pointer",
+                  borderRadius: 1,
+                  "&:hover": { bgcolor: colors.accent.primary },
+                }}
+              >
+                <ListItemText primary={s.name} />
+              </ListItem>
+            ))}
+        </List>
+      </B4Dialog>
+
+      <SetCompare
+        open={compareDialog.open && !!compareDialog.setB}
+        setA={compareDialog.setA}
+        setB={compareDialog.setB}
+        onClose={() =>
+          setCompareDialog({ open: false, setA: null, setB: null })
+        }
+      />
     </Stack>
   );
 };
