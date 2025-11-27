@@ -1,7 +1,7 @@
 # Get geosite path from config using jq if available
 get_geosite_path_from_config() {
     if [ -f "$CONFIG_FILE" ] && command_exists jq; then
-        geosite_path=$(jq -r '.domains.geosite_path // empty' "$CONFIG_FILE" 2>/dev/null)
+        geosite_path=$(jq -r '.system.geo.geosite_path // empty' "$CONFIG_FILE" 2>/dev/null)
         if [ -n "$geosite_path" ] && [ "$geosite_path" != "null" ]; then
             # Extract directory from path
             echo "$(dirname "$geosite_path")"
@@ -69,7 +69,7 @@ download_geodat() {
     geosite_file="${save_dir}/geosite.dat"
     geoip_file="${save_dir}/geoip.dat"
 
-    print_info "Downloading $3 from: $geosite_url"
+    print_info "Downloading geosite.dat and geoip.dat from: $geosite_url"
 
     # Create directory if it doesn't exist
     if [ ! -d "$save_dir" ]; then

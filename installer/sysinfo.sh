@@ -22,7 +22,7 @@ get_service_status() {
     fi
 
     # Check systemd service
-    if [ -f "/etc/systemd/system/b4.service" ] && which systemctl >/dev/null 2>&1; then
+    if [ -f "/etc/systemd/system/b4.service" ] && command_exists systemctl >/dev/null 2>&1; then
         if systemctl is-active --quiet b4 2>/dev/null; then
             echo "running (systemd)"
             return 0
@@ -199,7 +199,7 @@ show_system_info() {
 
     # Check for geosite data
     if [ -f "$CONFIG_FILE" ] && command_exists jq; then
-        geosite_path=$(jq -r '.domains.geosite_path // empty' "$CONFIG_FILE" 2>/dev/null)
+        geosite_path=$(jq -r '.system.geo.geosite_path // empty' "$CONFIG_FILE" 2>/dev/null)
         if [ -n "$geosite_path" ] && [ "$geosite_path" != "null" ] && [ -f "$geosite_path" ]; then
             geosite_size=$(du -h "$geosite_path" 2>/dev/null | cut -f1)
             print_detail "Geosite Data" "$geosite_path ($geosite_size)"
