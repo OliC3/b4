@@ -165,29 +165,23 @@ detect_architecture() {
         fi
         ;;
     mips64)
-        # Check endianness (POSIX compliant)
-        if printf '\001' | od -An -tx1 | grep -q '01'; then
+        # Check MIPS endianness from cpuinfo or uname
+        if grep -qi "mips.*el\|el.*mips" /proc/cpuinfo 2>/dev/null; then
+            arch_variant="mips64le"
+        elif uname -m | grep -qi "el"; then
             arch_variant="mips64le"
         else
             arch_variant="mips64"
         fi
         ;;
     mips*)
-        # Check if 64-bit capable
-        if command_exists getconf && getconf LONG_BIT 2>/dev/null | grep -q "64"; then
-            # 64-bit MIPS
-            if printf '\001' | od -An -tx1 | grep -q '01'; then
-                arch_variant="mips64le"
-            else
-                arch_variant="mips64"
-            fi
+        # 32-bit MIPS
+        if grep -qi "mips.*el\|el.*mips" /proc/cpuinfo 2>/dev/null; then
+            arch_variant="mipsle"
+        elif uname -m | grep -qi "el"; then
+            arch_variant="mipsle"
         else
-            # 32-bit MIPS
-            if printf '\001' | od -An -tx1 | grep -q '01'; then
-                arch_variant="mipsle"
-            else
-                arch_variant="mips"
-            fi
+            arch_variant="mips"
         fi
         ;;
     ppc64le)

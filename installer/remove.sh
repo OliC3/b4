@@ -31,15 +31,7 @@ remove_b4() {
     fi
 
     # Kill any remaining b4 processes
-    if ps 2>/dev/null | grep -v grep | grep -v "b4install" | grep -q "b4$\|b4[[:space:]]"; then
-        print_info "Killing remaining b4 processes..."
-        ps | grep -v grep | grep -v "b4install" | grep "b4$\|b4[[:space:]]" | awk '{print $1}' | while read pid; do
-            if [ -n "$pid" ]; then
-                kill "$pid" 2>/dev/null || true
-            fi
-        done
-        sleep 1
-    fi
+    kill_b4_processes
 
     # Remove binary from all possible locations
     POSSIBLE_DIRS="/opt/sbin /usr/local/bin /usr/bin /usr/sbin"
@@ -106,4 +98,31 @@ remove_b4() {
     echo ""
 
     exit 0
+}
+
+# Kill any remaining b4 processes
+kill_b4_processes() {
+    # Collect PIDs first, avoid subshell issues
+    pids=$(ps 2>/dev/null | grep -v grep | grep -v "b4install" | grep "b4$\|b4[[:space:]]" | awk '{print $1}' | tr '\n' ' ')
+
+    if [ -n "$pids" ]; then
+        print_info "Killing remaining b4 processes: $pids"
+
+        # SIGTERM first
+        for pid in $pids; do
+            kill "$pid" 2>/dev/null || true
+        done
+
+        sleep 2
+
+        # SIGKILL stubborn processes
+        for pid in $pids; do
+            if kill -0 "$pid" 2>/dev/null; then
+                print_warning "Force killing PID $pid"
+                kill -9 "$pid" 2>/dev/null || true
+            fi
+        done
+
+        sleep 1
+    fi
 }

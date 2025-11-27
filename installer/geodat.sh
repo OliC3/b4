@@ -228,7 +228,12 @@ setup_geodat() {
     echo ""
 
     if [ -z "$GEOSITE_SRC" ] && [ -z "$GEOSITE_DST" ]; then
-        # Ask if user wants to download geosite
+        # Skip prompts in quiet mode
+        if [ "$QUIET_MODE" = "1" ]; then
+            print_info "Geosite setup skipped (quiet mode)"
+            return 0
+        fi
+
         printf "${CYAN}Do you want to download geosite.dat & geoip.dat files? (y/N): ${NC}"
         read answer
     else
@@ -250,24 +255,17 @@ setup_geodat() {
         fi
 
         if [ -z "$GEOSITE_DST" ]; then
-
-            # Get save directory
-            default_dir="$CONFIG_DIR"
-
-            # Try to get existing path from config
-            existing_dir=$(get_geosite_path_from_config || true)
-            if [ -n "$existing_dir" ]; then
-                default_dir="$existing_dir"
-                print_info "Found existing geosite path in config: $default_dir"
-            fi
-
-            echo ""
-            printf "${CYAN}Save directory [${default_dir}]: ${NC}"
-            read geosite_dst_dir
-
-            # Use default if empty
-            if [ -z "$geosite_dst_dir" ]; then
+            # Skip in quiet mode - use default
+            if [ "$QUIET_MODE" = "1" ]; then
                 geosite_dst_dir="$default_dir"
+            else
+                echo ""
+                printf "${CYAN}Save directory [${default_dir}]: ${NC}"
+                read geosite_dst_dir
+
+                if [ -z "$geosite_dst_dir" ]; then
+                    geosite_dst_dir="$default_dir"
+                fi
             fi
         else
             geosite_dst_dir="$GEOSITE_DST"
