@@ -2,6 +2,7 @@
 # Watch for changes and rebuild
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+"$SCRIPT_DIR/_build.sh"
 
 # Try inotifywait first (Linux)
 if command -v inotifywait >/dev/null 2>&1; then
@@ -9,14 +10,14 @@ if command -v inotifywait >/dev/null 2>&1; then
     while true; do
         inotifywait -q -e modify,create,delete "$SCRIPT_DIR"/*.sh
         echo "Change detected, rebuilding..."
-        "$SCRIPT_DIR/build.sh"
+        "$SCRIPT_DIR/_build.sh"
     done
 # Try fswatch (macOS)
 elif command -v fswatch >/dev/null 2>&1; then
     echo "Watching installer/ with fswatch..."
     fswatch -o "$SCRIPT_DIR"/*.sh | while read; do
         echo "Change detected, rebuilding..."
-        "$SCRIPT_DIR/build.sh"
+        "$SCRIPT_DIR/_build.sh"
     done
 # Fallback: polling
 else
