@@ -1,8 +1,11 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Container, Paper, Snackbar, Alert } from "@mui/material";
-import { DomainsControlBar } from "@/components/organisms/domains/ControlBar";
-import { AddSniModal } from "@/components/organisms/domains/AddSniModal";
-import { DomainsTable, SortColumn } from "@/components/organisms/domains/Table";
+import { DomainsControlBar } from "@/components/organisms/connections/ControlBar";
+import { AddSniModal } from "@/components/organisms/connections/AddSniModal";
+import {
+  DomainsTable,
+  SortColumn,
+} from "@/components/organisms/connections/Table";
 import { SortDirection } from "@atoms/common/SortableTableCell";
 import {
   useDomainActions,
@@ -19,7 +22,7 @@ import {
 } from "@utils";
 import { colors } from "@design";
 import { useWebSocket } from "@ctx/B4WsProvider";
-import { AddIpModal } from "../organisms/domains/AddIpModal";
+import { AddIpModal } from "../organisms/connections/AddIpModal";
 import { B4Config, B4SetConfig } from "@/models/Config";
 
 const MAX_DISPLAY_ROWS = 1000;

@@ -1,4 +1,4 @@
-import { ParsedLog } from "@organisms/domains/Table";
+import { ParsedLog } from "@/components/organisms/connections/Table";
 
 export const SORT_STORAGE_KEY = "b4_domains_sort";
 

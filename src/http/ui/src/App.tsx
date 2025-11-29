@@ -27,14 +27,14 @@ import {
 import {
   Menu as MenuIcon,
   Settings as SettingsIcon,
-  Language as LanguageIcon,
+  Sensors as ConnectionIcon,
   Speed as SpeedIcon,
   Assessment as AssessmentIcon,
   Science as ScienceIcon,
 } from "@mui/icons-material";
 import Dashboard from "@pages/Dashboard";
 import Logs from "@pages/Logs";
-import Domains from "@pages/Domains";
+import Connections from "@pages/Connections";
 import Settings from "@pages/Settings";
 import { theme, colors } from "@design";
 import Logo from "@molecules/Logo";
@@ -52,7 +52,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { path: "/dashboard", label: "Dashboard", icon: <SpeedIcon /> },
-  { path: "/domains", label: "Domains", icon: <LanguageIcon /> },
+  { path: "/connections", label: "Connections", icon: <ConnectionIcon /> },
   { path: "/discovery", label: "Discovery", icon: <ScienceIcon /> },
   { path: "/logs", label: "Logs", icon: <AssessmentIcon /> },
   { path: "/settings", label: "Settings", icon: <SettingsIcon /> },
@@ -67,7 +67,7 @@ export default function App() {
   const getPageTitle = () => {
     const path = location.pathname;
     if (path.startsWith("/dashboard")) return "System Dashboard";
-    if (path.startsWith("/domains")) return "Domain Connections";
+    if (path.startsWith("/connections")) return "Connections";
     if (path.startsWith("/test")) return "DPI Bypass Test";
     if (path.startsWith("/logs")) return "Log Viewer";
     if (path.startsWith("/settings")) return "Settings";
@@ -183,7 +183,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/domains" element={<Domains />} />
+            <Route path="/connections" element={<Connections />} />
             <Route path="/discovery" element={<Discovery />} />
             <Route path="/logs" element={<Logs />} />
             <Route path="/settings/*" element={<Settings />} />

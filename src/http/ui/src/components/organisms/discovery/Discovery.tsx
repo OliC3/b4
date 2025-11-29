@@ -30,7 +30,7 @@ import { button_secondary, colors } from "@design";
 import { useTestDomains } from "@hooks/useTestDomains";
 import { B4SetConfig } from "@/models/Config";
 import SettingTextField from "@atoms/common/B4TextField";
-import { AddSniModal } from "@organisms/domains/AddSniModal";
+import { AddSniModal } from "@/components/organisms/connections/AddSniModal";
 import { generateDomainVariants } from "@utils";
 
 // Strategy family types matching backend
