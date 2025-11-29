@@ -28,14 +28,14 @@ func (api *API) handleStartCheck(w http.ResponseWriter, r *http.Request) {
 	}
 	chckCfg := &api.cfg.System.Checker
 
-	var req StartCheckRequest
+	var req DiscoveryRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		log.Errorf("Failed to decode check request: %v", err)
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
-	domains := req.Domains
+	domains := []string{req.Domain}
 	if len(domains) == 0 {
 		if len(api.cfg.Sets) > 0 {
 			for _, set := range api.cfg.Sets {
@@ -62,10 +62,9 @@ func (api *API) handleStartCheck(w http.ResponseWriter, r *http.Request) {
 
 	go suite.Run(domains)
 
-	response := StartCheckResponse{
-		Id:          suite.Id,
-		TotalChecks: len(domains),
-		Message:     "Check suite started",
+	response := DiscoveryResponse{
+		Id:      suite.Id,
+		Message: "Check suite started",
 	}
 
 	setJsonHeader(w)
@@ -129,30 +128,15 @@ func (api *API) handleStartDiscovery(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	chckCfg := &api.cfg.System.Checker
-
-	var req StartCheckRequest
+	var req DiscoveryRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		log.Errorf("Failed to decode discovery request: %v", err)
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
-	domains := req.Domains
-	if len(domains) == 0 {
-		if len(api.cfg.Sets) > 0 {
-			for _, set := range api.cfg.Sets {
-				if len(set.Targets.SNIDomains) > 0 {
-					domains = append(domains, set.Targets.SNIDomains...)
-				}
-			}
-		}
-		domains = append(domains, chckCfg.Domains...)
-		domains = utils.FilterUniqueStrings(domains)
-	}
-
-	if len(domains) == 0 {
-		http.Error(w, "No domains provided. Please specify domains to test.", http.StatusBadRequest)
+	if req.Domain == "" {
+		http.Error(w, "Domain is required", http.StatusBadRequest)
 		return
 	}
 
@@ -162,28 +146,20 @@ func (api *API) handleStartDiscovery(w http.ResponseWriter, r *http.Request) {
 		ConfigPropagateTimeout: time.Duration(api.cfg.System.Checker.ConfigPropagateMs),
 	}
 
-	// Pass geodata manager for geosite-based clustering
-	suite := discovery.NewDiscoverySuite(config, globalPool)
-
-	clusters := discovery.ClusterByKnownCDN(domains)
+	suite := discovery.NewDiscoverySuite(config, globalPool, req.Domain)
 
 	phase1Count := len(discovery.GetPhase1Presets())
-	estimatedTests := len(clusters) * (phase1Count + 10)
 
 	go func() {
-		suite.RunDiscovery(domains)
-
-		log.Infof("Discovery complete for %d domains (%d clusters)", len(domains), len(clusters))
-		log.Infof("\n%s", suite.GetDiscoveryReport())
+		suite.RunDiscovery()
+		log.Infof("Discovery complete for %s", req.Domain)
 	}()
 
-	response := DiscoveryStartResponse{
+	response := DiscoveryResponse{
 		Id:             suite.Id,
-		TotalDomains:   len(domains),
-		TotalClusters:  len(clusters),
-		EstimatedTests: estimatedTests,
-		Message: fmt.Sprintf("Hierarchical discovery started: %d domains in %d clusters (~%d tests)",
-			len(domains), len(clusters), estimatedTests),
+		Domain:         req.Domain,
+		EstimatedTests: phase1Count + 15, // rough estimate
+		Message:        fmt.Sprintf("Discovery started for %s", req.Domain),
 	}
 
 	setJsonHeader(w)
@@ -268,13 +244,4 @@ func (api *API) handleAddPresetAsSet(w http.ResponseWriter, r *http.Request) {
 		"success": true,
 		"message": fmt.Sprintf("Added '%s' configuration", set.Name),
 	})
-}
-
-// DiscoveryStartResponse includes cluster information
-type DiscoveryStartResponse struct {
-	Id             string `json:"id"`
-	TotalDomains   int    `json:"total_domains"`
-	TotalClusters  int    `json:"total_clusters"`
-	EstimatedTests int    `json:"estimated_tests"`
-	Message        string `json:"message"`
 }

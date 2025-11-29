@@ -30,3 +30,17 @@ type CategoryPreviewResponse struct {
 	PreviewCount int      `json:"preview_count"`
 	Preview      []string `json:"preview"`
 }
+
+type AddDomainRequest struct {
+	Domain  string `json:"domain"`
+	SetId   string `json:"set_id"`
+	SetName string `json:"set_name,omitempty"`
+}
+
+type AddDomainResponse struct {
+	Success       bool     `json:"success"`
+	Message       string   `json:"message"`
+	Domain        string   `json:"domain"`
+	TotalDomains  int      `json:"total_domains"`
+	ManualDomains []string `json:"manual_domains,omitempty"`
+}

@@ -9,7 +9,6 @@ import {
   Paper,
   Divider,
   Chip,
-  Grid,
   IconButton,
   Tooltip,
   Snackbar,
@@ -26,8 +25,7 @@ import {
   ExpandLess as CollapseIcon,
   TrendingUp as ImprovementIcon,
 } from "@mui/icons-material";
-import { button_secondary, colors } from "@design";
-import { useTestDomains } from "@hooks/useTestDomains";
+import { colors } from "@design";
 import { B4SetConfig } from "@/models/Config";
 import SettingTextField from "@atoms/common/B4TextField";
 import { AddSniModal } from "@/components/organisms/connections/AddSniModal";
@@ -132,9 +130,7 @@ export const DiscoveryRunner: React.FC = () => {
     severity: "success" | "error";
   }>({ open: false, message: "", severity: "success" });
 
-  const { domains, addDomain, removeDomain, clearDomains, resetToDefaults } =
-    useTestDomains();
-  const [newDomain, setNewDomain] = useState("");
+  const [domain, setDomain] = useState("");
 
   const [variantModal, setVariantModal] = useState<{
     open: boolean;
@@ -191,8 +187,8 @@ export const DiscoveryRunner: React.FC = () => {
   }, [suiteId, running]);
 
   const startDiscovery = async () => {
-    if (domains.length === 0) {
-      setError("Add at least one domain to test");
+    if (!domain.trim()) {
+      setError("Enter a domain to test");
       return;
     }
 
@@ -205,7 +201,7 @@ export const DiscoveryRunner: React.FC = () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          domains: domains,
+          domain: domain.trim(),
         }),
       });
 
@@ -351,7 +347,7 @@ export const DiscoveryRunner: React.FC = () => {
                   onClick={() => {
                     void startDiscovery();
                   }}
-                  disabled={domains.length === 0}
+                  disabled={!domain.trim()}
                   sx={{
                     bgcolor: colors.secondary,
                     "&:hover": { bgcolor: colors.primary },
@@ -399,135 +395,15 @@ export const DiscoveryRunner: React.FC = () => {
 
           {/* Domain Management Section */}
           <Box>
-            <Stack
-              direction="row"
-              alignItems="center"
-              justifyContent="space-between"
-              sx={{ mb: 1 }}
-            >
-              <Typography
-                variant="subtitle2"
-                sx={{ color: colors.text.primary }}
-              >
-                Domains to Discover
-              </Typography>
-              <Stack direction="row" spacing={1}>
-                <Button
-                  size="small"
-                  onClick={resetToDefaults}
-                  disabled={running}
-                  sx={{ ...button_secondary, textTransform: "none" }}
-                >
-                  Reset to Defaults
-                </Button>
-                <Button
-                  size="small"
-                  onClick={clearDomains}
-                  disabled={running || domains.length === 0}
-                  sx={{ ...button_secondary, textTransform: "none" }}
-                >
-                  Clear All
-                </Button>
-              </Stack>
-            </Stack>
-
-            <Grid container spacing={2}>
-              <Grid size={{ sm: 12, md: 6 }}>
-                <Box
-                  sx={{
-                    display: "flex",
-                    gap: 1,
-                    pb: 2,
-                    width: "100%",
-                    alignItems: "flex-start",
-                  }}
-                >
-                  <SettingTextField
-                    fullWidth
-                    label="Add domain"
-                    value={newDomain}
-                    onChange={(e) => setNewDomain(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (
-                        e.key === "Enter" ||
-                        e.key === "," ||
-                        e.key === "Tab"
-                      ) {
-                        e.preventDefault();
-                        addDomain(newDomain);
-                        setNewDomain("");
-                      }
-                    }}
-                    placeholder="youtube.com"
-                    disabled={running}
-                    helperText="Press Enter or comma to add"
-                  />
-                  <IconButton
-                    onClick={() => {
-                      addDomain(newDomain);
-                      setNewDomain("");
-                    }}
-                    disabled={running || !newDomain.trim()}
-                    sx={{
-                      bgcolor: colors.accent.secondary,
-                      color: colors.secondary,
-                      "&:hover": {
-                        bgcolor: colors.accent.secondaryHover,
-                      },
-                    }}
-                  >
-                    <AddIcon />
-                  </IconButton>
-                </Box>
-              </Grid>
-              <Grid size={{ sm: 12, md: 6 }}>
-                <Box
-                  sx={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: 1,
-                    p: 2,
-                    width: "100%",
-                    border: `1px solid ${colors.border.default}`,
-                    borderRadius: 1,
-                    bgcolor: colors.background.dark,
-                    maxHeight: 120,
-                    overflowY: "auto",
-                  }}
-                >
-                  {domains.length === 0 ? (
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        color: colors.text.secondary,
-                        width: "100%",
-                        textAlign: "center",
-                      }}
-                    >
-                      No domains added. Add domains above or click "Reset to
-                      Defaults"
-                    </Typography>
-                  ) : (
-                    domains.map((domain) => (
-                      <Chip
-                        size="small"
-                        key={domain}
-                        label={domain}
-                        onDelete={() => removeDomain(domain)}
-                        disabled={running}
-                        sx={{
-                          bgcolor: colors.accent.primary,
-                          color: colors.secondary,
-                          "& .MuiChip-deleteIcon": {
-                            color: colors.secondary,
-                          },
-                        }}
-                      />
-                    ))
-                  )}
-                </Box>
-              </Grid>
-            </Grid>
+            <SettingTextField
+              fullWidth
+              label="Domain to test"
+              value={domain}
+              onChange={(e) => setDomain(e.target.value)}
+              placeholder="youtube.com"
+              disabled={running}
+              helperText="Enter a  domain to discover optimal bypass configuration"
+            />
           </Box>
 
           {/* Progress indicator */}
