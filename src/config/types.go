@@ -110,9 +110,10 @@ type WebServerConfig struct {
 }
 
 type CheckerConfig struct {
-	TimeoutSeconds int      `json:"timeout" bson:"timeout"`
-	Domains        []string `json:"domains" bson:"domains"`
-	MaxConcurrent  int      `json:"max_concurrent" bson:"max_concurrent"`
+	Domains []string `yaml:"domains" json:"domains"`
+	// Discovery settings
+	DiscoveryTimeoutSec int `yaml:"discovery_timeout" json:"discovery_timeout"`
+	ConfigPropagateMs   int `yaml:"config_propagate_ms" json:"config_propagate_ms"`
 }
 
 type Logging struct {

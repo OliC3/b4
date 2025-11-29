@@ -131,12 +131,20 @@ var DefaultConfig = Config{
 		},
 
 		Checker: CheckerConfig{
-			TimeoutSeconds: 15,
-			MaxConcurrent:  4,
-			Domains:        []string{},
+			Domains:             []string{},
+			DiscoveryTimeoutSec: 5,
+			ConfigPropagateMs:   1500,
 		},
 		API: ApiConfig{
 			IPInfoToken: "",
 		},
 	},
+}
+
+func NewSetConfig() SetConfig {
+	return DefaultSetConfig
+}
+
+func NewConfig() Config {
+	return DefaultConfig
 }

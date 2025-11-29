@@ -6,19 +6,19 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/daniellavrushin/b4/checker"
 	"github.com/daniellavrushin/b4/config"
+	"github.com/daniellavrushin/b4/discovery"
 	"github.com/daniellavrushin/b4/log"
 	"github.com/daniellavrushin/b4/utils"
 	"github.com/google/uuid"
 )
 
-func (api *API) RegisterCheckApi() {
-	api.mux.HandleFunc("/api/check/start", api.handleStartCheck)
-	api.mux.HandleFunc("/api/check/discovery", api.handleStartDiscovery)
-	api.mux.HandleFunc("/api/check/status", api.handleCheckStatus)
-	api.mux.HandleFunc("/api/check/cancel", api.handleCancelCheck)
-	api.mux.HandleFunc("/api/check/add", api.handleAddPresetAsSet)
+func (api *API) RegisterDiscoveryApi() {
+	api.mux.HandleFunc("/api/discovery", api.handleStartDiscovery)
+	api.mux.HandleFunc("/api/discovery/start", api.handleStartCheck)
+	api.mux.HandleFunc("/api/discovery/status", api.handleCheckStatus)
+	api.mux.HandleFunc("/api/discovery/cancel", api.handleCancelCheck)
+	api.mux.HandleFunc("/api/discovery/add", api.handleAddPresetAsSet)
 }
 
 func (api *API) handleStartCheck(w http.ResponseWriter, r *http.Request) {
@@ -33,13 +33,6 @@ func (api *API) handleStartCheck(w http.ResponseWriter, r *http.Request) {
 		log.Errorf("Failed to decode check request: %v", err)
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
-	}
-
-	if req.Timeout <= 0 {
-		req.Timeout = time.Duration(chckCfg.TimeoutSeconds) * time.Second
-	}
-	if req.MaxConcurrent <= 0 {
-		req.MaxConcurrent = chckCfg.MaxConcurrent
 	}
 
 	domains := req.Domains
@@ -59,13 +52,13 @@ func (api *API) handleStartCheck(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "No domains provided. Please specify domains to test.", http.StatusBadRequest)
 		return
 	}
-	config := checker.CheckConfig{
-		CheckURL:      req.CheckURL,
-		Timeout:       req.Timeout,
-		MaxConcurrent: req.MaxConcurrent,
+	config := discovery.CheckConfig{
+		CheckURL:               req.CheckURL,
+		Timeout:                time.Duration(api.cfg.System.Checker.DiscoveryTimeoutSec) * time.Second,
+		ConfigPropagateTimeout: time.Duration(api.cfg.System.Checker.ConfigPropagateMs),
 	}
 
-	suite := checker.NewCheckSuite(config)
+	suite := discovery.NewCheckSuite(config)
 
 	go suite.Run(domains)
 
@@ -92,7 +85,7 @@ func (api *API) handleCheckStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	suite, ok := checker.GetCheckSuite(testID)
+	suite, ok := discovery.GetCheckSuite(testID)
 	if !ok {
 		http.Error(w, "Check suite not found", http.StatusNotFound)
 		return
@@ -116,7 +109,7 @@ func (api *API) handleCancelCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := checker.CancelCheckSuite(testID); err != nil {
+	if err := discovery.CancelCheckSuite(testID); err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
@@ -145,13 +138,6 @@ func (api *API) handleStartDiscovery(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Timeout <= 0 {
-		req.Timeout = time.Duration(chckCfg.TimeoutSeconds) * time.Second
-	}
-	if req.MaxConcurrent <= 0 {
-		req.MaxConcurrent = chckCfg.MaxConcurrent
-	}
-
 	domains := req.Domains
 	if len(domains) == 0 {
 		if len(api.cfg.Sets) > 0 {
@@ -169,27 +155,35 @@ func (api *API) handleStartDiscovery(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "No domains provided. Please specify domains to test.", http.StatusBadRequest)
 		return
 	}
-	config := checker.CheckConfig{
-		CheckURL:      req.CheckURL,
-		Timeout:       req.Timeout,
-		MaxConcurrent: req.MaxConcurrent,
+
+	config := discovery.CheckConfig{
+		CheckURL:               req.CheckURL,
+		Timeout:                time.Duration(api.cfg.System.Checker.DiscoveryTimeoutSec) * time.Second,
+		ConfigPropagateTimeout: time.Duration(api.cfg.System.Checker.ConfigPropagateMs),
 	}
 
-	presets := checker.GetTestPresets()
+	// Pass geodata manager for geosite-based clustering
+	suite := discovery.NewDiscoverySuite(config, globalPool)
 
-	suite := checker.NewDiscoverySuite(config, globalPool, presets)
+	clusters := discovery.ClusterByKnownCDN(domains)
+
+	phase1Count := len(discovery.GetPhase1Presets())
+	estimatedTests := len(clusters) * (phase1Count + 10)
 
 	go func() {
 		suite.RunDiscovery(domains)
 
-		log.Infof("Discovery complete for %d domains", len(domains))
+		log.Infof("Discovery complete for %d domains (%d clusters)", len(domains), len(clusters))
 		log.Infof("\n%s", suite.GetDiscoveryReport())
 	}()
 
-	response := StartCheckResponse{
-		Id:          suite.Id,
-		TotalChecks: len(domains) * len(presets),
-		Message:     fmt.Sprintf("Discovery started: %d domains × %d presets", len(domains), len(presets)),
+	response := DiscoveryStartResponse{
+		Id:             suite.Id,
+		TotalDomains:   len(domains),
+		TotalClusters:  len(clusters),
+		EstimatedTests: estimatedTests,
+		Message: fmt.Sprintf("Hierarchical discovery started: %d domains in %d clusters (~%d tests)",
+			len(domains), len(clusters), estimatedTests),
 	}
 
 	setJsonHeader(w)
@@ -222,6 +216,39 @@ func (api *API) handleAddPresetAsSet(w http.ResponseWriter, r *http.Request) {
 	set.Name = set.Targets.SNIDomains[0]
 	set.Targets.DomainsToMatch = []string{set.Targets.SNIDomains[0]}
 
+	// Ensure all target arrays are initialized (not null)
+	if set.Targets.IPs == nil {
+		set.Targets.IPs = []string{}
+	}
+	if set.Targets.IpsToMatch == nil {
+		set.Targets.IpsToMatch = []string{}
+	}
+	if set.Targets.GeoSiteCategories == nil {
+		set.Targets.GeoSiteCategories = []string{}
+	}
+	if set.Targets.GeoIpCategories == nil {
+		set.Targets.GeoIpCategories = []string{}
+	}
+
+	// Ensure TCP WinValues is initialized
+	if set.TCP.WinValues == nil {
+		set.TCP.WinValues = []int{0, 1460, 8192, 65535}
+	}
+	if set.TCP.WinMode == "" {
+		set.TCP.WinMode = "off"
+	}
+	if set.TCP.DesyncMode == "" {
+		set.TCP.DesyncMode = "off"
+	}
+
+	// Ensure Faking SNIMutation is initialized
+	if set.Faking.SNIMutation.Mode == "" {
+		set.Faking.SNIMutation.Mode = "off"
+	}
+	if set.Faking.SNIMutation.FakeSNIs == nil {
+		set.Faking.SNIMutation.FakeSNIs = []string{}
+	}
+
 	api.cfg.Sets = append([]*config.SetConfig{&set}, api.cfg.Sets...)
 
 	if api.cfg.MainSet == nil {
@@ -241,4 +268,13 @@ func (api *API) handleAddPresetAsSet(w http.ResponseWriter, r *http.Request) {
 		"success": true,
 		"message": fmt.Sprintf("Added '%s' configuration", set.Name),
 	})
+}
+
+// DiscoveryStartResponse includes cluster information
+type DiscoveryStartResponse struct {
+	Id             string `json:"id"`
+	TotalDomains   int    `json:"total_domains"`
+	TotalClusters  int    `json:"total_clusters"`
+	EstimatedTests int    `json:"estimated_tests"`
+	Message        string `json:"message"`
 }

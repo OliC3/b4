@@ -1,4 +1,4 @@
-package checker
+package discovery
 
 import (
 	"sync"
@@ -15,6 +15,30 @@ const (
 	CheckStatusComplete CheckStatus = "complete"
 	CheckStatusFailed   CheckStatus = "failed"
 	CheckStatusCanceled CheckStatus = "canceled"
+)
+
+// DiscoveryPhase represents the current phase of hierarchical discovery
+type DiscoveryPhase string
+
+const (
+	PhaseBaseline    DiscoveryPhase = "baseline"
+	PhaseStrategy    DiscoveryPhase = "strategy_detection"
+	PhaseOptimize    DiscoveryPhase = "optimization"
+	PhaseCombination DiscoveryPhase = "combination"
+)
+
+// StrategyFamily groups related bypass techniques
+type StrategyFamily string
+
+const (
+	FamilyNone    StrategyFamily = "none"
+	FamilyTCPFrag StrategyFamily = "tcp_frag"
+	FamilyTLSRec  StrategyFamily = "tls_record"
+	FamilyOOB     StrategyFamily = "oob"
+	FamilyIPFrag  StrategyFamily = "ip_frag"
+	FamilyFakeSNI StrategyFamily = "fake_sni"
+	FamilySACK    StrategyFamily = "sack"
+	FamilySynFake StrategyFamily = "syn_fake"
 )
 
 type CheckResult struct {
@@ -48,6 +72,10 @@ type CheckSuite struct {
 	mu                     sync.RWMutex                      `json:"-"`
 	cancel                 chan struct{}                     `json:"-"`
 	Config                 CheckConfig                       `json:"config"`
+
+	// Hierarchical discovery fields
+	CurrentPhase    DiscoveryPhase `json:"current_phase,omitempty"`
+	WorkingFamilies []string       `json:"working_families,omitempty"`
 }
 
 type CheckSummary struct {
@@ -59,10 +87,11 @@ type CheckSummary struct {
 }
 
 type CheckConfig struct {
-	CheckURL         string        `json:"check_url"`
-	Timeout          time.Duration `json:"timeout"`
-	SamplesPerDomain int           `json:"samples_per_domain"`
-	MaxConcurrent    int           `json:"max_concurrent"`
+	CheckURL               string        `json:"check_url"`
+	Timeout                time.Duration `json:"timeout"`
+	ConfigPropagateTimeout time.Duration `json:"config_propagate_timeout"`
+	SamplesPerDomain       int           `json:"samples_per_domain"`
+	MaxConcurrent          int           `json:"max_concurrent"`
 }
 
 type DomainSample struct {
@@ -79,6 +108,8 @@ type ConfigTestMode struct {
 
 type DomainPresetResult struct {
 	PresetName string            `json:"preset_name"`
+	Family     StrategyFamily    `json:"family,omitempty"`
+	Phase      DiscoveryPhase    `json:"phase,omitempty"`
 	Status     CheckStatus       `json:"status"`
 	Duration   time.Duration     `json:"duration"`
 	Speed      float64           `json:"speed"`
@@ -89,9 +120,42 @@ type DomainPresetResult struct {
 }
 
 type DomainDiscoveryResult struct {
-	Domain      string                         `json:"domain"`
-	BestPreset  string                         `json:"best_preset"`
-	BestSpeed   float64                        `json:"best_speed"`
-	BestSuccess bool                           `json:"best_success"`
-	Results     map[string]*DomainPresetResult `json:"results"`
+	Domain          string                         `json:"domain"`
+	BestPreset      string                         `json:"best_preset"`
+	BestSpeed       float64                        `json:"best_speed"`
+	BestSuccess     bool                           `json:"best_success"`
+	Results         map[string]*DomainPresetResult `json:"results"`
+	WorkingFamilies []StrategyFamily               `json:"working_families,omitempty"`
+	BaselineSpeed   float64                        `json:"baseline_speed,omitempty"`
+	Improvement     float64                        `json:"improvement,omitempty"`
+}
+
+// DomainCluster groups domains that likely need the same bypass config
+type DomainCluster struct {
+	ID             string   `json:"id"`
+	Domains        []string `json:"domains"`
+	Representative string   `json:"representative"` // Domain we actually test
+	BestPreset     string   `json:"best_preset,omitempty"`
+	BestSpeed      float64  `json:"best_speed,omitempty"`
+	Tested         bool     `json:"tested"`
+}
+
+// ConfigPreset represents a bypass configuration to test
+type ConfigPreset struct {
+	Name                   string           `json:"name"`
+	Description            string           `json:"description"`
+	Family                 StrategyFamily   `json:"family"`
+	Phase                  DiscoveryPhase   `json:"phase"`
+	Config                 config.SetConfig `json:"config"`
+	Priority               int              `json:"priority"` // Lower = test first
+	ConfigPropagateTimeout int              `json:"propagate_timeout"`
+}
+
+// StrategyResult tracks whether a strategy family works
+type StrategyResult struct {
+	Family  StrategyFamily
+	Works   bool
+	Speed   float64
+	Preset  string
+	Latency time.Duration
 }

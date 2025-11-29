@@ -25,7 +25,7 @@ import {
   Settings as SettingsIcon,
   Warning as WarningIcon,
   Layers as LayersIcon,
-  Monitor as MonitorIcon,
+  Science as DiscoveryIcon,
   Language as LanguageIcon,
   Cloud as ApiIcon,
   CameraAlt as CaptureIcon,
@@ -34,7 +34,7 @@ import { CaptureSettings } from "@organisms/settings/Capture";
 import { NetworkSettings } from "@organisms/settings/Network";
 import { LoggingSettings } from "@organisms/settings/Logging";
 import { FeatureSettings } from "@organisms/settings/Feature";
-import { CheckerSettings } from "@organisms/settings/Checker";
+import { CheckerSettings } from "@/components/organisms/settings/Checker";
 import { ControlSettings } from "@organisms/settings/Control";
 import {
   SetsManager,
@@ -78,7 +78,7 @@ enum TABS {
   SETS = 0,
   GENERAL,
   DOMAINS,
-  TESTING,
+  DISCOVERY,
   API,
   CAPTURE,
 }
@@ -110,10 +110,10 @@ const SETTING_CATEGORIES = [
     requiresRestart: false,
   },
   {
-    id: TABS.TESTING,
-    path: "testing",
-    label: "Testing",
-    icon: <MonitorIcon />,
+    id: TABS.DISCOVERY,
+    path: "discovery",
+    label: "Discovery",
+    icon: <DiscoveryIcon />,
     description: "DPI bypass domains testing",
     requiresRestart: false,
   },
@@ -212,8 +212,8 @@ export default function Settings() {
         JSON.stringify(config.system.geo) !==
         JSON.stringify(originalConfig.system.geo),
 
-      // Testing
-      [TABS.TESTING]:
+      // Discovery
+      [TABS.DISCOVERY]:
         JSON.stringify(config.system.checker) !==
         JSON.stringify(originalConfig.system.checker),
 
@@ -549,7 +549,7 @@ export default function Settings() {
           <ApiSettings config={config} onChange={handleChange} />
         </TabPanel>
 
-        <TabPanel value={validTab} index={TABS.TESTING}>
+        <TabPanel value={validTab} index={TABS.DISCOVERY}>
           <CheckerSettings config={config} onChange={handleChange} />
         </TabPanel>
 

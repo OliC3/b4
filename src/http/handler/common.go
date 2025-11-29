@@ -86,7 +86,7 @@ func (api *API) RegisterEndpoints(mux *http.ServeMux, cfg *config.Config) {
 	api.RegisterGeositeApi()
 	api.RegisterGeoipApi()
 	api.RegisterSystemApi()
-	api.RegisterCheckApi()
+	api.RegisterDiscoveryApi()
 	api.RegisterIntegrationApi()
 	api.RegisterGeodatApi()
 	api.RegisterCaptureApi()

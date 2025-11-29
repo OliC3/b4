@@ -1,4 +1,4 @@
-package checker
+package discovery
 
 import (
 	"context"
@@ -273,6 +273,8 @@ func (ts *CheckSuite) GetSnapshot() *CheckSuite {
 		Config:                 ts.Config,
 		PresetResults:          ts.PresetResults,
 		DomainDiscoveryResults: ts.DomainDiscoveryResults,
+		CurrentPhase:           ts.CurrentPhase,
+		WorkingFamilies:        ts.WorkingFamilies,
 	}
 
 	snapshot.Results = make([]CheckResult, len(ts.Results))

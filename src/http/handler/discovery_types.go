@@ -1,12 +1,8 @@
 package handler
 
-import "time"
-
 type StartCheckRequest struct {
-	CheckURL      string        `json:"check_url,omitempty"`
-	Timeout       time.Duration `json:"timeout"`
-	MaxConcurrent int           `json:"max_concurrent"`
-	Domains       []string      `json:"domains,omitempty"`
+	CheckURL string   `json:"check_url,omitempty"`
+	Domains  []string `json:"domains,omitempty"`
 }
 
 type StartCheckResponse struct {

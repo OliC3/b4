@@ -25,27 +25,30 @@ export const CheckerSettings: React.FC<CheckerSettingsProps> = ({
       <Grid container spacing={2}>
         <Grid size={{ xs: 12, lg: 6 }}>
           <B4Slider
-            label="Max Concurrent Tests"
-            value={config.system.checker.max_concurrent}
+            label="Discovery Timeout"
+            value={config.system.checker.discovery_timeout || 5}
             onChange={(value) =>
-              onChange("system.checker.max_concurrent", value)
+              onChange("system.checker.discovery_timeout", value)
             }
-            min={1}
-            max={20}
+            min={3}
+            max={30}
             step={1}
-            helperText="Maximum number of concurrent tests"
+            valueSuffix=" sec"
+            helperText="Timeout per preset during discovery"
           />
         </Grid>
         <Grid size={{ xs: 12, lg: 6 }}>
           <B4Slider
-            label="Test Timeout"
-            value={config.system.checker.timeout}
-            onChange={(value) => onChange("system.checker.timeout", value)}
-            min={1}
-            max={120}
-            step={1}
-            valueSuffix=" sec"
-            helperText="Domain request timeout"
+            label="Config Propagation Delay"
+            value={config.system.checker.config_propagate_ms || 1500}
+            onChange={(value) =>
+              onChange("system.checker.config_propagate_ms", value)
+            }
+            min={500}
+            max={5000}
+            step={100}
+            valueSuffix=" ms"
+            helperText="Delay for config to propagate to workers (increase on slow devices)"
           />
         </Grid>
       </Grid>

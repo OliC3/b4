@@ -14,6 +14,7 @@ import {
   Tooltip,
   Snackbar,
   CircularProgress,
+  Collapse,
 } from "@mui/material";
 import {
   PlayArrow as StartIcon,
@@ -21,17 +22,38 @@ import {
   Refresh as RefreshIcon,
   Add as AddIcon,
   Speed as SpeedIcon,
+  ExpandMore as ExpandIcon,
+  ExpandLess as CollapseIcon,
+  TrendingUp as ImprovementIcon,
 } from "@mui/icons-material";
 import { button_secondary, colors } from "@design";
-import { useConfigLoad } from "@hooks/useConfig";
 import { useTestDomains } from "@hooks/useTestDomains";
 import { B4SetConfig } from "@/models/Config";
 import SettingTextField from "@atoms/common/B4TextField";
 import { AddSniModal } from "@organisms/domains/AddSniModal";
 import { generateDomainVariants } from "@utils";
 
+// Strategy family types matching backend
+type StrategyFamily =
+  | "none"
+  | "tcp_frag"
+  | "tls_record"
+  | "oob"
+  | "ip_frag"
+  | "fake_sni"
+  | "sack"
+  | "syn_fake";
+
+type DiscoveryPhase =
+  | "baseline"
+  | "strategy_detection"
+  | "optimization"
+  | "combination";
+
 interface DomainPresetResult {
   preset_name: string;
+  family?: StrategyFamily;
+  phase?: DiscoveryPhase;
   status: "complete" | "failed";
   duration: number;
   speed: number;
@@ -47,6 +69,9 @@ interface DomainDiscoveryResult {
   best_speed: number;
   best_success: boolean;
   results: Record<string, DomainPresetResult>;
+  working_families?: StrategyFamily[];
+  baseline_speed?: number;
+  improvement?: number;
 }
 
 interface DiscoverySuite {
@@ -56,28 +81,57 @@ interface DiscoverySuite {
   end_time: string;
   total_checks: number;
   completed_checks: number;
+  current_phase?: DiscoveryPhase;
+  working_families?: string[];
   domain_discovery_results?: Record<string, DomainDiscoveryResult>;
 }
 
-interface ConfigDetail {
-  category: string;
-  settings: Array<{ label: string; value: string }>;
+interface DiscoveryStartResponse {
+  id: string;
+  total_domains: number;
+  total_clusters: number;
+  estimated_tests: number;
+  message: string;
 }
+
+// Friendly names for strategy families
+const familyNames: Record<StrategyFamily, string> = {
+  none: "Baseline",
+  tcp_frag: "TCP Fragmentation",
+  tls_record: "TLS Record Split",
+  oob: "Out-of-Band",
+  ip_frag: "IP Fragmentation",
+  fake_sni: "Fake SNI",
+  sack: "SACK Drop",
+  syn_fake: "SYN Fake",
+};
+
+// Friendly names for phases
+const phaseNames: Record<DiscoveryPhase, string> = {
+  baseline: "Baseline Test",
+  strategy_detection: "Strategy Detection",
+  optimization: "Optimization",
+  combination: "Combination Test",
+};
 
 export const DiscoveryRunner: React.FC = () => {
   const [running, setRunning] = useState(false);
   const [suiteId, setSuiteId] = useState<string | null>(null);
   const [suite, setSuite] = useState<DiscoverySuite | null>(null);
+
   const [error, setError] = useState<string | null>(null);
   const [addingPreset, setAddingPreset] = useState<string | null>(null);
   const [variants, setVariants] = useState<string[]>([]);
   const [selectedVariant, setSelectedVariant] = useState<string | null>(null);
+  const [expandedDomains, setExpandedDomains] = useState<Set<string>>(
+    new Set()
+  );
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
     severity: "success" | "error";
   }>({ open: false, message: "", severity: "success" });
-  const { config } = useConfigLoad();
+
   const { domains, addDomain, removeDomain, clearDomains, resetToDefaults } =
     useTestDomains();
   const [newDomain, setNewDomain] = useState("");
@@ -95,13 +149,25 @@ export const DiscoveryRunner: React.FC = () => {
     setVariantModal({ open: true, domain, result });
   };
 
+  const toggleDomainExpand = (domain: string) => {
+    setExpandedDomains((prev) => {
+      const next = new Set(prev);
+      if (next.has(domain)) {
+        next.delete(domain);
+      } else {
+        next.add(domain);
+      }
+      return next;
+    });
+  };
+
   // Poll for discovery status
   useEffect(() => {
     if (!suiteId || !running) return;
 
     const fetchStatus = async () => {
       try {
-        const response = await fetch(`/api/check/status?id=${suiteId}`);
+        const response = await fetch(`/api/discovery/status?id=${suiteId}`);
         if (!response.ok) throw new Error("Failed to fetch discovery status");
 
         const data = (await response.json()) as DiscoverySuite;
@@ -119,7 +185,7 @@ export const DiscoveryRunner: React.FC = () => {
 
     const interval = setInterval(() => {
       void fetchStatus();
-    }, 2000);
+    }, 1500); // Faster polling for better UX
 
     return () => clearInterval(interval);
   }, [suiteId, running]);
@@ -135,15 +201,10 @@ export const DiscoveryRunner: React.FC = () => {
     setSuite(null);
 
     try {
-      const timeout = (config?.system.checker.timeout || 15) * 1e9;
-      const maxConcurrent = config?.system.checker.max_concurrent || 3;
-
-      const response = await fetch("/api/check/discovery", {
+      const response = await fetch("/api/discovery", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          timeout: timeout,
-          max_concurrent: maxConcurrent,
           domains: domains,
         }),
       });
@@ -153,7 +214,7 @@ export const DiscoveryRunner: React.FC = () => {
         throw new Error(text || "Failed to start discovery");
       }
 
-      const data = (await response.json()) as { id: string; message: string };
+      const data = (await response.json()) as DiscoveryStartResponse;
       setSuiteId(data.id);
     } catch (err) {
       console.error("Failed to start discovery:", err);
@@ -168,7 +229,7 @@ export const DiscoveryRunner: React.FC = () => {
     if (!suiteId) return;
 
     try {
-      await fetch(`/api/check/cancel?id=${suiteId}`, { method: "DELETE" });
+      await fetch(`/api/discovery/cancel?id=${suiteId}`, { method: "DELETE" });
       setRunning(false);
     } catch (err) {
       console.error("Failed to cancel discovery:", err);
@@ -180,6 +241,7 @@ export const DiscoveryRunner: React.FC = () => {
     setSuite(null);
     setError(null);
     setRunning(false);
+    setExpandedDomains(new Set());
   };
 
   const confirmAddStrategy = async () => {
@@ -197,7 +259,7 @@ export const DiscoveryRunner: React.FC = () => {
         `${variantModal.domain}-${variantModal.result.preset_name}`
       );
 
-      const response = await fetch("/api/check/add", {
+      const response = await fetch("/api/discovery/add", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(configToAdd),
@@ -231,131 +293,22 @@ export const DiscoveryRunner: React.FC = () => {
     ? (suite.completed_checks / suite.total_checks) * 100
     : 0;
 
-  function formatConfigDetails(presetName: string): ConfigDetail[] {
-    const details: ConfigDetail[] = [];
+  // Group results by phase for display
+  const groupResultsByPhase = (results: Record<string, DomainPresetResult>) => {
+    const grouped: Record<DiscoveryPhase, DomainPresetResult[]> = {
+      baseline: [],
+      strategy_detection: [],
+      optimization: [],
+      combination: [],
+    };
 
-    // TCP
-    details.push({
-      category: "TCP Configuration",
-      settings: [
-        { label: "Connection Bytes", value: "19 bytes" },
-        {
-          label: "Segment Delay",
-          value: presetName.includes("delay") ? "5-10ms" : "0ms",
-        },
-      ],
+    Object.values(results).forEach((result) => {
+      const phase = result.phase || "strategy_detection";
+      grouped[phase].push(result);
     });
 
-    // Fragmentation
-    if (presetName.includes("tcp-frag")) {
-      const position = presetName.includes("pos1")
-        ? "1"
-        : presetName.includes("pos2")
-        ? "2"
-        : "Variable";
-      details.push({
-        category: "Fragmentation",
-        settings: [
-          { label: "Strategy", value: "TCP" },
-          { label: "SNI Position", value: position },
-          {
-            label: "Reverse Order",
-            value: presetName.includes("reverse") ? "Yes" : "No",
-          },
-          {
-            label: "Middle SNI",
-            value: presetName.includes("middle") ? "Yes" : "No",
-          },
-        ],
-      });
-    } else if (presetName.includes("ip-frag")) {
-      details.push({
-        category: "Fragmentation",
-        settings: [
-          { label: "Strategy", value: "IP-level" },
-          { label: "SNI Position", value: "1" },
-          {
-            label: "Reverse Order",
-            value: presetName.includes("reverse") ? "Yes" : "No",
-          },
-        ],
-      });
-    } else if (presetName.includes("no-frag")) {
-      details.push({
-        category: "Fragmentation",
-        settings: [{ label: "Strategy", value: "None" }],
-      });
-    }
-
-    // Faking
-    if (presetName.includes("no-fake")) {
-      details.push({
-        category: "Fake Packets",
-        settings: [{ label: "Status", value: "Disabled" }],
-      });
-    } else if (presetName.includes("fake")) {
-      const ttl = presetName.includes("ttl-low") ? "3" : "5-8";
-      const strategy = presetName.includes("randseq")
-        ? "Random Seq"
-        : presetName.includes("md5sum")
-        ? "MD5"
-        : "Past Seq";
-      const count = presetName.includes("multi")
-        ? "5"
-        : presetName.includes("aggressive")
-        ? "3-5"
-        : "1-2";
-
-      details.push({
-        category: "Fake Packets",
-        settings: [
-          { label: "TTL", value: ttl },
-          { label: "Strategy", value: strategy },
-          { label: "Count", value: count },
-        ],
-      });
-    } else {
-      details.push({
-        category: "Fake Packets",
-        settings: [
-          { label: "TTL", value: "8" },
-          { label: "Strategy", value: "Past Seq" },
-          { label: "Count", value: "1" },
-        ],
-      });
-    }
-
-    // UDP/QUIC
-    if (presetName.includes("quic-drop")) {
-      details.push({
-        category: "UDP/QUIC",
-        settings: [
-          { label: "Mode", value: "Drop" },
-          { label: "QUIC Filter", value: "All" },
-        ],
-      });
-    } else if (presetName.includes("quic-fake")) {
-      details.push({
-        category: "UDP/QUIC",
-        settings: [
-          { label: "Mode", value: "Fake & Frag" },
-          { label: "Fake Count", value: "10" },
-          { label: "Fake Size", value: "128 bytes" },
-        ],
-      });
-    } else {
-      details.push({
-        category: "UDP/QUIC",
-        settings: [
-          { label: "Mode", value: "Fake & Frag" },
-          { label: "Fake Count", value: "6" },
-          { label: "QUIC Filter", value: "Disabled" },
-        ],
-      });
-    }
-
-    return details;
-  }
+    return grouped;
+  };
 
   return (
     <Stack spacing={3}>
@@ -378,9 +331,18 @@ export const DiscoveryRunner: React.FC = () => {
               justifyContent: "space-between",
             }}
           >
-            <Typography variant="h6" sx={{ color: colors.text.primary }}>
-              Configuration Discovery
-            </Typography>
+            <Box>
+              <Typography variant="h6" sx={{ color: colors.text.primary }}>
+                Configuration Discovery
+              </Typography>
+              <Typography
+                variant="caption"
+                sx={{ color: colors.text.secondary }}
+              >
+                Hierarchical testing: Strategy Detection → Optimization →
+                Combination
+              </Typography>
+            </Box>
             <Stack direction="row" spacing={1}>
               {!running && !suite && (
                 <Button
@@ -433,12 +395,6 @@ export const DiscoveryRunner: React.FC = () => {
             </Stack>
           </Box>
 
-          <Alert severity="warning" sx={{ bgcolor: colors.accent.tertiary }}>
-            <strong>Warning:</strong> Discovery mode will temporarily apply
-            different configurations to test effectiveness. This may briefly
-            affect your service traffic during testing.
-          </Alert>
-
           {error && <Alert severity="error">{error}</Alert>}
 
           {/* Domain Management Section */}
@@ -477,7 +433,6 @@ export const DiscoveryRunner: React.FC = () => {
 
             <Grid container spacing={2}>
               <Grid size={{ sm: 12, md: 6 }}>
-                {/* Domain Input */}
                 <Box
                   sx={{
                     display: "flex",
@@ -526,7 +481,6 @@ export const DiscoveryRunner: React.FC = () => {
                 </Box>
               </Grid>
               <Grid size={{ sm: 12, md: 6 }}>
-                {/* Domain Chips */}
                 <Box
                   sx={{
                     display: "flex",
@@ -537,6 +491,8 @@ export const DiscoveryRunner: React.FC = () => {
                     border: `1px solid ${colors.border.default}`,
                     borderRadius: 1,
                     bgcolor: colors.background.dark,
+                    maxHeight: 120,
+                    overflowY: "auto",
                   }}
                 >
                   {domains.length === 0 ? (
@@ -584,10 +540,23 @@ export const DiscoveryRunner: React.FC = () => {
                   mb: 1,
                 }}
               >
-                <Typography variant="body2" color="text.secondary">
-                  Testing configurations: {suite.completed_checks} of{" "}
-                  {suite.total_checks} checks completed
-                </Typography>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    {suite.current_phase && (
+                      <Chip
+                        label={phaseNames[suite.current_phase]}
+                        size="small"
+                        sx={{
+                          mr: 1,
+                          bgcolor: colors.accent.secondary,
+                          color: colors.secondary,
+                          fontWeight: 600,
+                        }}
+                      />
+                    )}
+                    {suite.completed_checks} of {suite.total_checks} checks
+                  </Typography>
+                </Box>
                 <Typography variant="body2" color="text.secondary">
                   {progress.toFixed(0)}%
                 </Typography>
@@ -610,16 +579,21 @@ export const DiscoveryRunner: React.FC = () => {
         </Stack>
       </Paper>
 
-      {/* Results Table */}
+      {/* Results */}
       {suite?.domain_discovery_results &&
         Object.keys(suite.domain_discovery_results).length > 0 && (
           <Stack spacing={2}>
             {Object.values(suite.domain_discovery_results)
               .sort((a, b) => b.best_speed - a.best_speed)
               .map((domainResult) => {
-                const configDetails = domainResult.best_success
-                  ? formatConfigDetails(domainResult.best_preset)
-                  : [];
+                const isExpanded = expandedDomains.has(domainResult.domain);
+                const groupedResults = groupResultsByPhase(
+                  domainResult.results
+                );
+                const successCount = Object.values(domainResult.results).filter(
+                  (r) => r.status === "complete"
+                ).length;
+                const totalCount = Object.keys(domainResult.results).length;
 
                 return (
                   <Paper
@@ -640,11 +614,16 @@ export const DiscoveryRunner: React.FC = () => {
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "space-between",
+                        cursor: "pointer",
                       }}
+                      onClick={() => toggleDomainExpand(domainResult.domain)}
                     >
                       <Box
                         sx={{ display: "flex", alignItems: "center", gap: 2 }}
                       >
+                        <IconButton size="small">
+                          {isExpanded ? <CollapseIcon /> : <ExpandIcon />}
+                        </IconButton>
                         <Typography
                           variant="h6"
                           sx={{ color: colors.text.primary }}
@@ -670,6 +649,25 @@ export const DiscoveryRunner: React.FC = () => {
                             }}
                           />
                         )}
+                        <Chip
+                          label={`${successCount}/${totalCount} configs`}
+                          size="small"
+                          variant="outlined"
+                          sx={{ borderColor: colors.border.light }}
+                        />
+                        {domainResult.improvement &&
+                          domainResult.improvement > 0 && (
+                            <Chip
+                              icon={<ImprovementIcon />}
+                              label={`+${domainResult.improvement.toFixed(0)}%`}
+                              size="small"
+                              sx={{
+                                bgcolor: colors.accent.secondary,
+                                color: colors.secondary,
+                                "& .MuiChip-icon": { color: colors.secondary },
+                              }}
+                            />
+                          )}
                       </Box>
                       <Typography
                         variant="h6"
@@ -679,251 +677,262 @@ export const DiscoveryRunner: React.FC = () => {
                           ? `${(domainResult.best_speed / 1024 / 1024).toFixed(
                               2
                             )} MB/s`
-                          : "No successful config"}
+                          : "No working config"}
                       </Typography>
                     </Box>
 
-                    {/* Configuration Details */}
+                    {/* Best Configuration Quick View (always visible) */}
                     {domainResult.best_success && (
-                      <Box sx={{ p: 3 }}>
+                      <Box
+                        sx={{
+                          p: 2,
+                          bgcolor: colors.background.default,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          borderBottom: `1px solid ${colors.border.default}`,
+                        }}
+                      >
                         <Box
-                          sx={{
-                            mb: 2,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                          }}
+                          sx={{ display: "flex", alignItems: "center", gap: 2 }}
                         >
-                          <Box
-                            sx={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 2,
-                            }}
-                          >
+                          <SpeedIcon sx={{ color: colors.secondary }} />
+                          <Box>
                             <Typography
-                              variant="subtitle2"
-                              sx={{
-                                color: colors.text.secondary,
-                                textTransform: "uppercase",
-                                fontSize: "0.7rem",
-                              }}
+                              variant="caption"
+                              sx={{ color: colors.text.secondary }}
                             >
                               Best Configuration
                             </Typography>
-                            <Chip
-                              icon={<SpeedIcon />}
-                              label={`${domainResult.best_preset} • ${(
-                                domainResult.best_speed /
-                                1024 /
-                                1024
-                              ).toFixed(2)} MB/s`}
+                            <Typography
+                              variant="body1"
                               sx={{
-                                bgcolor: colors.accent.secondary,
-                                color: colors.secondary,
+                                color: colors.text.primary,
                                 fontWeight: 600,
-                                "& .MuiChip-icon": {
-                                  color: colors.secondary,
-                                },
                               }}
-                            />
+                            >
+                              {domainResult.best_preset}
+                              {domainResult.results[domainResult.best_preset]
+                                ?.family && (
+                                <Chip
+                                  label={
+                                    familyNames[
+                                      domainResult.results[
+                                        domainResult.best_preset
+                                      ].family!
+                                    ]
+                                  }
+                                  size="small"
+                                  sx={{ ml: 1, bgcolor: colors.accent.primary }}
+                                />
+                              )}
+                            </Typography>
                           </Box>
-
-                          <Button
-                            variant="contained"
-                            startIcon={
-                              addingPreset ===
-                              `${domainResult.domain}-${domainResult.best_preset}` ? (
-                                <CircularProgress size={18} color="inherit" />
-                              ) : (
-                                <AddIcon />
-                              )
-                            }
-                            onClick={() => {
-                              const bestResult =
-                                domainResult.results[domainResult.best_preset];
-                              void handleAddStrategy(
-                                domainResult.domain,
-                                bestResult
-                              );
-                            }}
-                            disabled={
-                              addingPreset ===
-                              `${domainResult.domain}-${domainResult.best_preset}`
-                            }
-                            sx={{
-                              bgcolor: colors.secondary,
-                              color: colors.background.default,
-                              fontWeight: 600,
-                              "&:hover": {
-                                bgcolor: colors.primary,
-                                transform: "translateY(-2px)",
-                                boxShadow: `0 4px 8px ${colors.secondary}44`,
-                              },
-                              transition: "all 0.2s",
-                              "&:disabled": {
-                                bgcolor: colors.accent.secondary,
-                              },
-                            }}
-                          >
-                            {addingPreset ===
-                            `${domainResult.domain}-${domainResult.best_preset}`
-                              ? "Adding..."
-                              : "Use This Strategy"}
-                          </Button>
                         </Box>
+                        <Button
+                          variant="contained"
+                          startIcon={
+                            addingPreset ===
+                            `${domainResult.domain}-${domainResult.best_preset}` ? (
+                              <CircularProgress size={18} color="inherit" />
+                            ) : (
+                              <AddIcon />
+                            )
+                          }
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const bestResult =
+                              domainResult.results[domainResult.best_preset];
+                            void handleAddStrategy(
+                              domainResult.domain,
+                              bestResult
+                            );
+                          }}
+                          disabled={
+                            addingPreset ===
+                            `${domainResult.domain}-${domainResult.best_preset}`
+                          }
+                          sx={{
+                            bgcolor: colors.secondary,
+                            color: colors.background.default,
+                            "&:hover": { bgcolor: colors.primary },
+                          }}
+                        >
+                          Use This Strategy
+                        </Button>
+                      </Box>
+                    )}
+
+                    {/* Expanded Details */}
+                    <Collapse in={isExpanded}>
+                      <Box sx={{ p: 3 }}>
+                        {/* Working Families */}
+                        {domainResult.working_families &&
+                          domainResult.working_families.length > 0 && (
+                            <Box sx={{ mb: 3 }}>
+                              <Typography
+                                variant="subtitle2"
+                                sx={{
+                                  color: colors.text.secondary,
+                                  mb: 1,
+                                  textTransform: "uppercase",
+                                  fontSize: "0.7rem",
+                                }}
+                              >
+                                Working Strategy Families
+                              </Typography>
+                              <Stack
+                                direction="row"
+                                spacing={1}
+                                flexWrap="wrap"
+                                gap={1}
+                              >
+                                {domainResult.working_families.map((family) => (
+                                  <Chip
+                                    key={family}
+                                    label={familyNames[family]}
+                                    sx={{
+                                      bgcolor: colors.accent.secondary,
+                                      color: colors.secondary,
+                                    }}
+                                  />
+                                ))}
+                              </Stack>
+                            </Box>
+                          )}
 
                         <Divider
                           sx={{ my: 2, borderColor: colors.border.default }}
                         />
 
-                        <Grid container spacing={2}>
-                          {configDetails.map((detail, idx) => (
-                            <Grid key={idx} size={{ xs: 12, sm: 6, md: 3 }}>
-                              <Box
+                        {/* Results by Phase */}
+                        {(
+                          [
+                            "baseline",
+                            "strategy_detection",
+                            "optimization",
+                            "combination",
+                          ] as DiscoveryPhase[]
+                        )
+                          .filter((phase) => groupedResults[phase].length > 0)
+                          .map((phase) => (
+                            <Box key={phase} sx={{ mb: 3 }}>
+                              <Typography
+                                variant="subtitle2"
                                 sx={{
-                                  p: 2,
-                                  bgcolor: colors.background.dark,
-                                  borderRadius: 1,
-                                  border: `1px solid ${colors.border.light}`,
+                                  color: colors.text.secondary,
+                                  mb: 1.5,
+                                  textTransform: "uppercase",
+                                  fontSize: "0.7rem",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 1,
                                 }}
                               >
-                                <Typography
-                                  variant="subtitle2"
-                                  sx={{
-                                    color: colors.secondary,
-                                    fontWeight: 600,
-                                    mb: 1.5,
-                                    textTransform: "uppercase",
-                                    fontSize: "0.7rem",
-                                  }}
-                                >
-                                  {detail.category}
-                                </Typography>
-                                <Stack spacing={1}>
-                                  {detail.settings.map((setting, i) => (
-                                    <Box key={i}>
-                                      <Typography
-                                        variant="caption"
-                                        sx={{
-                                          color: colors.text.secondary,
-                                          display: "block",
-                                          fontSize: "0.7rem",
-                                        }}
+                                {phaseNames[phase]}
+                                <Chip
+                                  label={groupedResults[phase].length}
+                                  size="small"
+                                  sx={{ height: 18, fontSize: "0.65rem" }}
+                                />
+                              </Typography>
+                              <Stack
+                                direction="row"
+                                spacing={1}
+                                flexWrap="wrap"
+                                gap={1}
+                              >
+                                {groupedResults[phase]
+                                  .sort((a, b) => b.speed - a.speed)
+                                  .map((result) => (
+                                    <Box
+                                      key={result.preset_name}
+                                      sx={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 0.5,
+                                      }}
+                                    >
+                                      <Tooltip
+                                        title={
+                                          result.status === "complete"
+                                            ? `${result.preset_name}: ${(
+                                                result.speed /
+                                                1024 /
+                                                1024
+                                              ).toFixed(2)} MB/s`
+                                            : `${result.preset_name}: ${
+                                                result.error || "Failed"
+                                              }`
+                                        }
                                       >
-                                        {setting.label}
-                                      </Typography>
-                                      <Typography
-                                        variant="body2"
-                                        sx={{
-                                          color: colors.text.primary,
-                                          fontWeight: 500,
-                                        }}
-                                      >
-                                        {setting.value}
-                                      </Typography>
+                                        <Chip
+                                          label={`${result.preset_name}: ${
+                                            result.status === "complete"
+                                              ? `${(
+                                                  result.speed /
+                                                  1024 /
+                                                  1024
+                                                ).toFixed(2)} MB/s`
+                                              : "Failed"
+                                          }`}
+                                          size="small"
+                                          sx={{
+                                            bgcolor:
+                                              result.preset_name ===
+                                              domainResult.best_preset
+                                                ? colors.accent.secondary
+                                                : colors.background.dark,
+                                            color:
+                                              result.status === "complete"
+                                                ? colors.text.primary
+                                                : colors.quaternary,
+                                            border:
+                                              result.preset_name ===
+                                              domainResult.best_preset
+                                                ? `2px solid ${colors.secondary}`
+                                                : `1px solid ${colors.border.light}`,
+                                          }}
+                                        />
+                                      </Tooltip>
+                                      {result.status === "complete" &&
+                                        result.preset_name !==
+                                          domainResult.best_preset && (
+                                          <Tooltip title="Use this configuration">
+                                            <IconButton
+                                              size="small"
+                                              onClick={() => {
+                                                void handleAddStrategy(
+                                                  domainResult.domain,
+                                                  result
+                                                );
+                                              }}
+                                              disabled={
+                                                addingPreset ===
+                                                `${domainResult.domain}-${result.preset_name}`
+                                              }
+                                              sx={{
+                                                p: 0.5,
+                                                bgcolor: colors.background.dark,
+                                                border: `1px solid ${colors.border.light}`,
+                                                "&:hover": {
+                                                  bgcolor:
+                                                    colors.accent.secondary,
+                                                  borderColor: colors.secondary,
+                                                },
+                                              }}
+                                            >
+                                              <AddIcon fontSize="small" />
+                                            </IconButton>
+                                          </Tooltip>
+                                        )}
                                     </Box>
                                   ))}
-                                </Stack>
-                              </Box>
-                            </Grid>
+                              </Stack>
+                            </Box>
                           ))}
-                        </Grid>
-
-                        {/* All Tested Configs */}
-                        <Box sx={{ mt: 3 }}>
-                          <Typography
-                            variant="subtitle2"
-                            sx={{
-                              color: colors.text.secondary,
-                              mb: 1,
-                              textTransform: "uppercase",
-                              fontSize: "0.7rem",
-                            }}
-                          >
-                            All Tested Configurations
-                          </Typography>
-                          <Stack
-                            direction="row"
-                            spacing={1}
-                            flexWrap="wrap"
-                            gap={1}
-                          >
-                            {Object.values(domainResult.results)
-                              .sort((a, b) => b.speed - a.speed)
-                              .map((result) => (
-                                <Box
-                                  key={result.preset_name}
-                                  sx={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: 0.5,
-                                  }}
-                                >
-                                  <Chip
-                                    label={`${result.preset_name}: ${
-                                      result.status === "complete"
-                                        ? `${(
-                                            result.speed /
-                                            1024 /
-                                            1024
-                                          ).toFixed(2)} MB/s`
-                                        : "Failed"
-                                    }`}
-                                    size="small"
-                                    sx={{
-                                      bgcolor:
-                                        result.preset_name ===
-                                        domainResult.best_preset
-                                          ? colors.accent.secondary
-                                          : colors.background.dark,
-                                      color:
-                                        result.status === "complete"
-                                          ? colors.text.primary
-                                          : colors.quaternary,
-                                      border:
-                                        result.preset_name ===
-                                        domainResult.best_preset
-                                          ? `2px solid ${colors.secondary}`
-                                          : `1px solid ${colors.border.light}`,
-                                    }}
-                                  />
-                                  {result.status === "complete" &&
-                                    result.preset_name !==
-                                      domainResult.best_preset && (
-                                      <Tooltip title="Use this configuration">
-                                        <IconButton
-                                          size="small"
-                                          onClick={() => {
-                                            void handleAddStrategy(
-                                              domainResult.domain,
-                                              result
-                                            );
-                                          }}
-                                          disabled={
-                                            addingPreset ===
-                                            `${domainResult.domain}-${result.preset_name}`
-                                          }
-                                          sx={{
-                                            p: 0.5,
-                                            bgcolor: colors.background.dark,
-                                            border: `1px solid ${colors.border.light}`,
-                                            "&:hover": {
-                                              bgcolor: colors.accent.secondary,
-                                              borderColor: colors.secondary,
-                                            },
-                                          }}
-                                        >
-                                          <AddIcon fontSize="small" />
-                                        </IconButton>
-                                      </Tooltip>
-                                    )}
-                                </Box>
-                              ))}
-                          </Stack>
-                        </Box>
                       </Box>
-                    )}
+                    </Collapse>
 
                     {/* Failed state */}
                     {!domainResult.best_success && (

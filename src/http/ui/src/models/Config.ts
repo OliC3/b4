@@ -108,9 +108,9 @@ export interface QueueConfig {
 }
 
 export interface CheckerConfig {
-  timeout: number;
-  max_concurrent: number;
   domains: string[];
+  discovery_timeout: number;
+  config_propagate_ms: number;
 }
 
 export type WindowMode = "off" | "oscillate" | "zero" | "random" | "escalate";
