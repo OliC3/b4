@@ -5,6 +5,26 @@
   "files.eol": "\n",
   "explorer.fileNesting.enabled": true,
   "explorer.fileNesting.expand": false,
+  "VsCodeTaskButtons.showCounter": true,
+  "VsCodeTaskButtons.tasks": [
+    {
+      "label": "$(build) make",
+      "tasks": [
+        {
+          "task": "build-amd64",
+          "label": "amd64"
+        },
+        {
+          "task": "build-arm64",
+          "label": "arm64"
+        },
+        {
+          "task": "build-ui",
+          "label": "frontend"
+        }
+      ]
+    }
+  ],
   "explorer.fileNesting.patterns": {
     ".clang-tidy": ".clang-format, .clangd, compile_commands.json",
     ".env": "*.env, .env.*, .envrc, env.d.ts",

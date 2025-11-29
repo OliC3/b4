@@ -1,0 +1,54 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build-amd64",
+      "type": "shell",
+      "command": "make amd64",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "build-arm64",
+      "type": "shell",
+      "command": "make arm64",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "build-ui",
+      "type": "shell",
+      "command": "cd src/http/ui && pnpm run build",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "b4",
+      "type": "shell",
+      "options": { "cwd": "${workspaceFolder}" },
+      "command": "sudo ./out/linux-amd64/b4 --config ./out/linux-amd64/b4config.json",
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "group": "b4"
+      },
+      "runOptions": { "runOn": "folderOpen" }
+    },
+    {
+      "label": "b4:frontend",
+      "type": "shell",
+      "command": "pnpm run dev",
+      "options": { "cwd": "${workspaceFolder}/src/http/ui" },
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "group": "b4"
+      },
+      "runOptions": { "runOn": "folderOpen" }
+    }
+  ]
+}
