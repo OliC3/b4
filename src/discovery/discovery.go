@@ -71,6 +71,7 @@ func (ds *DiscoverySuite) RunDiscovery() {
 	// Phase 1: Strategy Detection
 	ds.setPhase(PhaseStrategy)
 	workingFamilies, baselineSpeed, baselineWorks := ds.runPhase1()
+	ds.determineBest(baselineSpeed)
 
 	if baselineWorks {
 		log.Infof("Baseline succeeded for %s - no DPI bypass needed, skipping optimization", ds.domain)
@@ -111,6 +112,7 @@ func (ds *DiscoverySuite) RunDiscovery() {
 	// Phase 2: Optimization
 	ds.setPhase(PhaseOptimize)
 	bestParams := ds.runPhase2(workingFamilies)
+	ds.determineBest(baselineSpeed)
 
 	// Phase 3: Combinations
 	if len(workingFamilies) >= 2 {
@@ -374,6 +376,16 @@ func (ds *DiscoverySuite) storeResult(preset ConfigPreset, result CheckResult) {
 		StatusCode: result.StatusCode,
 		Set:        result.Set,
 	}
+
+	if result.Status == CheckStatusComplete && preset.Name != "no-bypass" {
+		if result.Speed > ds.domainResult.BestSpeed {
+			ds.domainResult.BestPreset = preset.Name
+			ds.domainResult.BestSpeed = result.Speed
+			ds.domainResult.BestSuccess = true
+		}
+	}
+
+	ds.DomainDiscoveryResults = map[string]*DomainDiscoveryResult{ds.domain: ds.domainResult}
 }
 
 func (ds *DiscoverySuite) determineBest(baselineSpeed float64) {

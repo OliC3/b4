@@ -534,6 +534,15 @@ export const DiscoveryRunner: React.FC = () => {
                               color: colors.background.default,
                             }}
                           />
+                        ) : running ? (
+                          <Chip
+                            label="Testing..."
+                            size="small"
+                            sx={{
+                              bgcolor: colors.accent.primary,
+                              color: colors.text.secondary,
+                            }}
+                          />
                         ) : (
                           <Chip
                             label="Failed"
@@ -566,91 +575,131 @@ export const DiscoveryRunner: React.FC = () => {
                       </Box>
                       <Typography
                         variant="h6"
-                        sx={{ color: colors.secondary, fontWeight: 600 }}
+                        sx={{
+                          color: domainResult.best_success
+                            ? colors.secondary
+                            : colors.text.secondary,
+                          fontWeight: 600,
+                        }}
                       >
                         {domainResult.best_success
                           ? `${(domainResult.best_speed / 1024 / 1024).toFixed(
                               2
                             )} MB/s`
+                          : running
+                          ? `${totalCount} tested...`
                           : "No working config"}
                       </Typography>
                     </Box>
 
                     {/* Best Configuration Quick View (always visible) */}
-                    {domainResult.best_success && (
-                      <Box
-                        sx={{
-                          p: 2,
-                          bgcolor: colors.background.default,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          borderBottom: `1px solid ${colors.border.default}`,
-                        }}
-                      >
+                    {(domainResult.best_success ||
+                      (running &&
+                        Object.values(domainResult.results).some(
+                          (r) => r.status === "complete"
+                        ))) && (
+                      <Box>
                         <Box
-                          sx={{ display: "flex", alignItems: "center", gap: 2 }}
-                        >
-                          <SpeedIcon sx={{ color: colors.secondary }} />
-                          <Box>
-                            <Typography
-                              variant="caption"
-                              sx={{ color: colors.text.secondary }}
-                            >
-                              Best Configuration
-                            </Typography>
-                            <Typography
-                              variant="body1"
-                              sx={{
-                                color: colors.text.primary,
-                                fontWeight: 600,
-                              }}
-                            >
-                              {domainResult.best_preset}
-                              {domainResult.results[domainResult.best_preset]
-                                ?.family && (
-                                <Chip
-                                  label={
-                                    familyNames[
-                                      domainResult.results[
-                                        domainResult.best_preset
-                                      ].family!
-                                    ]
-                                  }
-                                  size="small"
-                                  sx={{ ml: 1, bgcolor: colors.accent.primary }}
-                                />
-                              )}
-                            </Typography>
-                          </Box>
-                        </Box>
-                        <Button
-                          variant="contained"
-                          startIcon={
-                            addingPreset ? (
-                              <CircularProgress size={18} color="inherit" />
-                            ) : (
-                              <AddIcon />
-                            )
-                          }
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const bestResult =
-                              domainResult.results[domainResult.best_preset];
-                            void handleAddStrategy(
-                              domainResult.domain,
-                              bestResult
-                            );
-                          }}
-                          disabled={addingPreset}
                           sx={{
-                            bgcolor: colors.secondary,
-                            color: colors.background.default,
-                            "&:hover": { bgcolor: colors.primary },
+                            p: 2,
+                            bgcolor: colors.background.default,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            borderBottom: running
+                              ? "none"
+                              : `1px solid ${colors.border.default}`,
                           }}
                         >
-                          Use This Strategy
-                        </Button>
+                          <Box
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 2,
+                            }}
+                          >
+                            <SpeedIcon sx={{ color: colors.secondary }} />
+                            <Box>
+                              <Typography
+                                variant="caption"
+                                sx={{ color: colors.text.secondary }}
+                              >
+                                {running
+                                  ? "Current Best"
+                                  : "Best Configuration"}
+                              </Typography>
+                              <Typography
+                                variant="body1"
+                                sx={{
+                                  color: colors.text.primary,
+                                  fontWeight: 600,
+                                }}
+                              >
+                                {domainResult.best_preset}
+                                {domainResult.results[domainResult.best_preset]
+                                  ?.family && (
+                                  <Chip
+                                    label={
+                                      familyNames[
+                                        domainResult.results[
+                                          domainResult.best_preset
+                                        ].family!
+                                      ]
+                                    }
+                                    size="small"
+                                    sx={{
+                                      ml: 1,
+                                      bgcolor: colors.accent.primary,
+                                    }}
+                                  />
+                                )}
+                              </Typography>
+                            </Box>
+                          </Box>
+                          <Button
+                            variant="contained"
+                            startIcon={
+                              addingPreset ? (
+                                <CircularProgress size={18} color="inherit" />
+                              ) : (
+                                <AddIcon />
+                              )
+                            }
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const bestResult =
+                                domainResult.results[domainResult.best_preset];
+                              void handleAddStrategy(
+                                domainResult.domain,
+                                bestResult
+                              );
+                            }}
+                            disabled={addingPreset}
+                            sx={{
+                              bgcolor: colors.secondary,
+                              color: colors.background.default,
+                              "&:hover": { bgcolor: colors.primary },
+                            }}
+                          >
+                            {running ? "Use Current Best" : "Use This Strategy"}
+                          </Button>
+                        </Box>
+                        {/* Info message while still running */}
+                        {running && domainResult.best_success && (
+                          <Alert
+                            severity="info"
+                            sx={{
+                              borderRadius: 0,
+                              bgcolor: colors.accent.secondary,
+                              "& .MuiAlert-icon": { color: colors.secondary },
+                              borderBottom: `1px solid ${colors.border.default}`,
+                            }}
+                          >
+                            Found a working configuration! Still testing{" "}
+                            {suite ? suite.total_checks - totalCount : "..."}{" "}
+                            more configs — a faster option may be found.
+                          </Alert>
+                        )}
                       </Box>
                     )}
 
@@ -788,13 +837,36 @@ export const DiscoveryRunner: React.FC = () => {
                     </Collapse>
 
                     {/* Failed state */}
-                    {!domainResult.best_success && (
+                    {!domainResult.best_success && !running && (
                       <Box sx={{ p: 3 }}>
                         <Alert severity="error">
                           All {Object.keys(domainResult.results).length} tested
                           configurations failed for this domain. Check your
                           network connection and domain accessibility.
                         </Alert>
+                      </Box>
+                    )}
+                    {!domainResult.best_success && running && (
+                      <Box sx={{ p: 2, bgcolor: colors.background.default }}>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            color: colors.text.secondary,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 1,
+                          }}
+                        >
+                          <CircularProgress
+                            size={14}
+                            sx={{ color: colors.text.secondary }}
+                          />
+                          {suite && suite.total_checks > totalCount
+                            ? `${
+                                suite.total_checks - totalCount
+                              } more configurations to test...`
+                            : "Testing configurations..."}
+                        </Typography>
                       </Box>
                     )}
                   </Paper>
