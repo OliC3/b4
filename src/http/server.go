@@ -35,7 +35,7 @@ func StartServer(cfg *config.Config, pool *nfq.Pool) (*stdhttp.Server, error) {
 	var httpHandler stdhttp.Handler = mux
 	httpHandler = cors(httpHandler)
 
-	addr := fmt.Sprintf(":%d", cfg.System.WebServer.Port)
+	addr := fmt.Sprintf("0.0.0.0:%d", cfg.System.WebServer.Port)
 	log.Infof("Starting web server on %s", addr)
 
 	metrics := handler.GetMetricsCollector()

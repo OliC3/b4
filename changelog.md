@@ -1,5 +1,9 @@
 # B4 - Bye Bye Big Bro
 
+## [1.19.1] - 2025-12-01
+
+- FIXED: Web panel inaccessible on some routers due to IPv6-only socket binding.
+
 ## [1.19.0] - 2025-11-29
 
 - ADDED: Filter for configuration sets - search by `name`, `SNI` domains, `geosite` categories, or `geoip` categories.
