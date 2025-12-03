@@ -24,8 +24,12 @@ func BuildFakeSNIPacketV6(original []byte, cfg *config.SetConfig) []byte {
 		rand.Read(fakePayload)
 	case config.FakePayloadCustom:
 		fakePayload = []byte(cfg.Faking.CustomPayload)
+	case config.FakePayloadDefault1:
+		fakePayload = FakeSNI1
+	case config.FakePayloadDefault2:
+		fakePayload = FakeSNI2
 	default:
-		fakePayload = FakeSNI
+		fakePayload = FakeSNI1
 	}
 
 	fakeLen := ipv6HdrLen + tcpHdrLen + len(fakePayload)

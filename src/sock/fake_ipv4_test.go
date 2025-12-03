@@ -23,10 +23,10 @@ func TestBuildFakeSNIPacketV4_NotIPv4(t *testing.T) {
 	}
 }
 
-func TestBuildFakeSNIPacketV4_DefaultPayload(t *testing.T) {
+func TestBuildFakeSNIPacketV4_DefaultPayload1(t *testing.T) {
 	pkt := buildMinimalIPv4TCPPacket(100)
 	cfg := &config.SetConfig{}
-	cfg.Faking.SNIType = config.FakePayloadDefault
+	cfg.Faking.SNIType = config.FakePayloadDefault1
 
 	result := BuildFakeSNIPacketV4(pkt, cfg)
 	if result == nil {
@@ -34,7 +34,23 @@ func TestBuildFakeSNIPacketV4_DefaultPayload(t *testing.T) {
 	}
 
 	// Should contain FakeSNI payload
-	if len(result) < 40+len(FakeSNI) {
+	if len(result) < 40+len(FakeSNI1) {
+		t.Errorf("result too short: %d", len(result))
+	}
+}
+
+func TestBuildFakeSNIPacketV4_DefaultPayload2(t *testing.T) {
+	pkt := buildMinimalIPv4TCPPacket(100)
+	cfg := &config.SetConfig{}
+	cfg.Faking.SNIType = config.FakePayloadDefault2
+
+	result := BuildFakeSNIPacketV4(pkt, cfg)
+	if result == nil {
+		t.Fatal("expected non-nil result")
+	}
+
+	// Should contain FakeSNI payload
+	if len(result) < 40+len(FakeSNI2) {
 		t.Errorf("result too short: %d", len(result))
 	}
 }

@@ -29,12 +29,22 @@ const (
 	FailureUnknown      FailureMode = "unknown"
 )
 
+type PayloadTestResult struct {
+	Payload int
+	Works   bool
+	Speed   float64
+}
+
 type DiscoverySuite struct {
 	*CheckSuite
 	pool           *nfq.Pool
 	originalConfig *config.Config
 	domain         string
 	domainResult   *DomainDiscoveryResult
+
+	// Detected working payload(s)
+	workingPayloads []PayloadTestResult
+	bestPayload     int
 }
 
 func NewDiscoverySuite(checkConfig CheckConfig, pool *nfq.Pool, domain string) *DiscoverySuite {
@@ -46,6 +56,8 @@ func NewDiscoverySuite(checkConfig CheckConfig, pool *nfq.Pool, domain string) *
 			Domain:  domain,
 			Results: make(map[string]*DomainPresetResult),
 		},
+		workingPayloads: []PayloadTestResult{},
+		bestPayload:     config.FakePayloadDefault1, // default
 	}
 }
 
@@ -194,8 +206,11 @@ func (ds *DiscoverySuite) runPhase1(presets []ConfigPreset) ([]StrategyFamily, f
 
 	log.Infof("  Baseline: FAILED - DPI bypass needed, testing strategies")
 
-	// Get non-baseline presets
-	strategyPresets := presets[1:]
+	// Test payload variants early (proven-combo and proven-combo-alt)
+	ds.detectWorkingPayloads(presets)
+
+	// Get non-baseline presets (skip baseline and the two proven-combo variants we already tested)
+	strategyPresets := ds.filterTestedPresets(presets)
 
 	baselineFailureMode := analyzeFailure(baselineResult)
 	suggestedFamilies := suggestFamiliesForFailure(baselineFailureMode)
@@ -205,7 +220,7 @@ func (ds *DiscoverySuite) runPhase1(presets []ConfigPreset) ([]StrategyFamily, f
 		log.Infof("  Failure mode: %s - prioritizing: %v", baselineFailureMode, suggestedFamilies)
 	}
 
-	// Test each strategy - no more [1:] here!
+	// Test each strategy with the best detected payload
 	for _, preset := range strategyPresets {
 		select {
 		case <-ds.cancel:
@@ -213,7 +228,7 @@ func (ds *DiscoverySuite) runPhase1(presets []ConfigPreset) ([]StrategyFamily, f
 		default:
 		}
 
-		result := ds.testPreset(preset)
+		result := ds.testPresetWithBestPayload(preset)
 		ds.storeResult(preset, result)
 
 		if result.Status == CheckStatusComplete {
@@ -230,6 +245,185 @@ func (ds *DiscoverySuite) runPhase1(presets []ConfigPreset) ([]StrategyFamily, f
 	}
 
 	return workingFamilies, baselineSpeed, false
+}
+
+// detectWorkingPayloads tests both payload types and determines which work
+func (ds *DiscoverySuite) detectWorkingPayloads(presets []ConfigPreset) {
+	log.Infof("  Testing payload variants...")
+
+	// Find proven-combo and proven-combo-alt presets
+	var payload1Preset, payload2Preset *ConfigPreset
+	for i := range presets {
+		if presets[i].Name == "proven-combo" {
+			payload1Preset = &presets[i]
+		}
+		if presets[i].Name == "proven-combo-alt" {
+			payload2Preset = &presets[i]
+		}
+	}
+
+	// Test payload 1 (if not already tested)
+	if payload1Preset != nil {
+		if _, exists := ds.domainResult.Results["proven-combo"]; !exists {
+			result1 := ds.testPreset(*payload1Preset)
+			ds.storeResult(*payload1Preset, result1)
+
+			ds.workingPayloads = append(ds.workingPayloads, PayloadTestResult{
+				Payload: config.FakePayloadDefault1,
+				Works:   result1.Status == CheckStatusComplete,
+				Speed:   result1.Speed,
+			})
+
+			if result1.Status == CheckStatusComplete {
+				log.Infof("    Payload 1 (google): SUCCESS (%.2f KB/s)", result1.Speed/1024)
+			} else {
+				log.Infof("    Payload 1 (google): FAILED")
+			}
+		}
+	}
+
+	// Test payload 2
+	if payload2Preset != nil {
+		if _, exists := ds.domainResult.Results["proven-combo-alt"]; !exists {
+			result2 := ds.testPreset(*payload2Preset)
+			ds.storeResult(*payload2Preset, result2)
+
+			ds.workingPayloads = append(ds.workingPayloads, PayloadTestResult{
+				Payload: config.FakePayloadDefault2,
+				Works:   result2.Status == CheckStatusComplete,
+				Speed:   result2.Speed,
+			})
+
+			if result2.Status == CheckStatusComplete {
+				log.Infof("    Payload 2 (duckduckgo): SUCCESS (%.2f KB/s)", result2.Speed/1024)
+			} else {
+				log.Infof("    Payload 2 (duckduckgo): FAILED")
+			}
+		}
+	}
+
+	// Determine best payload
+	ds.selectBestPayload()
+}
+
+// selectBestPayload chooses the best payload based on test results
+func (ds *DiscoverySuite) selectBestPayload() {
+	var bestSpeed float64
+	ds.bestPayload = config.FakePayloadDefault1 // default fallback
+
+	workingCount := 0
+	for _, pr := range ds.workingPayloads {
+		if pr.Works {
+			workingCount++
+			if pr.Speed > bestSpeed {
+				bestSpeed = pr.Speed
+				ds.bestPayload = pr.Payload
+			}
+		}
+	}
+
+	switch workingCount {
+	case 0:
+		log.Infof("  Neither payload worked in baseline - will test both during discovery")
+	case 1:
+		payloadName := "google"
+		if ds.bestPayload == config.FakePayloadDefault2 {
+			payloadName = "duckduckgo"
+		}
+		log.Infof("  Selected payload: %s (only one works)", payloadName)
+	case 2:
+		payloadName := "google"
+		if ds.bestPayload == config.FakePayloadDefault2 {
+			payloadName = "duckduckgo"
+		}
+		log.Infof("  Selected payload: %s (faster of both working)", payloadName)
+	}
+}
+
+// filterTestedPresets removes presets we've already tested
+func (ds *DiscoverySuite) filterTestedPresets(presets []ConfigPreset) []ConfigPreset {
+	filtered := []ConfigPreset{}
+	for _, p := range presets {
+		if p.Name == "no-bypass" || p.Name == "proven-combo" || p.Name == "proven-combo-alt" {
+			continue
+		}
+		filtered = append(filtered, p)
+	}
+	return filtered
+}
+
+// testPresetWithBestPayload tests a preset using the detected best payload
+func (ds *DiscoverySuite) testPresetWithBestPayload(preset ConfigPreset) CheckResult {
+
+	defer func() {
+		ds.CheckSuite.mu.Lock()
+		ds.CompletedChecks++
+		ds.CheckSuite.mu.Unlock()
+	}()
+
+	// If we have a clearly working payload, use it
+	hasWorkingPayload := false
+	for _, pr := range ds.workingPayloads {
+		if pr.Works {
+			hasWorkingPayload = true
+			break
+		}
+	}
+
+	if hasWorkingPayload {
+		// Use the best payload
+		return ds.testPresetWithPayload(preset, ds.bestPayload)
+	}
+
+	// Neither payload worked in baseline - test both and return best
+	result1 := ds.testPresetWithPayload(preset, config.FakePayloadDefault1)
+	if result1.Status == CheckStatusComplete {
+		// Payload 1 works for this strategy - update our knowledge
+		ds.updatePayloadKnowledge(config.FakePayloadDefault1, result1.Speed)
+		return result1
+	}
+
+	result2 := ds.testPresetWithPayload(preset, config.FakePayloadDefault2)
+	if result2.Status == CheckStatusComplete {
+		// Payload 2 works for this strategy - update our knowledge
+		ds.updatePayloadKnowledge(config.FakePayloadDefault2, result2.Speed)
+		return result2
+	}
+
+	// Neither worked
+	return result1
+}
+
+// testPresetWithPayload tests a specific preset with a specific payload type
+func (ds *DiscoverySuite) testPresetWithPayload(preset ConfigPreset, payloadType int) CheckResult {
+	// Override the payload type
+	modifiedPreset := preset
+	modifiedPreset.Config.Faking.SNIType = payloadType
+
+	return ds.testPresetInternal(modifiedPreset)
+}
+
+// updatePayloadKnowledge updates our knowledge about working payloads
+func (ds *DiscoverySuite) updatePayloadKnowledge(payload int, speed float64) {
+	// Check if we already have this payload recorded
+	for i, pr := range ds.workingPayloads {
+		if pr.Payload == payload {
+			if !pr.Works || speed > pr.Speed {
+				ds.workingPayloads[i].Works = true
+				ds.workingPayloads[i].Speed = speed
+			}
+			ds.selectBestPayload()
+			return
+		}
+	}
+
+	// Add new payload knowledge
+	ds.workingPayloads = append(ds.workingPayloads, PayloadTestResult{
+		Payload: payload,
+		Works:   true,
+		Speed:   speed,
+	})
+	ds.selectBestPayload()
 }
 
 func (ds *DiscoverySuite) runPhase2(families []StrategyFamily) map[StrategyFamily]ConfigPreset {
@@ -276,7 +470,7 @@ func (ds *DiscoverySuite) runPhase2(families []StrategyFamily) map[StrategyFamil
 				break
 			}
 
-			result := ds.testPreset(preset)
+			result := ds.testPresetWithBestPayload(preset)
 			ds.storeResult(preset, result)
 
 			if result.Status == CheckStatusComplete {
@@ -284,6 +478,8 @@ func (ds *DiscoverySuite) runPhase2(families []StrategyFamily) map[StrategyFamil
 				if result.Speed > bestSpeed {
 					bestSpeed = result.Speed
 					bestPreset = preset
+					// Store with best payload
+					bestPreset.Config.Faking.SNIType = ds.bestPayload
 				}
 				log.Tracef("    %s: %.2f KB/s", preset.Name, result.Speed/1024)
 			}
@@ -317,7 +513,7 @@ func (ds *DiscoverySuite) runPhase3(workingFamilies []StrategyFamily, bestParams
 		default:
 		}
 
-		result := ds.testPreset(preset)
+		result := ds.testPresetWithBestPayload(preset)
 		ds.storeResult(preset, result)
 
 		if result.Status == CheckStatusComplete {
@@ -328,7 +524,7 @@ func (ds *DiscoverySuite) runPhase3(workingFamilies []StrategyFamily, bestParams
 	}
 }
 
-func (ds *DiscoverySuite) testPreset(preset ConfigPreset) CheckResult {
+func (ds *DiscoverySuite) testPresetInternal(preset ConfigPreset) CheckResult {
 	testConfig := ds.buildTestConfig(preset)
 
 	if err := ds.pool.UpdateConfig(testConfig); err != nil {
@@ -348,6 +544,12 @@ func (ds *DiscoverySuite) testPreset(preset ConfigPreset) CheckResult {
 	}
 
 	result.Set = testConfig.MainSet
+
+	return result
+}
+
+func (ds *DiscoverySuite) testPreset(preset ConfigPreset) CheckResult {
+	result := ds.testPresetInternal(preset)
 
 	ds.CheckSuite.mu.Lock()
 	ds.CompletedChecks++
@@ -530,6 +732,19 @@ func (ds *DiscoverySuite) logDiscoverySummary() {
 
 	log.Infof("\n=== Discovery Results for %s ===", ds.domain)
 
+	// Log payload detection results
+	for _, pr := range ds.workingPayloads {
+		payloadName := "google"
+		if pr.Payload == config.FakePayloadDefault2 {
+			payloadName = "duckduckgo"
+		}
+		status := "FAILED"
+		if pr.Works {
+			status = fmt.Sprintf("SUCCESS (%.2f KB/s)", pr.Speed/1024)
+		}
+		log.Infof("  Payload %s: %s", payloadName, status)
+	}
+
 	if ds.domainResult.BestSuccess {
 		improvement := ""
 		if ds.domainResult.Improvement > 0 {
@@ -579,7 +794,7 @@ func (ds *DiscoverySuite) runExtendedSearch() []StrategyFamily {
 			default:
 			}
 
-			result := ds.testPreset(preset)
+			result := ds.testPresetWithBestPayload(preset)
 			ds.storeResult(preset, result)
 
 			if result.Status == CheckStatusComplete {

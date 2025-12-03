@@ -35,7 +35,8 @@ const FAKE_STRATEGIES = [
 const FAKE_PAYLOAD_TYPES = [
   { value: 0, label: "Random" },
   { value: 1, label: "Custom" },
-  { value: 2, label: "Default" },
+  { value: 2, label: "Preset: Google (classic)" },
+  { value: 3, label: "Preset: DuckDuckGo" },
 ];
 
 const MUTATION_MODES: { value: MutationMode; label: string }[] = [

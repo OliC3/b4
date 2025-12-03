@@ -5,7 +5,8 @@ import "github.com/daniellavrushin/b4/log"
 const (
 	FakePayloadRandom = iota
 	FakePayloadCustom
-	FakePayloadDefault
+	FakePayloadDefault1
+	FakePayloadDefault2
 )
 
 type ApiConfig struct {

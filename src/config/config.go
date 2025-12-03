@@ -65,7 +65,7 @@ var DefaultSetConfig = SetConfig{
 		SNI:           true,
 		TTL:           8,
 		SNISeqLength:  1,
-		SNIType:       FakePayloadDefault,
+		SNIType:       FakePayloadDefault1,
 		CustomPayload: "",
 		Strategy:      "pastseq",
 		SeqOffset:     10000,

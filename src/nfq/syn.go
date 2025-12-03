@@ -12,11 +12,19 @@ import (
 // sendFakeSyn sends a fake SYN packet with payload to confuse DPI systems
 func (w *Worker) sendFakeSyn(set *config.SetConfig, raw []byte, ipHdrLen, tcpHdrLen int) {
 	// Determine fake payload length
-	fakePayloadLen := 0 // No payload by default
+	var fakePayload []byte
+	switch set.Faking.SNIType {
+	case config.FakePayloadDefault2:
+		fakePayload = sock.FakeSNI2
+	default:
+		fakePayload = sock.FakeSNI1
+	}
+
+	fakePayloadLen := 0
 	if set.TCP.SynFakeLen > 0 {
 		fakePayloadLen = set.TCP.SynFakeLen
-		if fakePayloadLen > len(sock.FakeSNI) {
-			fakePayloadLen = len(sock.FakeSNI)
+		if fakePayloadLen > len(fakePayload) {
+			fakePayloadLen = len(fakePayload)
 		}
 	}
 	totalLen := ipHdrLen + tcpHdrLen + fakePayloadLen
@@ -24,7 +32,7 @@ func (w *Worker) sendFakeSyn(set *config.SetConfig, raw []byte, ipHdrLen, tcpHdr
 
 	copy(fakePkt[:ipHdrLen+tcpHdrLen], raw[:ipHdrLen+tcpHdrLen])
 
-	copy(fakePkt[ipHdrLen+tcpHdrLen:], sock.FakeSNI[:fakePayloadLen])
+	copy(fakePkt[ipHdrLen+tcpHdrLen:], fakePayload[:fakePayloadLen])
 
 	binary.BigEndian.PutUint16(fakePkt[2:4], uint16(totalLen))
 
@@ -45,11 +53,19 @@ func (w *Worker) sendFakeSyn(set *config.SetConfig, raw []byte, ipHdrLen, tcpHdr
 
 // sendFakeSynV6 sends a fake SYN packet for IPv6
 func (w *Worker) sendFakeSynV6(set *config.SetConfig, raw []byte, ipHdrLen, tcpHdrLen int) {
-	fakePayloadLen := 0 // No payload by default
+	var fakePayload []byte
+	switch set.Faking.SNIType {
+	case config.FakePayloadDefault2:
+		fakePayload = sock.FakeSNI2
+	default:
+		fakePayload = sock.FakeSNI1
+	}
+
+	fakePayloadLen := 0
 	if set.TCP.SynFakeLen > 0 {
 		fakePayloadLen = set.TCP.SynFakeLen
-		if fakePayloadLen > len(sock.FakeSNI) {
-			fakePayloadLen = len(sock.FakeSNI)
+		if fakePayloadLen > len(fakePayload) {
+			fakePayloadLen = len(fakePayload)
 		}
 	}
 
@@ -58,7 +74,7 @@ func (w *Worker) sendFakeSynV6(set *config.SetConfig, raw []byte, ipHdrLen, tcpH
 
 	copy(fakePkt[:ipHdrLen+tcpHdrLen], raw[:ipHdrLen+tcpHdrLen])
 
-	copy(fakePkt[ipHdrLen+tcpHdrLen:], sock.FakeSNI[:fakePayloadLen])
+	copy(fakePkt[ipHdrLen+tcpHdrLen:], fakePayload[:fakePayloadLen])
 
 	payloadLen := tcpHdrLen + fakePayloadLen
 	binary.BigEndian.PutUint16(fakePkt[4:6], uint16(payloadLen))

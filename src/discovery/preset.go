@@ -54,7 +54,44 @@ func GetPhase1Presets() []ConfigPreset {
 					Strategy:     "pastseq",
 					SeqOffset:    10000,
 					SNISeqLength: 1,
-					SNIType:      config.FakePayloadDefault,
+					SNIType:      config.FakePayloadDefault1,
+				},
+			},
+		},
+
+		// 1b. Proven config with alternate payload
+		{
+			Name:        "proven-combo-alt",
+			Description: "Proven combination with alternate fake payload",
+			Family:      FamilyNone,
+			Phase:       PhaseBaseline,
+			Priority:    1,
+			Config: config.SetConfig{
+				TCP: config.TCPConfig{
+					ConnBytesLimit: 19,
+				},
+				UDP: config.UDPConfig{
+					Mode:           "fake",
+					FakeSeqLength:  6,
+					FakeLen:        64,
+					FakingStrategy: "none",
+					FilterQUIC:     "disabled",
+					FilterSTUN:     true,
+					ConnBytesLimit: 8,
+				},
+				Fragmentation: config.FragmentationConfig{
+					Strategy:     "tcp",
+					ReverseOrder: true,
+					MiddleSNI:    true,
+					SNIPosition:  1,
+				},
+				Faking: config.FakingConfig{
+					SNI:          true,
+					TTL:          8,
+					Strategy:     "pastseq",
+					SeqOffset:    10000,
+					SNISeqLength: 1,
+					SNIType:      config.FakePayloadDefault2,
 				},
 			},
 		},
@@ -81,7 +118,7 @@ func GetPhase1Presets() []ConfigPreset {
 					Strategy:     "pastseq",
 					SeqOffset:    10000,
 					SNISeqLength: 1,
-					SNIType:      config.FakePayloadDefault,
+					SNIType:      config.FakePayloadDefault1,
 				},
 			},
 		},
@@ -109,7 +146,7 @@ func GetPhase1Presets() []ConfigPreset {
 					Strategy:     "pastseq",
 					SeqOffset:    10000,
 					SNISeqLength: 1,
-					SNIType:      config.FakePayloadDefault,
+					SNIType:      config.FakePayloadDefault1,
 				},
 			},
 		},
@@ -136,7 +173,7 @@ func GetPhase1Presets() []ConfigPreset {
 					Strategy:     "pastseq",
 					SeqOffset:    10000,
 					SNISeqLength: 1,
-					SNIType:      config.FakePayloadDefault,
+					SNIType:      config.FakePayloadDefault1,
 				},
 			},
 		},
@@ -164,7 +201,7 @@ func GetPhase1Presets() []ConfigPreset {
 					Strategy:     "pastseq",
 					SeqOffset:    10000,
 					SNISeqLength: 1,
-					SNIType:      config.FakePayloadDefault,
+					SNIType:      config.FakePayloadDefault1,
 				},
 			},
 		},
@@ -189,7 +226,7 @@ func GetPhase1Presets() []ConfigPreset {
 					TTL:          3,
 					Strategy:     "ttl",
 					SNISeqLength: 1,
-					SNIType:      config.FakePayloadDefault,
+					SNIType:      config.FakePayloadDefault1,
 				},
 			},
 		},
@@ -218,10 +255,12 @@ func GetPhase1Presets() []ConfigPreset {
 					Strategy:     "pastseq",
 					SeqOffset:    10000,
 					SNISeqLength: 1,
-					SNIType:      config.FakePayloadDefault,
+					SNIType:      config.FakePayloadDefault1,
 				},
 			},
 		},
+
+		// 8. Desync RST + Frag
 		{
 			Name:        "desync-rst-frag",
 			Description: "TCP desync RST attack with fragmentation",
@@ -247,7 +286,7 @@ func GetPhase1Presets() []ConfigPreset {
 					Strategy:     "pastseq",
 					SeqOffset:    10000,
 					SNISeqLength: 1,
-					SNIType:      config.FakePayloadDefault,
+					SNIType:      config.FakePayloadDefault1,
 				},
 			},
 		},
@@ -279,7 +318,7 @@ func GetPhase1Presets() []ConfigPreset {
 					Strategy:     "pastseq",
 					SeqOffset:    10000,
 					SNISeqLength: 2,
-					SNIType:      config.FakePayloadDefault,
+					SNIType:      config.FakePayloadDefault1,
 				},
 			},
 		},
@@ -309,7 +348,7 @@ func GetPhase1Presets() []ConfigPreset {
 					Strategy:     "pastseq",
 					SeqOffset:    10000,
 					SNISeqLength: 1,
-					SNIType:      config.FakePayloadDefault,
+					SNIType:      config.FakePayloadDefault1,
 				},
 			},
 		},
@@ -339,7 +378,7 @@ func GetPhase1Presets() []ConfigPreset {
 					Strategy:     "pastseq",
 					SeqOffset:    10000,
 					SNISeqLength: 1,
-					SNIType:      config.FakePayloadDefault,
+					SNIType:      config.FakePayloadDefault1,
 				},
 			},
 		},
@@ -366,7 +405,7 @@ func GetPhase1Presets() []ConfigPreset {
 					TTL:          1,
 					Strategy:     "ttl",
 					SNISeqLength: 3,
-					SNIType:      config.FakePayloadDefault,
+					SNIType:      config.FakePayloadDefault1,
 				},
 			},
 		},
@@ -398,7 +437,7 @@ func GetPhase1Presets() []ConfigPreset {
 					Strategy:     "pastseq",
 					SeqOffset:    50000,
 					SNISeqLength: 3,
-					SNIType:      config.FakePayloadDefault,
+					SNIType:      config.FakePayloadDefault1,
 				},
 			},
 		},
@@ -513,7 +552,7 @@ func GetPhase2Presets(family StrategyFamily) []ConfigPreset {
 					TTL:          ttl,
 					Strategy:     "ttl",
 					SNISeqLength: 1,
-					SNIType:      config.FakePayloadDefault,
+					SNIType:      config.FakePayloadDefault1,
 				}),
 			})
 		}
@@ -532,7 +571,7 @@ func GetPhase2Presets(family StrategyFamily) []ConfigPreset {
 					Strategy:     "pastseq",
 					SeqOffset:    10000,
 					SNISeqLength: sl,
-					SNIType:      config.FakePayloadDefault,
+					SNIType:      config.FakePayloadDefault1,
 				}),
 			})
 		}
@@ -551,7 +590,32 @@ func GetPhase2Presets(family StrategyFamily) []ConfigPreset {
 					Strategy:     strat,
 					SeqOffset:    10000,
 					SNISeqLength: 1,
-					SNIType:      config.FakePayloadDefault,
+					SNIType:      config.FakePayloadDefault1,
+				}),
+			})
+		}
+
+		// Payload type variations
+		payloadTypes := []struct {
+			name    string
+			sniType int
+		}{
+			{"payload1", config.FakePayloadDefault1},
+			{"payload2", config.FakePayloadDefault2},
+		}
+		for _, pt := range payloadTypes {
+			presets = append(presets, ConfigPreset{
+				Name:     formatName("fake-%s", pt.name),
+				Family:   FamilyFakeSNI,
+				Phase:    PhaseOptimize,
+				Priority: 30 + pt.sniType,
+				Config: withFaking(base, config.FakingConfig{
+					SNI:          true,
+					TTL:          8,
+					Strategy:     "pastseq",
+					SeqOffset:    10000,
+					SNISeqLength: 1,
+					SNIType:      pt.sniType,
 				}),
 			})
 		}
@@ -771,7 +835,7 @@ func GetCombinationPresets(workingFamilies []StrategyFamily, bestParams map[Stra
 				Strategy:     "pastseq",
 				SeqOffset:    50000,
 				SNISeqLength: 3,
-				SNIType:      config.FakePayloadDefault,
+				SNIType:      config.FakePayloadDefault1,
 			},
 		}
 

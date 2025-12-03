@@ -48,7 +48,7 @@ func (c *Config) BindFlags(cmd *cobra.Command) {
 	cmd.Flags().Int32Var(&c.MainSet.Faking.SeqOffset, "fake-seq-offset", c.MainSet.Faking.SeqOffset, "Sequence offset for fake packets")
 	cmd.Flags().BoolVar(&c.MainSet.Faking.SNI, "fake-sni", c.MainSet.Faking.SNI, "Enable fake SNI packets")
 	cmd.Flags().IntVar(&c.MainSet.Faking.SNISeqLength, "fake-sni-len", c.MainSet.Faking.SNISeqLength, "Length of fake SNI sequence")
-	cmd.Flags().IntVar(&c.MainSet.Faking.SNIType, "fake-sni-type", c.MainSet.Faking.SNIType, "Type of fake SNI payload (0=random, 1=custom, 2=default)")
+	cmd.Flags().IntVar(&c.MainSet.Faking.SNIType, "fake-sni-type", c.MainSet.Faking.SNIType, "Type of fake SNI payload (0=random, 1=custom, 2=custom1, 3=custom_type2)")
 
 	// Targets filtering
 	cmd.Flags().StringSliceVar(&c.MainSet.Targets.SNIDomains, "sni-domains", c.MainSet.Targets.SNIDomains, "List of SNI domains to match")
