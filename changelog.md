@@ -1,5 +1,14 @@
 # B4 - Bye Bye Big Bro
 
+## [1.2x.x] - 2025-12-xx
+
+- FIXED: `Discovery` service marking domains as "Success" when DPI allowed initial connection but throttled/blocked mid-transfer (e.g., HTML loads but fonts/resources stall).
+- FIXED: `Discovery` fingerprinting phase bypassing actual download verification - would return "no DPI" based on HTTP 200 alone without testing sustained transfer.
+- ADDED: `Discovery` stall detection - fails if no download progress for 2 seconds (catches mid-stream DPI blocking).
+- ADDED: Configurable reference domain for discovery baseline (Settings → Testing → Reference Domain, default: `max.ru`).
+- ADDED: Discovery network baseline measurement - tests reference domain first to determine actual network speed, then requires target domain to achieve at least 30% of baseline.
+- IMPROVED: `Discovery` success criteria now requires minimum 4KB downloaded AND reasonable speed relative to network capability.
+
 ## [1.20.1] - 2025-12-03
 
 - FIXED: IPv4 UDP fragmentation using incorrect fragment offset encoding (wrong bit shifts corrupted offset field).

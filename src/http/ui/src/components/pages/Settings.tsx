@@ -33,7 +33,7 @@ import { CaptureSettings } from "@organisms/settings/Capture";
 import { NetworkSettings } from "@organisms/settings/Network";
 import { LoggingSettings } from "@organisms/settings/Logging";
 import { FeatureSettings } from "@organisms/settings/Feature";
-import { CheckerSettings } from "@/components/organisms/settings/Checker";
+import { CheckerSettings } from "@/components/organisms/settings/Discovery";
 import { ControlSettings } from "@organisms/settings/Control";
 import { GeoSettings } from "@organisms/settings/Geo";
 import { ApiSettings } from "@organisms/settings/Api";

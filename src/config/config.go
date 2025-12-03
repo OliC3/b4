@@ -127,9 +127,10 @@ var DefaultConfig = Config{
 			Syslog:     false,
 		},
 
-		Checker: CheckerConfig{
+		Checker: DiscoveryConfig{
 			DiscoveryTimeoutSec: 5,
 			ConfigPropagateMs:   1500,
+			ReferenceDomain:     "max.ru",
 		},
 		API: ApiConfig{
 			IPInfoToken: "",

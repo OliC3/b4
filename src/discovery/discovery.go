@@ -19,7 +19,8 @@ import (
 type FailureMode string
 
 const (
-	QUICK_FAIL_TIMEOUT = 1500 * time.Millisecond
+	MIN_BYTES_FOR_SUCCESS = 4 * 1024   // At least 4KB downloaded
+	MIN_SPEED_FOR_SUCCESS = 100 * 1024 // At least 100 KB/s
 )
 
 const (
@@ -30,28 +31,32 @@ const (
 )
 
 type PayloadTestResult struct {
+	Speed   float64
 	Payload int
 	Works   bool
-	Speed   float64
 }
 
 type DiscoverySuite struct {
 	*CheckSuite
+	networkBaseline float64
+
 	pool           *nfq.Pool
 	originalConfig *config.Config
 	domain         string
 	domainResult   *DomainDiscoveryResult
+	settings       *config.DiscoveryConfig
 
 	// Detected working payload(s)
 	workingPayloads []PayloadTestResult
 	bestPayload     int
 }
 
-func NewDiscoverySuite(checkConfig CheckConfig, pool *nfq.Pool, domain string) *DiscoverySuite {
+func NewDiscoverySuite(checkURL string, settings *config.DiscoveryConfig, pool *nfq.Pool, domain string) *DiscoverySuite {
 	return &DiscoverySuite{
-		CheckSuite: NewCheckSuite(checkConfig),
+		CheckSuite: NewCheckSuite(checkURL),
 		pool:       pool,
 		domain:     domain,
+		settings:   settings,
 		domainResult: &DomainDiscoveryResult{
 			Domain:  domain,
 			Results: make(map[string]*DomainPresetResult),
@@ -84,6 +89,9 @@ func (ds *DiscoverySuite) RunDiscovery() {
 		return
 	}
 
+	// Measure network baseline before any testing
+	ds.networkBaseline = ds.measureNetworkBaseline()
+
 	log.Infof("Starting discovery for domain: %s", ds.domain)
 
 	ds.setPhase(PhaseFingerprint)
@@ -91,12 +99,28 @@ func (ds *DiscoverySuite) RunDiscovery() {
 	ds.domainResult.Fingerprint = fingerprint
 
 	if fingerprint != nil && fingerprint.Type == DPITypeNone {
-		log.Infof("No DPI detected for %s - skipping bypass discovery", ds.domain)
-		ds.domainResult.BestPreset = "no-bypass"
-		ds.domainResult.BestSuccess = true
-		ds.restoreConfig()
-		ds.finalize()
-		return
+		log.Infof("Fingerprint suggests no DPI for %s - verifying with download test", ds.domain)
+
+		baselinePreset := GetPhase1Presets()[0] // no-bypass preset
+		baselineResult := ds.testPreset(baselinePreset)
+		ds.storeResult(baselinePreset, baselineResult)
+
+		if baselineResult.Status == CheckStatusComplete {
+			log.Infof("Verified: no DPI detected for %s (%.2f KB/s)", ds.domain, baselineResult.Speed/1024)
+			ds.domainResult.BestPreset = "no-bypass"
+			ds.domainResult.BestSpeed = baselineResult.Speed
+			ds.domainResult.BestSuccess = true
+			ds.restoreConfig()
+			ds.finalize()
+			return
+		}
+
+		// Fingerprint was wrong - DPI detected during transfer
+		log.Warnf("Fingerprint said no DPI but download failed: %s - continuing discovery", baselineResult.Error)
+		// Update fingerprint to reflect reality
+		fingerprint.Type = DPITypeUnknown
+		fingerprint.BlockingMethod = BlockingTimeout
+		ds.domainResult.Fingerprint = fingerprint
 	}
 
 	phase1Presets := GetPhase1Presets()
@@ -173,7 +197,7 @@ func (ds *DiscoverySuite) RunDiscovery() {
 func (ds *DiscoverySuite) runFingerprinting() *DPIFingerprint {
 	log.Infof("Phase 0: DPI Fingerprinting for %s", ds.domain)
 
-	prober := NewDPIProber(ds.domain, ds.Config.Timeout)
+	prober := NewDPIProber(ds.domain, time.Duration(ds.settings.DiscoveryTimeoutSec)*time.Second)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -536,13 +560,9 @@ func (ds *DiscoverySuite) testPresetInternal(preset ConfigPreset) CheckResult {
 		}
 	}
 
-	time.Sleep(time.Duration(ds.Config.ConfigPropagateTimeout) * time.Millisecond)
+	time.Sleep(time.Duration(ds.settings.ConfigPropagateMs) * time.Millisecond)
 
-	result := ds.fetchWithTimeout(QUICK_FAIL_TIMEOUT)
-	if result.Status == CheckStatusFailed && result.BytesRead == 0 {
-		result = ds.fetchWithTimeout(ds.Config.Timeout)
-	}
-
+	result := ds.fetchWithTimeout(time.Duration(ds.settings.DiscoveryTimeoutSec) * time.Second)
 	result.Set = testConfig.MainSet
 
 	return result
@@ -602,22 +622,82 @@ func (ds *DiscoverySuite) fetchWithTimeout(timeout time.Duration) CheckResult {
 	defer resp.Body.Close()
 
 	result.StatusCode = resp.StatusCode
-	bytesRead, _ := io.CopyN(io.Discard, resp.Body, 100*1024)
-	duration := time.Since(start)
 
+	// Read in chunks to detect mid-transfer blocking
+	buf := make([]byte, 16*1024)
+	var bytesRead int64
+	lastProgress := time.Now()
+
+	for bytesRead < 100*1024 {
+		select {
+		case <-ctx.Done():
+			result.Duration = time.Since(start)
+			result.BytesRead = bytesRead
+			// Check if we got enough before timeout
+			if bytesRead >= MIN_BYTES_FOR_SUCCESS {
+				result.Status = CheckStatusComplete
+				if result.Duration.Seconds() > 0 {
+					result.Speed = float64(bytesRead) / result.Duration.Seconds()
+				}
+			} else {
+				result.Status = CheckStatusFailed
+				result.Error = fmt.Sprintf("timeout after %d bytes (need %d)", bytesRead, MIN_BYTES_FOR_SUCCESS)
+			}
+			return result
+		default:
+		}
+
+		n, err := resp.Body.Read(buf)
+		if n > 0 {
+			bytesRead += int64(n)
+			lastProgress = time.Now()
+		}
+
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			// Connection died mid-transfer
+			result.Status = CheckStatusFailed
+			result.Error = fmt.Sprintf("read error after %d bytes: %v", bytesRead, err)
+			result.Duration = time.Since(start)
+			result.BytesRead = bytesRead
+			return result
+		}
+
+		// Detect stall (no progress for 2 seconds)
+		if time.Since(lastProgress) > 2*time.Second {
+			result.Status = CheckStatusFailed
+			result.Error = fmt.Sprintf("stalled after %d bytes", bytesRead)
+			result.Duration = time.Since(start)
+			result.BytesRead = bytesRead
+			return result
+		}
+	}
+
+	duration := time.Since(start)
 	result.Duration = duration
 	result.BytesRead = bytesRead
 
-	if bytesRead > 0 {
-		result.Status = CheckStatusComplete
-		if duration.Seconds() > 0 {
-			result.Speed = float64(bytesRead) / duration.Seconds()
-		}
-	} else {
+	// Stricter success criteria
+	if bytesRead < MIN_BYTES_FOR_SUCCESS {
 		result.Status = CheckStatusFailed
-		result.Error = "no data received"
+		result.Error = fmt.Sprintf("insufficient data: %d bytes (need %d)", bytesRead, MIN_BYTES_FOR_SUCCESS)
+		return result
 	}
 
+	if duration.Seconds() > 0 {
+		result.Speed = float64(bytesRead) / duration.Seconds()
+	}
+
+	// Speed check - if too slow, DPI might be throttling
+	if result.Speed < MIN_SPEED_FOR_SUCCESS {
+		result.Status = CheckStatusFailed
+		result.Error = fmt.Sprintf("too slow: %.0f B/s (need %d B/s)", result.Speed, MIN_SPEED_FOR_SUCCESS)
+		return result
+	}
+
+	result.Status = CheckStatusComplete
 	return result
 }
 
@@ -863,4 +943,56 @@ func reorderByFamilies(presets []ConfigPreset, priority []StrategyFamily) []Conf
 		return false
 	})
 	return presets
+}
+
+func (ds *DiscoverySuite) measureNetworkBaseline() float64 {
+	// Test a known-good domain to establish actual network speed
+	timeout := time.Duration(ds.originalConfig.System.Checker.DiscoveryTimeoutSec) * time.Second
+	referenceDomain := ds.originalConfig.System.Checker.ReferenceDomain
+	if referenceDomain == "" {
+		referenceDomain = "max.ru"
+	}
+
+	log.Infof("Measuring network baseline using %s", referenceDomain)
+
+	testURL := fmt.Sprintf("https://%s/", referenceDomain)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	client := &http.Client{
+		Timeout: timeout,
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			DialContext: (&net.Dialer{
+				Timeout: timeout / 2,
+			}).DialContext,
+		},
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "GET", testURL, nil)
+	if err != nil {
+		log.Warnf("Failed to create baseline request: %v", err)
+		return 0
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0")
+
+	start := time.Now()
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Warnf("Baseline measurement failed: %v", err)
+		return 0
+	}
+	defer resp.Body.Close()
+
+	bytesRead, _ := io.CopyN(io.Discard, resp.Body, 100*1024)
+	duration := time.Since(start)
+
+	if bytesRead == 0 || duration.Seconds() == 0 {
+		return 0
+	}
+
+	speed := float64(bytesRead) / duration.Seconds()
+	log.Infof("Network baseline: %.2f KB/s (%d bytes in %v)", speed/1024, bytesRead, duration)
+
+	return speed
 }

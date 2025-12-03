@@ -107,10 +107,10 @@ export interface QueueConfig {
   ipv6: boolean;
 }
 
-export interface CheckerConfig {
-  domains: string[];
+export interface DiscoveryConfig {
   discovery_timeout: number;
   config_propagate_ms: number;
+  reference_domain: string;
 }
 
 export type WindowMode = "off" | "oscillate" | "zero" | "random" | "escalate";
@@ -153,7 +153,7 @@ export interface SystemConfig {
   logging: LoggingConfig;
   web_server: WebServerConfig;
   tables: TableConfig;
-  checker: CheckerConfig;
+  checker: DiscoveryConfig;
   geo: GeoConfig;
   api: ApiConfig;
 }

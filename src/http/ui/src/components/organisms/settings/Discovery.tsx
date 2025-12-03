@@ -2,6 +2,7 @@ import { Grid } from "@mui/material";
 import { Science as TestIcon } from "@mui/icons-material";
 import SettingSection from "@molecules/common/B4Section";
 import B4Slider from "@atoms/common/B4Slider";
+import B4TextField from "@atoms/common/B4TextField";
 import { B4Config } from "@models/Config";
 
 interface CheckerSettingsProps {
@@ -49,6 +50,17 @@ export const CheckerSettings: React.FC<CheckerSettingsProps> = ({
             step={100}
             valueSuffix=" ms"
             helperText="Delay for config to propagate to workers (increase on slow devices)"
+          />
+        </Grid>
+        <Grid size={{ xs: 12, lg: 6 }}>
+          <B4TextField
+            label="Reference Domain"
+            value={config.system.checker.reference_domain || "max.ru"}
+            onChange={(e) =>
+              onChange("system.checker.reference_domain", e.target.value)
+            }
+            placeholder="max.ru"
+            helperText="Fast domain to measure your network baseline speed"
           />
         </Grid>
       </Grid>

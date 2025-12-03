@@ -93,13 +93,7 @@ func (api *API) handleStartDiscovery(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	config := discovery.CheckConfig{
-		CheckURL:               req.CheckURL,
-		Timeout:                time.Duration(api.cfg.System.Checker.DiscoveryTimeoutSec) * time.Second,
-		ConfigPropagateTimeout: time.Duration(api.cfg.System.Checker.ConfigPropagateMs),
-	}
-
-	suite := discovery.NewDiscoverySuite(config, globalPool, req.Domain)
+	suite := discovery.NewDiscoverySuite(req.CheckURL, &api.cfg.System.Checker, globalPool, req.Domain)
 
 	phase1Count := len(discovery.GetPhase1Presets())
 

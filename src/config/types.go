@@ -95,7 +95,7 @@ type SystemConfig struct {
 	Tables    TablesConfig    `json:"tables" bson:"tables"`
 	Logging   Logging         `json:"logging" bson:"logging"`
 	WebServer WebServerConfig `json:"web_server" bson:"web_server"`
-	Checker   CheckerConfig   `json:"checker" bson:"checker"`
+	Checker   DiscoveryConfig `json:"checker" bson:"checker"`
 	Geo       GeoDatConfig    `json:"geo" bson:"geo"`
 	API       ApiConfig       `json:"api" bson:"api"`
 }
@@ -110,10 +110,11 @@ type WebServerConfig struct {
 	IsEnabled bool `json:"-" bson:"-"`
 }
 
-type CheckerConfig struct {
+type DiscoveryConfig struct {
 	// Discovery settings
-	DiscoveryTimeoutSec int `yaml:"discovery_timeout" json:"discovery_timeout"`
-	ConfigPropagateMs   int `yaml:"config_propagate_ms" json:"config_propagate_ms"`
+	DiscoveryTimeoutSec int    `yaml:"discovery_timeout" json:"discovery_timeout"`
+	ConfigPropagateMs   int    `yaml:"config_propagate_ms" json:"config_propagate_ms"`
+	ReferenceDomain     string `yaml:"reference_domain" json:"reference_domain"`
 }
 
 type Logging struct {

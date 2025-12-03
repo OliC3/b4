@@ -66,17 +66,11 @@ type CheckSuite struct {
 	SuccessfulChecks       int                               `json:"successful_checks"`
 	FailedChecks           int                               `json:"failed_checks"`
 	DomainDiscoveryResults map[string]*DomainDiscoveryResult `json:"domain_discovery_results,omitempty"`
-	Config                 CheckConfig                       `json:"config"`
+	CheckURL               string                            `json:"check_url"`
 	CurrentPhase           DiscoveryPhase                    `json:"current_phase,omitempty"`
 	mu                     sync.RWMutex                      `json:"-"`
 	cancel                 chan struct{}                     `json:"-"`
 	Fingerprint            *DPIFingerprint                   `json:"fingerprint,omitempty"`
-}
-
-type CheckConfig struct {
-	CheckURL               string        `json:"check_url"`
-	Timeout                time.Duration `json:"timeout"`
-	ConfigPropagateTimeout time.Duration `json:"config_propagate_timeout"`
 }
 
 type DomainPresetResult struct {

@@ -12,13 +12,13 @@ var (
 	suitesMu     sync.RWMutex
 )
 
-func NewCheckSuite(config CheckConfig) *CheckSuite {
+func NewCheckSuite(url string) *CheckSuite {
 	return &CheckSuite{
 		Id:        uuid.New().String(),
 		Status:    CheckStatusPending,
 		StartTime: time.Now(),
 		cancel:    make(chan struct{}),
-		Config:    config,
+		CheckURL:  url,
 	}
 }
 
@@ -59,7 +59,7 @@ func (ts *CheckSuite) GetSnapshot() *CheckSuite {
 		CompletedChecks:        ts.CompletedChecks,
 		SuccessfulChecks:       ts.SuccessfulChecks,
 		FailedChecks:           ts.FailedChecks,
-		Config:                 ts.Config,
+		CheckURL:               ts.CheckURL,
 		DomainDiscoveryResults: ts.DomainDiscoveryResults,
 		CurrentPhase:           ts.CurrentPhase,
 	}

@@ -20,6 +20,16 @@ var migrationRegistry = map[int]MigrationFunc{
 	1: migrateV1to2,
 	2: migrateV2to3,
 	3: migrateV3to4,
+	4: migrateV4to5,
+}
+
+// Migration: v4 -> v5 (add reference domain to discovery config)
+func migrateV4to5(c *Config) error {
+	log.Tracef("Migration v4->v5: Adding reference domain to discovery config")
+
+	c.System.Checker.ReferenceDomain = "max.ru"
+
+	return nil
 }
 
 // Migration: v0 -> v1 (add enabled field to sets)
