@@ -127,7 +127,7 @@ export const SetsManager = ({ config, onRefresh }: SetsManagerProps) => {
         drop_sack: false,
         win_mode: "off",
         win_values: [0, 1460, 8192, 65535],
-        desync_mode: "combo",
+        desync_mode: "off",
         desync_ttl: 3,
         desync_count: 3,
       } as B4SetConfig["tcp"],
@@ -140,6 +140,7 @@ export const SetsManager = ({ config, onRefresh }: SetsManagerProps) => {
         filter_quic: "disabled",
         filter_stun: true,
         conn_bytes_limit: 8,
+        seg2delay: 0,
       } as B4SetConfig["udp"],
       fragmentation: {
         strategy: "tcp",
@@ -148,7 +149,7 @@ export const SetsManager = ({ config, onRefresh }: SetsManagerProps) => {
         sni_position: 1,
         oob_position: 0,
         oob_char: 120,
-        tlsrec_pos: 1,
+        tlsrec_pos: 0,
       } as B4SetConfig["fragmentation"],
       faking: {
         sni: true,
@@ -163,7 +164,7 @@ export const SetsManager = ({ config, onRefresh }: SetsManagerProps) => {
           grease_count: 3,
           padding_size: 2048,
           fake_ext_count: 5,
-          fake_snis: [],
+          fake_snis: ["ya.ru", "vk.com", "max.ru"],
         },
       } as B4SetConfig["faking"],
       targets: {
