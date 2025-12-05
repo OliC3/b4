@@ -46,18 +46,20 @@ func (w *Worker) sendOverlapFragments(cfg *config.SetConfig, packet []byte, dst 
 	copy(seg1[:payloadStart], packet[:payloadStart])
 	copy(seg1[payloadStart:], payload[:seg1End])
 
-	// Replace SNI with fake in seg1
-	fakeSNI := []byte("yandex.ru") // Use a definitely-unblocked domain
-	if len(fakeSNI) <= sniEnd-sniStart {
-		// Pad fake SNI to same length
-		paddedFake := make([]byte, sniEnd-sniStart)
-		copy(paddedFake, fakeSNI)
-		for i := len(fakeSNI); i < len(paddedFake); i++ {
-			paddedFake[i] = '.'
+	sniLen := sniEnd - sniStart
+	garbageSNI := make([]byte, sniLen)
+	for i := 0; i < sniLen; i++ {
+		// Mix of null bytes and high bytes that break ASCII hostname parsing
+		switch i % 3 {
+		case 0:
+			garbageSNI[i] = 0x00
+		case 1:
+			garbageSNI[i] = 0xFF
+		default:
+			garbageSNI[i] = 0x01
 		}
-		copy(seg1[payloadStart+sniStart:payloadStart+sniEnd], paddedFake)
 	}
-
+	copy(seg1[payloadStart+sniStart:payloadStart+sniEnd], garbageSNI)
 	binary.BigEndian.PutUint16(seg1[2:4], uint16(seg1Len))
 	seg1[ipHdrLen+13] &^= 0x08 // Clear PSH
 	sock.FixIPv4Checksum(seg1[:ipHdrLen])

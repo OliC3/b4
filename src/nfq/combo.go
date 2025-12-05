@@ -59,26 +59,28 @@ func (w *Worker) sendComboFragments(cfg *config.SetConfig, packet []byte, dst ne
 	segments := make([]segment, 0, len(splits)+1)
 	prevEnd := 0
 
-	for i, split := range splits {
-		if split <= prevEnd || split >= payloadLen {
-			continue
+	for i := range segments {
+		seg := segments[i]
+
+		if i == len(segments)-1 {
+			segIpHdrLen := int((seg.data[0] & 0x0F) * 4)
+			seg.data[segIpHdrLen+13] |= 0x08
+			sock.FixTCPChecksum(seg.data)
 		}
 
-		segLen := payloadStart + (split - prevEnd)
-		seg := make([]byte, segLen)
-		copy(seg[:payloadStart], packet[:payloadStart])
-		copy(seg[payloadStart:], payload[prevEnd:split])
+		_ = w.sock.SendIPv4(seg.data, dst)
 
-		binary.BigEndian.PutUint32(seg[ipHdrLen+4:ipHdrLen+8], seq0+uint32(prevEnd))
-		binary.BigEndian.PutUint16(seg[4:6], id0+uint16(i))
-		binary.BigEndian.PutUint16(seg[2:4], uint16(segLen))
-		seg[ipHdrLen+13] &^= 0x08 // Clear PSH
-
-		sock.FixIPv4Checksum(seg[:ipHdrLen])
-		sock.FixTCPChecksum(seg)
-
-		segments = append(segments, segment{data: seg, seq: seq0 + uint32(prevEnd)})
-		prevEnd = split
+		if i < len(segments)-1 {
+			if i == 0 {
+				delay := cfg.TCP.Seg2Delay
+				if delay < 50 {
+					delay = 100
+				}
+				time.Sleep(time.Duration(delay) * time.Millisecond)
+			} else {
+				time.Sleep(time.Duration(rand.Intn(2000)) * time.Microsecond)
+			}
+		}
 	}
 
 	// Final segment
@@ -91,7 +93,6 @@ func (w *Worker) sendComboFragments(cfg *config.SetConfig, packet []byte, dst ne
 		binary.BigEndian.PutUint32(seg[ipHdrLen+4:ipHdrLen+8], seq0+uint32(prevEnd))
 		binary.BigEndian.PutUint16(seg[4:6], id0+uint16(len(segments)))
 		binary.BigEndian.PutUint16(seg[2:4], uint16(segLen))
-		// Keep PSH on last segment
 
 		sock.FixIPv4Checksum(seg[:ipHdrLen])
 		sock.FixTCPChecksum(seg)
@@ -104,31 +105,29 @@ func (w *Worker) sendComboFragments(cfg *config.SetConfig, packet []byte, dst ne
 		return
 	}
 
-	// Shuffle middle segments, keep edges more stable
 	if len(segments) > 3 {
-		// Shuffle segments[1:len-1]
 		middle := segments[1 : len(segments)-1]
 		rand.Shuffle(len(middle), func(i, j int) {
 			middle[i], middle[j] = middle[j], middle[i]
 		})
 	} else if len(segments) > 1 {
-		// Just reverse for 2-3 segments
 		for i, j := 0, len(segments)-1; i < j; i, j = i+1, j-1 {
 			segments[i], segments[j] = segments[j], segments[i]
 		}
 	}
 
-	// Send with variable delays
 	for i, seg := range segments {
 		_ = w.sock.SendIPv4(seg.data, dst)
 
 		if i < len(segments)-1 {
-			// First segment gets longer delay (firstbyte desync effect)
-			if i == 0 && cfg.TCP.Seg2Delay > 0 {
-				time.Sleep(time.Duration(cfg.TCP.Seg2Delay) * time.Millisecond)
+			if i == 0 {
+				delay := cfg.TCP.Seg2Delay
+				if delay < 50 {
+					delay = 100
+				}
+				time.Sleep(time.Duration(delay) * time.Millisecond)
 			} else {
-				// Small jitter between others
-				time.Sleep(time.Duration(rand.Intn(1000)) * time.Microsecond)
+				time.Sleep(time.Duration(rand.Intn(2000)) * time.Microsecond)
 			}
 		}
 	}
@@ -145,7 +144,6 @@ func uniqueSorted(splits []int, maxVal int) []int {
 		}
 	}
 
-	// Simple sort
 	for i := 0; i < len(result)-1; i++ {
 		for j := i + 1; j < len(result); j++ {
 			if result[j] < result[i] {

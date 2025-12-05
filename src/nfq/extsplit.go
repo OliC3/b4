@@ -100,8 +100,8 @@ func (w *Worker) sendExtSplitFragments(cfg *config.SetConfig, packet []byte, dst
 	payload := packet[payloadStart:]
 	splitPos := findPreSNIExtensionPoint(payload)
 
-	if splitPos <= 0 || splitPos >= payloadLen-10 {
-		// Fallback
+	if splitPos <= 5 || splitPos >= payloadLen-10 {
+		// Fallback - need meaningful split, not at very start
 		w.sendTCPFragments(cfg, packet, dst)
 		return
 	}
