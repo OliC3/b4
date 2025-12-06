@@ -28,23 +28,35 @@ func (w *Worker) sendComboFragments(cfg *config.SetConfig, packet []byte, dst ne
 	seq0 := binary.BigEndian.Uint32(packet[ipHdrLen+4 : ipHdrLen+8])
 	id0 := binary.BigEndian.Uint16(packet[4:6])
 
-	splits := []int{1}
+	combo := &cfg.Fragmentation.Combo
+	splits := []int{}
 
-	if extSplit := findPreSNIExtensionPoint(payload); extSplit > 1 && extSplit < payloadLen-5 {
-		splits = append(splits, extSplit)
+	// First-byte split
+	if combo.FirstByteSplit {
+		splits = append(splits, 1)
 	}
 
-	if sniStart, sniEnd, ok := locateSNI(payload); ok && sniEnd > sniStart {
-		midSNI := sniStart + (sniEnd-sniStart)/2
-		if midSNI > splits[len(splits)-1]+2 {
-			splits = append(splits, midSNI)
+	// Extension split (before SNI extension)
+	if combo.ExtensionSplit {
+		if extSplit := findPreSNIExtensionPoint(payload); extSplit > 1 && extSplit < payloadLen-5 {
+			splits = append(splits, extSplit)
+		}
+	}
+
+	// SNI split (middle of hostname)
+	if cfg.Fragmentation.MiddleSNI {
+		if sniStart, sniEnd, ok := locateSNI(payload); ok && sniEnd > sniStart {
+			midSNI := sniStart + (sniEnd-sniStart)/2
+			if len(splits) == 0 || midSNI > splits[len(splits)-1]+2 {
+				splits = append(splits, midSNI)
+			}
 		}
 	}
 
 	splits = uniqueSorted(splits, payloadLen)
 
-	if len(splits) < 2 {
-		splits = []int{1, payloadLen / 2}
+	if len(splits) < 1 {
+		splits = []int{payloadLen / 2}
 	}
 
 	type segment struct {
@@ -100,21 +112,38 @@ func (w *Worker) sendComboFragments(cfg *config.SetConfig, packet []byte, dst ne
 		return
 	}
 
-	// Thread-safe shuffle
+	// Thread-safe RNG
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
-	if len(segments) > 3 {
-		middle := segments[1 : len(segments)-1]
-		for i := len(middle) - 1; i > 0; i-- {
+	// Apply shuffle mode
+	switch combo.ShuffleMode {
+	case "full":
+		// Shuffle all segments
+		for i := len(segments) - 1; i > 0; i-- {
 			j := r.Intn(i + 1)
-			middle[i], middle[j] = middle[j], middle[i]
+			segments[i], segments[j] = segments[j], segments[i]
 		}
-	} else if len(segments) > 1 {
+	case "reverse":
+		// Reverse order
 		for i, j := 0, len(segments)-1; i < j; i, j = i+1, j-1 {
 			segments[i], segments[j] = segments[j], segments[i]
 		}
+	default: // "middle"
+		// Shuffle only middle segments, keep first and last in place
+		if len(segments) > 3 {
+			middle := segments[1 : len(segments)-1]
+			for i := len(middle) - 1; i > 0; i-- {
+				j := r.Intn(i + 1)
+				middle[i], middle[j] = middle[j], middle[i]
+			}
+		} else if len(segments) > 1 {
+			for i, j := 0, len(segments)-1; i < j; i, j = i+1, j-1 {
+				segments[i], segments[j] = segments[j], segments[i]
+			}
+		}
 	}
 
+	// Set PSH flag on highest-sequence segment
 	maxSeqIdx := 0
 	for i := range segments {
 		segIpHdrLen := int((segments[i].data[0] & 0x0F) * 4)
@@ -127,18 +156,25 @@ func (w *Worker) sendComboFragments(cfg *config.SetConfig, packet []byte, dst ne
 	segIpHdrLen := int((segments[maxSeqIdx].data[0] & 0x0F) * 4)
 	segments[maxSeqIdx].data[segIpHdrLen+13] |= 0x08
 	sock.FixTCPChecksum(segments[maxSeqIdx].data)
+
+	// Send with delays
+	firstDelayMs := combo.FirstDelayMs
+	if firstDelayMs <= 0 {
+		firstDelayMs = 100
+	}
+	jitterMaxUs := combo.JitterMaxUs
+	if jitterMaxUs <= 0 {
+		jitterMaxUs = 2000
+	}
+
 	for i, seg := range segments {
 		_ = w.sock.SendIPv4(seg.data, dst)
 
 		if i == 0 {
-			delay := cfg.TCP.Seg2Delay
-			if delay < 50 {
-				delay = 100
-			}
-			jitter := r.Intn(delay/3 + 1)
-			time.Sleep(time.Duration(delay+jitter) * time.Millisecond)
-		} else {
-			time.Sleep(time.Duration(r.Intn(2000)) * time.Microsecond)
+			jitter := r.Intn(firstDelayMs/3 + 1)
+			time.Sleep(time.Duration(firstDelayMs+jitter) * time.Millisecond)
+		} else if i < len(segments)-1 {
+			time.Sleep(time.Duration(r.Intn(jitterMaxUs)) * time.Microsecond)
 		}
 	}
 }

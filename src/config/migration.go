@@ -21,6 +21,18 @@ var migrationRegistry = map[int]MigrationFunc{
 	2: migrateV2to3,
 	3: migrateV3to4,
 	4: migrateV4to5,
+	5: migrateV5to6,
+}
+
+// Migration: v5 -> v6 (add reference domain to discovery config)
+func migrateV5to6(c *Config) error {
+	log.Tracef("Migration v5->v6: Initializing missing fields with default values")
+
+	for _, set := range c.Sets {
+		set.Fragmentation.Combo = DefaultSetConfig.Fragmentation.Combo
+		set.Fragmentation.Disorder = DefaultSetConfig.Fragmentation.Disorder
+	}
+	return nil
 }
 
 // Migration: v4 -> v5 (add reference domain to discovery config)

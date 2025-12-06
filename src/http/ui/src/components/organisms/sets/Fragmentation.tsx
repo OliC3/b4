@@ -20,6 +20,7 @@ import SettingSwitch from "@atoms/common/B4Switch";
 import B4Slider from "@atoms/common/B4Slider";
 import { B4SetConfig, FragmentationStrategy } from "@models/Config";
 import { colors } from "@design";
+import { ComboSettings } from "./frags/Combo";
 
 interface FragmentationSettingsProps {
   config: B4SetConfig;
@@ -278,6 +279,11 @@ export const FragmentationSettings = ({
               </Alert>
             </Grid>
           </>
+        )}
+
+        {/* Combo Settings */}
+        {strategy === "combo" && (
+          <ComboSettings config={config} onChange={onChange} />
         )}
 
         {/* OOB Settings */}

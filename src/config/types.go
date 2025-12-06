@@ -60,6 +60,9 @@ type FragmentationConfig struct {
 
 	OOBPosition int  `json:"oob_position" bson:"oob_position"` // Position for OOB (0=disabled)
 	OOBChar     byte `json:"oob_char" bson:"oob_char"`         // Character for OOB data
+
+	Combo    ComboFragConfig    `json:"combo" bson:"combo"`
+	Disorder DisorderFragConfig `json:"disorder" bson:"disorder"`
 }
 
 type FakingConfig struct {
@@ -139,4 +142,18 @@ type GeoDatConfig struct {
 	GeoIpPath   string `json:"ipdat_path" bson:"ipdat_path"`
 	GeoSiteURL  string `json:"sitedat_url" bson:"sitedat_url"`
 	GeoIpURL    string `json:"ipdat_url" bson:"ipdat_url"`
+}
+
+type ComboFragConfig struct {
+	FirstByteSplit bool   `json:"first_byte_split" bson:"first_byte_split"`
+	ExtensionSplit bool   `json:"extension_split" bson:"extension_split"`
+	ShuffleMode    string `json:"shuffle_mode" bson:"shuffle_mode"` // "middle", "full", "reverse"
+	FirstDelayMs   int    `json:"first_delay_ms" bson:"first_delay_ms"`
+	JitterMaxUs    int    `json:"jitter_max_us" bson:"jitter_max_us"`
+}
+
+type DisorderFragConfig struct {
+	ShuffleMode string `json:"shuffle_mode" bson:"shuffle_mode"` // "full", "reverse"
+	MinJitterUs int    `json:"min_jitter_us" bson:"min_jitter_us"`
+	MaxJitterUs int    `json:"max_jitter_us" bson:"max_jitter_us"`
 }

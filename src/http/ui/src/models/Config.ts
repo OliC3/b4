@@ -58,6 +58,8 @@ export interface FragmentationConfig {
   oob_char: number;
 
   tlsrec_pos: number;
+
+  combo: ComboFragConfig;
 }
 
 export enum LogLevel {
@@ -185,6 +187,15 @@ export interface B4SetConfig {
   fragmentation: FragmentationConfig;
   faking: FakingConfig;
   targets: TargetsConfig;
+}
+
+export type ComboShuffleMode = "middle" | "full" | "reverse";
+export interface ComboFragConfig {
+  first_byte_split: boolean;
+  extension_split: boolean;
+  shuffle_mode: ComboShuffleMode;
+  first_delay_ms: number;
+  jitter_max_us: number;
 }
 
 export const MAIN_SET_ID = "11111111-1111-1111-1111-111111111111";

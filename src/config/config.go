@@ -52,13 +52,27 @@ var DefaultSetConfig = SetConfig{
 	},
 
 	Fragmentation: FragmentationConfig{
-		Strategy:          "tcp", // "tcp", "ip", "tls", "oob", "none"
+		Strategy:          "tcp", // "tcp", "ip", "tls", "oob", "none", "combo", "hybrid", "disorder", "overlap", "extsplit", "firstbyte"
 		ReverseOrder:      true,
 		MiddleSNI:         true,
 		SNIPosition:       1,
 		OOBPosition:       0,
 		OOBChar:           'x',
 		TLSRecordPosition: 0,
+
+		Combo: ComboFragConfig{
+			FirstByteSplit: true,
+			ExtensionSplit: true,
+			ShuffleMode:    "middle",
+			FirstDelayMs:   100,
+			JitterMaxUs:    2000,
+		},
+
+		Disorder: DisorderFragConfig{
+			ShuffleMode: "full",
+			MinJitterUs: 1000,
+			MaxJitterUs: 3000,
+		},
 	},
 
 	Faking: FakingConfig{
