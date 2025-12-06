@@ -456,12 +456,14 @@ func (p *DPIProber) probeRSTCharacteristics(ctx context.Context, fp *DPIFingerpr
 
 		if avgTTL > 200 {
 			fp.DPIHopCount = 255 - avgTTL
-		} else if avgTTL > 100 {
+		} else if avgTTL > 64 {
 			fp.DPIHopCount = 128 - avgTTL
 		} else {
 			fp.DPIHopCount = 64 - avgTTL
 		}
-
+		if fp.DPIHopCount < 1 {
+			fp.DPIHopCount = 1
+		}
 		// Very low hop count = inline DPI
 		fp.IsInline = fp.DPIHopCount <= 3
 
@@ -495,7 +497,7 @@ func (p *DPIProber) probeInspectionDepth(ctx context.Context, fp *DPIFingerprint
 	}
 
 	// Test 2: Does it track connection state?
-	stateResult := p.probeStateTracking(ctx)
+	stateResult := p.probeStateTracking()
 	p.storeResult("state_tracking", stateResult)
 
 	fp.TracksState = stateResult.Notes == "stateful"
@@ -557,25 +559,27 @@ func (p *DPIProber) probeWithoutSNI(ctx context.Context) *ProbeResult {
 	return result
 }
 
-// probeStateTracking checks if DPI maintains connection state
-func (p *DPIProber) probeStateTracking(ctx context.Context) *ProbeResult {
+func (p *DPIProber) probeStateTracking() *ProbeResult {
 	result := &ProbeResult{
 		ProbeName: "state_tracking",
 	}
 
-	// Stateful DPI: blocks based on connection history
-	// Stateless DPI: each packet judged independently
+	p.mu.Lock()
+	rstResult := p.results["rst_detection"]
+	p.mu.Unlock()
 
-	// Test: Send packets out of order / without proper handshake
-	// If DPI is stateless, it might still block based on SNI in ClientHello
-	// If DPI is stateful, it needs to see SYN first
+	if rstResult != nil {
+		if rstResult.Latency < 20*time.Millisecond && rstResult.ErrorType == "rst_after_hello" {
+			result.Notes = "stateful"
+		} else if rstResult.ErrorType == "timeout" {
+			result.Notes = "stateless"
+		} else {
+			result.Notes = "stateful"
+		}
+	} else {
+		result.Notes = "unknown"
+	}
 
-	// For now, infer from other characteristics
-	// Fast RST + inline = likely stateful
-	// Slow RST + redirect = likely stateless/proxy
-
-	// This is a heuristic - proper detection would need raw socket access
-	result.Notes = "stateful" // Default assumption for modern DPI
 	return result
 }
 
@@ -786,7 +790,9 @@ func (p *DPIProber) generateRecommendations(fp *DPIFingerprint) {
 	recommendations := make([]StrategyFamily, 0)
 
 	// Combo is generally most effective - test first
+	recommendations = append(recommendations, FamilyTCPFrag)
 	recommendations = append(recommendations, FamilyCombo)
+	recommendations = append(recommendations, FamilyHybrid)
 
 	// Priority based on vulnerabilities
 	if fp.VulnerableToDesync {
@@ -816,7 +822,7 @@ func (p *DPIProber) generateRecommendations(fp *DPIFingerprint) {
 	switch fp.Type {
 	case DPITypeTSPU:
 		// TSPU responds well to combo and disorder
-		if !contains(recommendations, FamilyDisorder) {
+		if !containsFamily(recommendations, FamilyDisorder) {
 			recommendations = append(recommendations, FamilyDisorder)
 		}
 		recommendations = append(recommendations, FamilySACK)
@@ -971,15 +977,6 @@ func average(values []int) int {
 		sum += v
 	}
 	return sum / len(values)
-}
-
-func contains(slice []StrategyFamily, item StrategyFamily) bool {
-	for _, s := range slice {
-		if s == item {
-			return true
-		}
-	}
-	return false
 }
 
 func min(a, b int) int {

@@ -72,11 +72,6 @@ func (ds *DiscoverySuite) RunDiscovery() {
 
 	defer func() {
 		ds.EndTime = time.Now()
-		time.AfterFunc(5*time.Minute, func() {
-			suitesMu.Lock()
-			delete(activeSuites, ds.Id)
-			suitesMu.Unlock()
-		})
 	}()
 
 	ds.setStatus(CheckStatusRunning)
@@ -378,14 +373,13 @@ func (ds *DiscoverySuite) filterTestedPresets(presets []ConfigPreset) []ConfigPr
 
 // testPresetWithBestPayload tests a preset using the detected best payload
 func (ds *DiscoverySuite) testPresetWithBestPayload(preset ConfigPreset) CheckResult {
-
+	// Increment once regardless of how many internal tests
 	defer func() {
 		ds.CheckSuite.mu.Lock()
 		ds.CompletedChecks++
 		ds.CheckSuite.mu.Unlock()
 	}()
 
-	// If we have a clearly working payload, use it
 	hasWorkingPayload := false
 	for _, pr := range ds.workingPayloads {
 		if pr.Works {
@@ -395,26 +389,21 @@ func (ds *DiscoverySuite) testPresetWithBestPayload(preset ConfigPreset) CheckRe
 	}
 
 	if hasWorkingPayload {
-		// Use the best payload
 		return ds.testPresetWithPayload(preset, ds.bestPayload)
 	}
 
-	// Neither payload worked in baseline - test both and return best
 	result1 := ds.testPresetWithPayload(preset, config.FakePayloadDefault1)
 	if result1.Status == CheckStatusComplete {
-		// Payload 1 works for this strategy - update our knowledge
 		ds.updatePayloadKnowledge(config.FakePayloadDefault1, result1.Speed)
 		return result1
 	}
 
 	result2 := ds.testPresetWithPayload(preset, config.FakePayloadDefault2)
 	if result2.Status == CheckStatusComplete {
-		// Payload 2 works for this strategy - update our knowledge
 		ds.updatePayloadKnowledge(config.FakePayloadDefault2, result2.Speed)
 		return result2
 	}
 
-	// Neither worked
 	return result1
 }
 
@@ -746,13 +735,13 @@ func (ds *DiscoverySuite) testPresetInternal(preset ConfigPreset) CheckResult {
 }
 
 func (ds *DiscoverySuite) testPreset(preset ConfigPreset) CheckResult {
-	result := ds.testPresetInternal(preset)
+	defer func() {
+		ds.CheckSuite.mu.Lock()
+		ds.CompletedChecks++
+		ds.CheckSuite.mu.Unlock()
+	}()
 
-	ds.CheckSuite.mu.Lock()
-	ds.CompletedChecks++
-	ds.CheckSuite.mu.Unlock()
-
-	return result
+	return ds.testPresetInternal(preset)
 }
 
 func (ds *DiscoverySuite) fetchWithTimeout(timeout time.Duration) CheckResult {
@@ -893,6 +882,13 @@ func (ds *DiscoverySuite) storeResult(preset ConfigPreset, result CheckResult) {
 	ds.CheckSuite.mu.Lock()
 	defer ds.CheckSuite.mu.Unlock()
 
+	switch result.Status {
+	case CheckStatusComplete:
+		ds.SuccessfulChecks++
+	case CheckStatusFailed:
+		ds.FailedChecks++
+	}
+
 	ds.domainResult.Results[preset.Name] = &DomainPresetResult{
 		PresetName: preset.Name,
 		Family:     preset.Family,
@@ -1000,6 +996,10 @@ func (ds *DiscoverySuite) finalize() {
 	ds.DomainDiscoveryResults = map[string]*DomainDiscoveryResult{ds.domain: ds.domainResult}
 	ds.Status = CheckStatusComplete
 	ds.CheckSuite.mu.Unlock()
+
+	suitesMu.Lock()
+	delete(activeSuites, ds.Id)
+	suitesMu.Unlock()
 }
 
 func (ds *DiscoverySuite) restoreConfig() {
