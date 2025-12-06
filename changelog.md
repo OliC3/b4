@@ -2,6 +2,7 @@
 
 ## [1.2x.x] - 2025-12-xx
 
+- FIXED: Slow set save operations - improve performance.
 - ADDED: New `FRAG` strategies designed for modern DPI (TSPU):
 
   - `Combo` (recommended) - multi-technique: first-byte delay + extension split + SNI split + disorder

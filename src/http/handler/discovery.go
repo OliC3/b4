@@ -140,9 +140,7 @@ func (api *API) handleAddPresetAsSet(w http.ResponseWriter, r *http.Request) {
 		set.Name = set.Targets.SNIDomains[0]
 	}
 
-	if _, _, err := api.cfg.GetTargetsForSet(&set); err != nil {
-		log.Errorf("Failed to load targets for set '%s': %v", set.Name, err)
-	}
+	api.loadTargetsForSetCached(&set)
 
 	// Ensure all target arrays are initialized (not null)
 	if set.Targets.IPs == nil {

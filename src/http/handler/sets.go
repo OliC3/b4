@@ -75,9 +75,7 @@ func (api *API) createSet(w http.ResponseWriter, r *http.Request) {
 
 	api.cfg.Sets = append([]*config.SetConfig{&set}, api.cfg.Sets...)
 
-	if _, _, err := api.cfg.GetTargetsForSet(&set); err != nil {
-		log.Errorf("Failed to load targets for new set '%s': %v", set.Name, err)
-	}
+	api.loadTargetsForSetCached(&set)
 
 	if err := api.saveAndPushConfig(api.cfg); err != nil {
 		log.Errorf("Failed to save config after creating set: %v", err)
@@ -113,9 +111,7 @@ func (api *API) updateSet(w http.ResponseWriter, r *http.Request, id string) {
 		return
 	}
 
-	if _, _, err := api.cfg.GetTargetsForSet(&updated); err != nil {
-		log.Errorf("Failed to load targets for set '%s': %v", updated.Name, err)
-	}
+	api.loadTargetsForSetCached(&updated)
 
 	if err := api.saveAndPushConfig(api.cfg); err != nil {
 		log.Errorf("Failed to save config after updating set: %v", err)
@@ -224,4 +220,25 @@ func (api *API) initializeSetDefaults(set *config.SetConfig) {
 	if set.Faking.SNIMutation.FakeSNIs == nil {
 		set.Faking.SNIMutation.FakeSNIs = []string{}
 	}
+}
+
+func (api *API) loadTargetsForSetCached(set *config.SetConfig) {
+	domains := []string{}
+	ips := []string{}
+
+	for _, cat := range set.Targets.GeoSiteCategories {
+		if cached, err := api.geodataManager.LoadGeositeCategory(cat); err == nil {
+			domains = append(domains, cached...)
+		}
+	}
+	domains = append(domains, set.Targets.SNIDomains...)
+	set.Targets.DomainsToMatch = domains
+
+	for _, cat := range set.Targets.GeoIpCategories {
+		if cached, err := api.geodataManager.LoadGeoipCategory(cat); err == nil {
+			ips = append(ips, cached...)
+		}
+	}
+	ips = append(ips, set.Targets.IPs...)
+	set.Targets.IpsToMatch = ips
 }

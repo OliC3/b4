@@ -124,10 +124,7 @@ func (a *API) updateConfig(w http.ResponseWriter, r *http.Request) {
 	allIpsCount := 0
 
 	for i, set := range newConfig.Sets {
-		_, _, err := newConfig.GetTargetsForSet(set)
-		if err != nil {
-			log.Errorf("Failed to load domains for set '%s': %v", set.Name, err)
-		}
+		a.loadTargetsForSetCached(set)
 
 		manualDomains := len(set.Targets.SNIDomains)
 		manualIPs := len(set.Targets.IPs)
@@ -222,10 +219,7 @@ func (a *API) resetConfig(w http.ResponseWriter, r *http.Request) {
 
 	for _, set := range a.cfg.Sets {
 		set.ResetToDefaults()
-		_, _, err := defaultCfg.GetTargetsForSet(set)
-		if err != nil {
-			log.Errorf("Failed to load domains for set '%s': %v", set.Name, err)
-		}
+		a.loadTargetsForSetCached(set)
 		defaultCfg.Sets = append(defaultCfg.Sets, set)
 	}
 

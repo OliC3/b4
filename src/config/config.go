@@ -63,9 +63,9 @@ var DefaultSetConfig = SetConfig{
 		Combo: ComboFragConfig{
 			FirstByteSplit: true,
 			ExtensionSplit: true,
-			ShuffleMode:    "middle",
-			FirstDelayMs:   100,
-			JitterMaxUs:    2000,
+			ShuffleMode:    "full",
+			FirstDelayMs:   30,
+			JitterMaxUs:    1000,
 		},
 
 		Disorder: DisorderFragConfig{

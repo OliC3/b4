@@ -46,9 +46,13 @@ func (w *Worker) sendComboFragments(cfg *config.SetConfig, packet []byte, dst ne
 	// SNI split (middle of hostname)
 	if cfg.Fragmentation.MiddleSNI {
 		if sniStart, sniEnd, ok := locateSNI(payload); ok && sniEnd > sniStart {
-			midSNI := sniStart + (sniEnd-sniStart)/2
-			if len(splits) == 0 || midSNI > splits[len(splits)-1]+2 {
-				splits = append(splits, midSNI)
+			sniLen := sniEnd - sniStart
+			if sniStart > 2 {
+				splits = append(splits, sniStart-1)
+			}
+			splits = append(splits, sniStart+sniLen/2)
+			if sniLen > 15 {
+				splits = append(splits, sniStart+sniLen*3/4)
 			}
 		}
 	}
