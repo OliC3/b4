@@ -60,6 +60,7 @@ export interface FragmentationConfig {
   tlsrec_pos: number;
 
   combo: ComboFragConfig;
+  disorder: DisorderFragConfig;
 }
 
 export enum LogLevel {
@@ -196,6 +197,13 @@ export interface ComboFragConfig {
   shuffle_mode: ComboShuffleMode;
   first_delay_ms: number;
   jitter_max_us: number;
+}
+
+export type DisorderShuffleMode = "full" | "reverse";
+export interface DisorderFragConfig {
+  shuffle_mode: DisorderShuffleMode;
+  min_jitter_us: number;
+  max_jitter_us: number;
 }
 
 export const MAIN_SET_ID = "11111111-1111-1111-1111-111111111111";

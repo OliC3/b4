@@ -207,6 +207,18 @@ export const SetsManager = ({ config, onRefresh }: SetsManagerProps) => {
         oob_position: 0,
         oob_char: 120,
         tlsrec_pos: 0,
+        combo: {
+          extension_split: true,
+          first_byte_split: true,
+          shuffle_mode: "middle",
+          first_delay_ms: 100,
+          jitter_max_us: 2000,
+        },
+        disorder: {
+          shuffle_mode: "full",
+          min_jitter_us: 1000,
+          max_jitter_us: 3000,
+        },
       } as B4SetConfig["fragmentation"],
       faking: {
         sni: true,

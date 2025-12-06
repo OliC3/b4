@@ -21,6 +21,7 @@ import B4Slider from "@atoms/common/B4Slider";
 import { B4SetConfig, FragmentationStrategy } from "@models/Config";
 import { colors } from "@design";
 import { ComboSettings } from "./frags/Combo";
+import { DisorderSettings } from "./frags/Disorder";
 
 interface FragmentationSettingsProps {
   config: B4SetConfig;
@@ -284,6 +285,11 @@ export const FragmentationSettings = ({
         {/* Combo Settings */}
         {strategy === "combo" && (
           <ComboSettings config={config} onChange={onChange} />
+        )}
+
+        {/* Disorder Settings */}
+        {strategy === "disorder" && (
+          <DisorderSettings config={config} onChange={onChange} />
         )}
 
         {/* OOB Settings */}

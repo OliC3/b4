@@ -31,15 +31,21 @@ func (w *Worker) sendDisorderFragmentsV6(cfg *config.SetConfig, packet []byte, d
 	payload := packet[payloadStart:]
 	seq0 := binary.BigEndian.Uint32(packet[ipv6HdrLen+4 : ipv6HdrLen+8])
 
+	disorder := &cfg.Fragmentation.Disorder
+
 	var splits []int
-	if sniStart, sniEnd, ok := locateSNI(payload); ok && sniEnd > sniStart {
-		sniLen := sniEnd - sniStart
-		splits = append(splits, sniStart)
-		if sniLen > 6 {
-			splits = append(splits, sniStart+sniLen/2)
+	if cfg.Fragmentation.MiddleSNI {
+		if sniStart, sniEnd, ok := locateSNI(payload); ok && sniEnd > sniStart {
+			sniLen := sniEnd - sniStart
+			splits = append(splits, sniStart)
+			if sniLen > 6 {
+				splits = append(splits, sniStart+sniLen/2)
+			}
+			splits = append(splits, sniEnd)
 		}
-		splits = append(splits, sniEnd)
-	} else {
+	}
+
+	if len(splits) == 0 {
 		splits = []int{1, payloadLen / 2, payloadLen * 3 / 4}
 	}
 
@@ -67,26 +73,39 @@ func (w *Worker) sendDisorderFragmentsV6(cfg *config.SetConfig, packet []byte, d
 		copy(seg[payloadStart:], payload[start:end])
 
 		binary.BigEndian.PutUint32(seg[ipv6HdrLen+4:ipv6HdrLen+8], seq0+uint32(start))
-		binary.BigEndian.PutUint16(seg[4:6], uint16(segLen-ipv6HdrLen)) // IPv6 payload length
+		binary.BigEndian.PutUint16(seg[4:6], uint16(segLen-ipv6HdrLen))
 
 		if i < len(validSplits)-2 {
-			seg[ipv6HdrLen+13] &^= 0x08 // Clear PSH
+			seg[ipv6HdrLen+13] &^= 0x08
 		}
 
 		sock.FixTCPChecksumV6(seg)
 		segments = append(segments, segment{data: seg, seqOff: uint32(start)})
 	}
 
-	// Thread-safe shuffle
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
-	if len(segments) > 2 {
-		for i := len(segments) - 1; i > 0; i-- {
-			j := r.Intn(i + 1)
+	switch disorder.ShuffleMode {
+	case "reverse":
+		for i, j := 0, len(segments)-1; i < j; i, j = i+1, j-1 {
 			segments[i], segments[j] = segments[j], segments[i]
 		}
-	} else if len(segments) == 2 {
-		segments[0], segments[1] = segments[1], segments[0]
+	default:
+		if len(segments) > 1 {
+			for i := len(segments) - 1; i > 0; i-- {
+				j := r.Intn(i + 1)
+				segments[i], segments[j] = segments[j], segments[i]
+			}
+		}
+	}
+
+	minJitter := disorder.MinJitterUs
+	maxJitter := disorder.MaxJitterUs
+	if minJitter <= 0 {
+		minJitter = 1000
+	}
+	if maxJitter <= minJitter {
+		maxJitter = minJitter + 2000
 	}
 
 	seg2d := cfg.TCP.Seg2Delay
@@ -97,7 +116,8 @@ func (w *Worker) sendDisorderFragmentsV6(cfg *config.SetConfig, packet []byte, d
 				jitter := r.Intn(seg2d/2 + 1)
 				time.Sleep(time.Duration(seg2d+jitter) * time.Millisecond)
 			} else {
-				time.Sleep(time.Duration(1000+r.Intn(2000)) * time.Microsecond)
+				jitter := minJitter + r.Intn(maxJitter-minJitter+1)
+				time.Sleep(time.Duration(jitter) * time.Microsecond)
 			}
 		}
 	}

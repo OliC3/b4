@@ -27,16 +27,24 @@ func (w *Worker) sendDisorderFragments(cfg *config.SetConfig, packet []byte, dst
 	seq0 := binary.BigEndian.Uint32(packet[ipHdrLen+4 : ipHdrLen+8])
 	id0 := binary.BigEndian.Uint16(packet[4:6])
 
+	disorder := &cfg.Fragmentation.Disorder
+
 	var splits []int
 
-	if sniStart, sniEnd, ok := locateSNI(payload); ok && sniEnd > sniStart {
-		sniLen := sniEnd - sniStart
-		splits = append(splits, sniStart)
-		if sniLen > 6 {
-			splits = append(splits, sniStart+sniLen/2)
+	// Use middle_sni setting to determine split strategy
+	if cfg.Fragmentation.MiddleSNI {
+		if sniStart, sniEnd, ok := locateSNI(payload); ok && sniEnd > sniStart {
+			sniLen := sniEnd - sniStart
+			splits = append(splits, sniStart)
+			if sniLen > 6 {
+				splits = append(splits, sniStart+sniLen/2)
+			}
+			splits = append(splits, sniEnd)
 		}
-		splits = append(splits, sniEnd)
-	} else {
+	}
+
+	// Fallback if no SNI or middle_sni disabled
+	if len(splits) == 0 {
 		splits = []int{1, payloadLen / 2, payloadLen * 3 / 4}
 	}
 
@@ -80,11 +88,29 @@ func (w *Worker) sendDisorderFragments(cfg *config.SetConfig, packet []byte, dst
 
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
-	if len(segments) > 1 {
-		for i := len(segments) - 1; i > 0; i-- {
-			j := r.Intn(i + 1)
+	// Apply shuffle mode
+	switch disorder.ShuffleMode {
+	case "reverse":
+		for i, j := 0, len(segments)-1; i < j; i, j = i+1, j-1 {
 			segments[i], segments[j] = segments[j], segments[i]
 		}
+	default: // "full"
+		if len(segments) > 1 {
+			for i := len(segments) - 1; i > 0; i-- {
+				j := r.Intn(i + 1)
+				segments[i], segments[j] = segments[j], segments[i]
+			}
+		}
+	}
+
+	// Timing settings
+	minJitter := disorder.MinJitterUs
+	maxJitter := disorder.MaxJitterUs
+	if minJitter <= 0 {
+		minJitter = 1000
+	}
+	if maxJitter <= minJitter {
+		maxJitter = minJitter + 2000
 	}
 
 	seg2d := cfg.TCP.Seg2Delay
@@ -95,7 +121,8 @@ func (w *Worker) sendDisorderFragments(cfg *config.SetConfig, packet []byte, dst
 				jitter := r.Intn(seg2d/2 + 1)
 				time.Sleep(time.Duration(seg2d+jitter) * time.Millisecond)
 			} else {
-				time.Sleep(time.Duration(1000+r.Intn(2000)) * time.Microsecond)
+				jitter := minJitter + r.Intn(maxJitter-minJitter+1)
+				time.Sleep(time.Duration(jitter) * time.Microsecond)
 			}
 		}
 	}
