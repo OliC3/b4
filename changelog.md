@@ -1,6 +1,6 @@
 # B4 - Bye Bye Big Bro
 
-## [1.2x.x] - 2025-12-xx
+## [1.21.0] - 2025-12-07
 
 - FIXED: Slow set save operations - improve performance.
 - ADDED: New `FRAG` strategies designed for modern DPI (TSPU):
