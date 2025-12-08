@@ -280,7 +280,7 @@ func (w *Worker) Start() error {
 
 				// Handle DNS packets
 				if sport == 53 || dport == 53 {
-					return w.processDnsPacket(sport, dport, payload, raw, ihl, id)
+					return w.processDnsPacket(v, sport, dport, payload, raw, ihl, id)
 				}
 
 				if utils.IsPrivateIP(dst) {
