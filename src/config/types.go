@@ -117,9 +117,10 @@ type WebServerConfig struct {
 
 type DiscoveryConfig struct {
 	// Discovery settings
-	DiscoveryTimeoutSec int    `yaml:"discovery_timeout" json:"discovery_timeout"`
-	ConfigPropagateMs   int    `yaml:"config_propagate_ms" json:"config_propagate_ms"`
-	ReferenceDomain     string `yaml:"reference_domain" json:"reference_domain"`
+	DiscoveryTimeoutSec int      `yaml:"discovery_timeout" json:"discovery_timeout"`
+	ConfigPropagateMs   int      `yaml:"config_propagate_ms" json:"config_propagate_ms"`
+	ReferenceDomain     string   `yaml:"reference_domain" json:"reference_domain"`
+	ReferenceDNS        []string `yaml:"reference_dns" json:"reference_dns"`
 }
 
 type Logging struct {

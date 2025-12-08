@@ -33,6 +33,7 @@ func migrateV7to8(c *Config) error {
 	for _, set := range c.Sets {
 		set.DNS = DefaultSetConfig.DNS
 	}
+	c.System.Checker.ReferenceDNS = DefaultConfig.System.Checker.ReferenceDNS
 	return nil
 }
 

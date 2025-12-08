@@ -33,9 +33,9 @@ const POPULAR_DNS = [
   {
     ip: "8.8.4.4",
     name: "Google Secondary",
-    desc: "⚠️ Often poisoned by RU ISPs",
+    desc: "Fast, global (~14ms)",
     dnssec: true,
-    tags: ["poisoned"],
+    tags: [],
     warn: true,
   },
   {
@@ -55,9 +55,9 @@ const POPULAR_DNS = [
   {
     ip: "2001:4860:4860::8844",
     name: "Google IPv6",
-    desc: "⚠️ Often poisoned by RU ISPs",
+    desc: "Fast, global (~11ms)",
     dnssec: true,
-    tags: ["ipv6", "poisoned"],
+    tags: ["ipv6"],
     warn: true,
     ipv6: true,
   },
@@ -100,9 +100,9 @@ const POPULAR_DNS = [
   {
     ip: "8.8.8.8",
     name: "Google",
-    desc: "⚠️ Often poisoned by RU ISPs",
+    desc: "Fast, global (~14ms)",
     dnssec: true,
-    tags: ["poisoned"],
+    tags: [],
     warn: true,
   },
   {
@@ -110,7 +110,7 @@ const POPULAR_DNS = [
     name: "Alibaba",
     desc: "China, may be slow/blocked (~15ms)",
     dnssec: false,
-    tags: ["china"],
+    tags: ["china", "poisoned"],
     china: true,
   },
   {
@@ -176,7 +176,7 @@ const POPULAR_DNS = [
     name: "Alibaba Primary",
     desc: "China, may be slow/blocked (~20ms)",
     dnssec: false,
-    tags: ["china"],
+    tags: ["china", "poisoned"],
     china: true,
   },
   {
@@ -228,7 +228,7 @@ const POPULAR_DNS = [
     name: "Alibaba IPv6",
     desc: "China, may be slow/blocked",
     dnssec: false,
-    tags: ["ipv6", "china"],
+    tags: ["ipv6", "china", "poisoned"],
     ipv6: true,
     china: true,
   },

@@ -1,9 +1,18 @@
-import { Grid } from "@mui/material";
-import { Science as TestIcon } from "@mui/icons-material";
+import React from "react";
+import {
+  Box,
+  Chip,
+  Divider,
+  Grid,
+  IconButton,
+  Typography,
+} from "@mui/material";
+import { Science as TestIcon, Add as AddIcon } from "@mui/icons-material";
 import SettingSection from "@molecules/common/B4Section";
 import B4Slider from "@atoms/common/B4Slider";
 import B4TextField from "@atoms/common/B4TextField";
 import { B4Config } from "@models/Config";
+import { colors } from "@design";
 
 interface CheckerSettingsProps {
   config: B4Config;
@@ -17,6 +26,26 @@ export const CheckerSettings: React.FC<CheckerSettingsProps> = ({
   config,
   onChange,
 }) => {
+  const [newDns, setNewDns] = React.useState("");
+
+  const handleAddDns = () => {
+    if (newDns.trim()) {
+      const current = config.system.checker.reference_dns || [];
+      if (!current.includes(newDns.trim())) {
+        onChange("system.checker.reference_dns", [...current, newDns.trim()]);
+      }
+      setNewDns("");
+    }
+  };
+
+  const handleRemoveDns = (dns: string) => {
+    const current = config.system.checker.reference_dns || [];
+    onChange(
+      "system.checker.reference_dns",
+      current.filter((s) => s !== dns)
+    );
+  };
+
   return (
     <SettingSection
       title="Testing Configuration"
@@ -63,6 +92,72 @@ export const CheckerSettings: React.FC<CheckerSettingsProps> = ({
             helperText="Fast domain to measure your network baseline speed"
           />
         </Grid>
+        <Grid size={{ xs: 12 }}>
+          <Divider sx={{ my: 1 }}>
+            <Chip label="DNS Configuration" size="small" />
+          </Divider>
+        </Grid>
+        <Grid size={{ xs: 12, md: 6 }}>
+          <Box sx={{ display: "flex", gap: 1, alignItems: "flex-start" }}>
+            <B4TextField
+              label="Add DNS Server"
+              value={newDns}
+              onChange={(e) => setNewDns(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleAddDns();
+                }
+              }}
+              placeholder="e.g., 8.8.8.8"
+              helperText="Additional DNS servers to test"
+            />
+            <IconButton
+              onClick={handleAddDns}
+              sx={{
+                bgcolor: colors.accent.secondary,
+                color: colors.secondary,
+                "&:hover": { bgcolor: colors.accent.secondaryHover },
+              }}
+            >
+              <AddIcon />
+            </IconButton>
+          </Box>
+        </Grid>
+        {(config.system.checker.reference_dns?.length ?? 0) > 0 && (
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Typography variant="subtitle2" gutterBottom>
+              Active DNS servers to test:
+            </Typography>
+            <Box
+              sx={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 1,
+                p: 1,
+                border: `1px solid ${colors.border.default}`,
+                borderRadius: 1,
+                bgcolor: colors.background.paper,
+              }}
+            >
+              {config.system.checker.reference_dns.map((dns) => (
+                <Chip
+                  key={dns}
+                  label={dns}
+                  onDelete={() => handleRemoveDns(dns)}
+                  size="small"
+                  sx={{
+                    bgcolor: colors.accent.primary,
+                    color: colors.secondary,
+                    "& .MuiChip-deleteIcon": {
+                      color: colors.secondary,
+                    },
+                  }}
+                />
+              ))}
+            </Box>
+          </Grid>
+        )}
       </Grid>
     </SettingSection>
   );

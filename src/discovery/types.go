@@ -25,6 +25,7 @@ const (
 	PhaseOptimize    DiscoveryPhase = "optimization"
 	PhaseCombination DiscoveryPhase = "combination"
 	PhaseFingerprint DiscoveryPhase = "fingerprint"
+	PhaseDNS         DiscoveryPhase = "dns_detection"
 )
 
 type StrategyFamily string
@@ -101,6 +102,7 @@ type DomainDiscoveryResult struct {
 	BaselineSpeed float64                        `json:"baseline_speed,omitempty"`
 	Improvement   float64                        `json:"improvement,omitempty"`
 	Fingerprint   *DPIFingerprint                `json:"fingerprint,omitempty"`
+	DNSResult     *DNSDiscoveryResult            `json:"dns_result,omitempty"`
 }
 
 type ConfigPreset struct {
@@ -110,4 +112,21 @@ type ConfigPreset struct {
 	Phase       DiscoveryPhase   `json:"phase"`
 	Config      config.SetConfig `json:"config"`
 	Priority    int              `json:"priority"`
+}
+
+type DNSProbeResult struct {
+	Server     string        `json:"server"`
+	Fragmented bool          `json:"fragmented"`
+	ResolvedIP string        `json:"resolved_ip"`
+	ExpectedIP string        `json:"expected_ip"`
+	IsPoisoned bool          `json:"is_poisoned"`
+	Works      bool          `json:"works"`
+	Latency    time.Duration `json:"latency"`
+}
+
+type DNSDiscoveryResult struct {
+	IsPoisoned    bool             `json:"is_poisoned"`
+	BestServer    string           `json:"best_server,omitempty"`
+	NeedsFragment bool             `json:"needs_fragment"`
+	ProbeResults  []DNSProbeResult `json:"probe_results,omitempty"`
 }

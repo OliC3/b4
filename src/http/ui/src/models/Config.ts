@@ -126,6 +126,7 @@ export interface DiscoveryConfig {
   discovery_timeout: number;
   config_propagate_ms: number;
   reference_domain: string;
+  reference_dns: string[];
 }
 
 export type WindowMode = "off" | "oscillate" | "zero" | "random" | "escalate";

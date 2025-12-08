@@ -157,6 +157,7 @@ var DefaultConfig = Config{
 			DiscoveryTimeoutSec: 5,
 			ConfigPropagateMs:   1500,
 			ReferenceDomain:     "yandex.ru",
+			ReferenceDNS:        []string{"9.9.9.9", "1.1.1.1", "8.8.8.8", "9.9.1.1", "8.8.4.4"},
 		},
 		API: ApiConfig{
 			IPInfoToken: "",

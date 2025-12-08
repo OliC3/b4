@@ -92,6 +92,23 @@ func (ds *DiscoverySuite) RunDiscovery() {
 	fingerprint := ds.runFingerprinting()
 	ds.domainResult.Fingerprint = fingerprint
 
+	ds.setPhase(PhaseDNS) // Add PhaseDNS = "dns_detection" to types.go
+	dnsResult := ds.runDNSDiscovery()
+	ds.domainResult.DNSResult = dnsResult
+
+	if dnsResult != nil && dnsResult.IsPoisoned {
+		if dnsResult.hasWorkingConfig() {
+			log.Infof("DNS poisoned - applying discovered DNS bypass for TCP testing")
+			ds.applyDNSConfig(dnsResult)
+		} else {
+			log.Warnf("DNS is poisoned and no bypass found - aborting discovery")
+			ds.restoreConfig()
+			ds.finalize()
+			ds.logDiscoverySummary()
+			return
+		}
+	}
+
 	if fingerprint != nil && fingerprint.Type == DPITypeNone {
 		log.Infof("Fingerprint suggests no DPI for %s - verifying with download test", ds.domain)
 
@@ -948,6 +965,7 @@ func (ds *DiscoverySuite) buildTestConfig(preset ConfigPreset) *config.Config {
 	mainSet.UDP = preset.Config.UDP
 	mainSet.Fragmentation = preset.Config.Fragmentation
 	mainSet.Faking = preset.Config.Faking
+	mainSet.DNS = ds.cfg.MainSet.DNS
 
 	if mainSet.TCP.WinMode == "" {
 		mainSet.TCP.WinMode = "off"
@@ -970,6 +988,7 @@ func (ds *DiscoverySuite) buildTestConfig(preset ConfigPreset) *config.Config {
 		mainSet.Targets.SNIDomains = []string{ds.domain}
 		mainSet.Targets.DomainsToMatch = []string{ds.domain}
 	}
+
 	return &config.Config{
 		ConfigPath: ds.cfg.ConfigPath,
 		Queue:      ds.cfg.Queue,
