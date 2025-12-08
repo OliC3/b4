@@ -22,8 +22,8 @@ var migrationRegistry = map[int]MigrationFunc{
 	3: migrateV3to4,
 	4: migrateV4to5,
 	5: migrateV5to6,
-	6: migrateV6to7,
-	7: migrateV7to8,
+	6: migrateV6to7, // Add TCP syn TTL and drop SACK settings
+	7: migrateV7to8, // Add DNS redirect settings
 }
 
 // Migration: v7 -> v8 (add DNS redirect settings)

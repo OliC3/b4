@@ -386,7 +386,7 @@ export function DnsSettings({ config, onChange, ipv6 }: DnsSettingsProps) {
           </Alert>
         </Grid>
 
-        <Grid size={{ xs: 12 }}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <SettingSwitch
             label="Enable DNS Redirect"
             checked={dns.enabled}
@@ -398,6 +398,16 @@ export function DnsSettings({ config, onChange, ipv6 }: DnsSettingsProps) {
         {dns.enabled && (
           <>
             {/* Custom IP input */}
+            <Grid size={{ xs: 12, md: 6 }}>
+              <SettingSwitch
+                label="Fragment DNS Queries"
+                checked={dns.fragment_query || false}
+                onChange={(checked: boolean) =>
+                  onChange("dns.fragment_query", checked)
+                }
+                description="Split DNS packets using IP fragmentation to bypass DPI that pattern-matches domain names in queries"
+              />
+            </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               <SettingTextField
                 label="DNS Server IP"

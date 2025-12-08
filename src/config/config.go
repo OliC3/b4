@@ -54,8 +54,9 @@ var DefaultSetConfig = SetConfig{
 	},
 
 	DNS: DNSConfig{
-		Enabled:   false,
-		TargetDNS: "",
+		Enabled:       false,
+		FragmentQuery: false,
+		TargetDNS:     "",
 	},
 
 	Fragmentation: FragmentationConfig{

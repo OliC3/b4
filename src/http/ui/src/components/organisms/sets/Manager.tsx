@@ -203,6 +203,7 @@ export const SetsManager = ({ config, onRefresh }: SetsManagerProps) => {
       dns: {
         enabled: false,
         target_dns: "",
+        fragment_query: false,
       } as B4SetConfig["dns"],
       fragmentation: {
         strategy: "tcp",

@@ -216,6 +216,7 @@ export interface OverlapFragConfig {
 export interface DNSConfig {
   enabled: boolean;
   target_dns: string;
+  fragment_query: boolean;
 }
 
 export const MAIN_SET_ID = "11111111-1111-1111-1111-111111111111";

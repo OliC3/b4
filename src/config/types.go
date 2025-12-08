@@ -162,8 +162,9 @@ type DisorderFragConfig struct {
 }
 
 type DNSConfig struct {
-	Enabled   bool   `json:"enabled" bson:"enabled"`
-	TargetDNS string `json:"target_dns" bson:"target_dns"`
+	Enabled       bool   `json:"enabled" bson:"enabled"`
+	TargetDNS     string `json:"target_dns" bson:"target_dns"`
+	FragmentQuery bool   `json:"fragment_query" bson:"fragment_query"`
 }
 
 type OverlapFragConfig struct {

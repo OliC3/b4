@@ -1,8 +1,11 @@
 package nfq
 
 import (
+	"encoding/binary"
 	"net"
+	"time"
 
+	"github.com/daniellavrushin/b4/config"
 	"github.com/daniellavrushin/b4/dns"
 	"github.com/daniellavrushin/b4/log"
 	"github.com/daniellavrushin/b4/sock"
@@ -39,7 +42,11 @@ func (w *Worker) processDnsPacket(ipVersion byte, sport uint16, dport uint16, pa
 					copy(raw[16:20], targetDNS)
 					sock.FixIPv4Checksum(raw[:ihl])
 					sock.FixUDPChecksum(raw, ihl)
-					_ = w.sock.SendIPv4(raw, targetDNS)
+					if set.DNS.FragmentQuery {
+						w.sendFragmentedDNSQueryV4(set, raw, ihl, targetDNS)
+					} else {
+						_ = w.sock.SendIPv4(raw, targetDNS)
+					}
 					_ = w.q.SetVerdict(id, nfqueue.NfDrop)
 					log.Infof("DNS redirect: %s -> %s (set: %s)", domain, set.DNS.TargetDNS, set.Name)
 					return 0
@@ -65,7 +72,11 @@ func (w *Worker) processDnsPacket(ipVersion byte, sport uint16, dport uint16, pa
 
 					copy(raw[24:40], targetDNS)
 					sock.FixUDPChecksumV6(raw)
-					_ = w.sock.SendIPv6(raw, targetDNS)
+					if set.DNS.FragmentQuery {
+						w.sendFragmentedDNSQueryV6(set, raw, targetDNS)
+					} else {
+						_ = w.sock.SendIPv6(raw, targetDNS)
+					}
 					_ = w.q.SetVerdict(id, nfqueue.NfDrop)
 					log.Infof("DNS redirect (IPv6): %s -> %s (set: %s)", domain, set.DNS.TargetDNS, set.Name)
 					return 0
@@ -102,4 +113,141 @@ func (w *Worker) processDnsPacket(ipVersion byte, sport uint16, dport uint16, pa
 
 	_ = w.q.SetVerdict(id, nfqueue.NfAccept)
 	return 0
+}
+
+// sendFragmentedDNSQuery fragments a DNS query to evade DPI
+func (w *Worker) sendFragmentedDNSQueryV4(cfg *config.SetConfig, raw []byte, ihl int, dst net.IP) {
+	udpOffset := ihl
+	if len(raw) < ihl+8 {
+		_ = w.sock.SendIPv4(raw, dst)
+		return
+	}
+	udpLen := int(binary.BigEndian.Uint16(raw[udpOffset+4 : udpOffset+6]))
+
+	if udpLen < 20 { // Too small to fragment meaningfully
+		_ = w.sock.SendIPv4(raw, dst)
+		return
+	}
+
+	dnsPayload := raw[udpOffset+8:]
+	if len(dnsPayload) < 12 { // DNS header is 12 bytes minimum
+		_ = w.sock.SendIPv4(raw, dst)
+		return
+	}
+
+	splitPos := findDNSSplitPoint(dnsPayload)
+	if splitPos <= 0 {
+		splitPos = len(dnsPayload) / 2
+	}
+
+	frags, ok := sock.IPv4FragmentUDP(raw, splitPos)
+	if !ok {
+		log.Tracef("DNS frag: IP fragmentation failed, sending original")
+		_ = w.sock.SendIPv4(raw, dst)
+		return
+	}
+
+	seg2d := cfg.UDP.Seg2Delay
+
+	if cfg.Fragmentation.ReverseOrder {
+		_ = w.sock.SendIPv4(frags[1], dst)
+		if seg2d > 0 {
+			time.Sleep(time.Duration(seg2d) * time.Millisecond)
+		}
+		_ = w.sock.SendIPv4(frags[0], dst)
+	} else {
+		_ = w.sock.SendIPv4(frags[0], dst)
+		if seg2d > 0 {
+			time.Sleep(time.Duration(seg2d) * time.Millisecond)
+		}
+		_ = w.sock.SendIPv4(frags[1], dst)
+	}
+
+	log.Tracef("DNS frag: sent %d fragments for query", len(frags))
+}
+
+func (w *Worker) sendFragmentedDNSQueryV6(cfg *config.SetConfig, raw []byte, dst net.IP) {
+	ipv6HdrLen := 40
+	if len(raw) < ipv6HdrLen+8 {
+		_ = w.sock.SendIPv6(raw, dst)
+		return
+	}
+	udpLen := int(binary.BigEndian.Uint16(raw[ipv6HdrLen+4 : ipv6HdrLen+6]))
+
+	if udpLen < 20 {
+		_ = w.sock.SendIPv6(raw, dst)
+		return
+	}
+
+	dnsPayload := raw[ipv6HdrLen+8:]
+	if len(dnsPayload) < 12 {
+		_ = w.sock.SendIPv6(raw, dst)
+		return
+	}
+
+	splitPos := findDNSSplitPoint(dnsPayload)
+	if splitPos <= 0 {
+		splitPos = len(dnsPayload) / 2
+	}
+
+	frags, ok := sock.IPv6FragmentUDP(raw, splitPos)
+	if !ok {
+		log.Tracef("DNS frag v6: fragmentation failed, sending original")
+		_ = w.sock.SendIPv6(raw, dst)
+		return
+	}
+
+	seg2d := cfg.UDP.Seg2Delay
+
+	if cfg.Fragmentation.ReverseOrder {
+		_ = w.sock.SendIPv6(frags[1], dst)
+		if seg2d > 0 {
+			time.Sleep(time.Duration(seg2d) * time.Millisecond)
+		}
+		_ = w.sock.SendIPv6(frags[0], dst)
+	} else {
+		_ = w.sock.SendIPv6(frags[0], dst)
+		if seg2d > 0 {
+			time.Sleep(time.Duration(seg2d) * time.Millisecond)
+		}
+		_ = w.sock.SendIPv6(frags[1], dst)
+	}
+
+	log.Tracef("DNS frag v6: sent %d fragments", len(frags))
+}
+
+// findDNSSplitPoint finds optimal split point in DNS query
+func findDNSSplitPoint(dnsPayload []byte) int {
+	if len(dnsPayload) < 13 { // 12 byte header + at least 1 byte QNAME
+		return -1
+	}
+
+	pos := 12
+	qnameStart := pos
+	qnameEnd := pos
+
+	for pos < len(dnsPayload) {
+		labelLen := int(dnsPayload[pos])
+		if labelLen == 0 {
+			qnameEnd = pos + 1 // Include the null terminator
+			break
+		}
+		if labelLen > 63 || pos+1+labelLen > len(dnsPayload) {
+			// Invalid or compressed - fallback
+			return len(dnsPayload) / 2
+		}
+		pos += 1 + labelLen
+	}
+
+	if qnameEnd <= qnameStart {
+		return len(dnsPayload) / 2
+	}
+
+	// Split in the middle of QNAME
+	qnameLen := qnameEnd - qnameStart
+	if qnameLen > 4 {
+		return qnameStart + qnameLen/2
+	}
+
+	return len(dnsPayload) / 2
 }
