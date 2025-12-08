@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Box,
   Button,
@@ -183,6 +183,7 @@ export const DiscoveryRunner: React.FC = () => {
     presetName: string;
     setConfig: B4SetConfig | null;
   }>({ open: false, domain: "", presetName: "", setConfig: null });
+  const domainInputRef = useRef<HTMLInputElement | null>(null);
 
   const progress = suite
     ? (suite.completed_checks / suite.total_checks) * 100
@@ -298,6 +299,16 @@ export const DiscoveryRunner: React.FC = () => {
       console.error("Failed to cancel discovery:", err);
     }
   };
+
+  const handleDomainKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key !== "Enter") return;
+      if (!domain.trim()) return;
+      e.preventDefault();
+      void startDiscovery();
+    },
+    [domain]
+  );
 
   const resetDiscovery = () => {
     localStorage.removeItem("discovery_suiteId");
@@ -610,6 +621,8 @@ export const DiscoveryRunner: React.FC = () => {
             label="Domain to test"
             value={domain}
             onChange={(e) => setDomain(e.target.value)}
+            onKeyDown={handleDomainKeyDown}
+            inputRef={domainInputRef}
             placeholder="youtube.com"
             disabled={running || !!isReconnecting}
             helperText="Enter a domain to discover optimal bypass configuration"
