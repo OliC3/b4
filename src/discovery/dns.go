@@ -2,6 +2,7 @@ package discovery
 
 import (
 	"context"
+	"crypto/tls"
 	"net"
 	"time"
 
@@ -182,14 +183,32 @@ func (p *DNSProber) testDNS(ctx context.Context, server string, fragmented bool,
 
 	result.ResolvedIP = ips[0].String()
 
-	// Check if resolved IP matches expected
-	// Simple check - in production you might want to check if IP is in same ASN
-	result.IsPoisoned = result.ResolvedIP != expectedIP
-	result.Works = !result.IsPoisoned
+	result.Works = p.testIPServesDomain(ctx, result.ResolvedIP)
+	result.IsPoisoned = !result.Works
 
 	return result
 }
 
+func (p *DNSProber) testIPServesDomain(ctx context.Context, ip string) bool {
+	dialer := &net.Dialer{Timeout: p.timeout / 2}
+	conn, err := dialer.DialContext(ctx, "tcp", ip+":443")
+	if err != nil {
+		return false
+	}
+	defer conn.Close()
+
+	tlsConn := tls.Client(conn, &tls.Config{
+		ServerName:         p.domain,
+		InsecureSkipVerify: false,
+	})
+
+	err = tlsConn.HandshakeContext(ctx)
+	if err != nil {
+		return false
+	}
+	tlsConn.Close()
+	return true
+}
 func (p *DNSProber) testDNSWithFragment(server string, expectedIP string) DNSProbeResult {
 	result := DNSProbeResult{
 		Server:     server,

@@ -2,8 +2,9 @@
 
 ## [1.22.1] - 2025-12-09
 
-- FIXED: Discovery UI showing "0 of 0 checks" and "NaN%" during DNS detection phase.
-- FIXED: Discovery completing too fast causing "Failed to fetch discovery status" error.
+- FIXED: `Discovery` UI showing "0 of 0 checks" and "NaN%" during DNS detection phase.
+- FIXED: `Discovery` completing too fast causing "Failed to fetch discovery status" error.
+- FIXED: DNS poisoning detection falsely triggering for CDN domains by comparing IP addresses literally instead of testing actual connectivity.
 
 ## [1.22.0] - 2025-12-08
 
