@@ -141,39 +141,7 @@ func (api *API) handleAddPresetAsSet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	api.loadTargetsForSetCached(&set)
-
-	// Ensure all target arrays are initialized (not null)
-	if set.Targets.IPs == nil {
-		set.Targets.IPs = []string{}
-	}
-	if set.Targets.IpsToMatch == nil {
-		set.Targets.IpsToMatch = []string{}
-	}
-	if set.Targets.GeoSiteCategories == nil {
-		set.Targets.GeoSiteCategories = []string{}
-	}
-	if set.Targets.GeoIpCategories == nil {
-		set.Targets.GeoIpCategories = []string{}
-	}
-
-	// Ensure TCP WinValues is initialized
-	if set.TCP.WinValues == nil {
-		set.TCP.WinValues = []int{0, 1460, 8192, 65535}
-	}
-	if set.TCP.WinMode == "" {
-		set.TCP.WinMode = "off"
-	}
-	if set.TCP.DesyncMode == "" {
-		set.TCP.DesyncMode = "off"
-	}
-
-	// Ensure Faking SNIMutation is initialized
-	if set.Faking.SNIMutation.Mode == "" {
-		set.Faking.SNIMutation.Mode = "off"
-	}
-	if set.Faking.SNIMutation.FakeSNIs == nil {
-		set.Faking.SNIMutation.FakeSNIs = []string{}
-	}
+	config.ApplySetDefaults(&set)
 
 	api.cfg.Sets = append([]*config.SetConfig{&set}, api.cfg.Sets...)
 
