@@ -151,6 +151,7 @@ var DefaultConfig = Config{
 			Level:      log.LevelInfo,
 			Instaflush: true,
 			Syslog:     false,
+			ErrorFile:  "/var/log/b4/errors.log",
 		},
 
 		Checker: DiscoveryConfig{

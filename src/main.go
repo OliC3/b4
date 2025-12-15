@@ -281,6 +281,7 @@ func gracefulShutdown(cfg *config.Config, pool *nfq.Pool, httpServer *http.Serve
 		os.Exit(1)
 	}
 
+	log.CloseErrorFile()
 	log.Flush()
 	return nil
 }
@@ -297,6 +298,14 @@ func initLogging(cfg *config.Config) error {
 			return err
 		}
 		log.Infof("Syslog enabled")
+	}
+
+	if cfg.System.Logging.ErrorFile != "" {
+		if err := log.InitErrorFile(cfg.System.Logging.ErrorFile); err != nil {
+			log.Errorf("Failed to open error log file: %v", err)
+		} else {
+			log.Infof("Error logging to file: %s", cfg.System.Logging.ErrorFile)
+		}
 	}
 
 	currentLogLevel = log.Level(cfg.System.Logging.Level)

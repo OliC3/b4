@@ -108,11 +108,7 @@ func (ds *DiscoverySuite) RunDiscovery() {
 			log.Infof("DNS poisoned - applying discovered DNS bypass for TCP testing")
 			ds.applyDNSConfig(dnsResult)
 		} else {
-			log.Warnf("DNS is poisoned and no bypass found - aborting discovery")
-			ds.restoreConfig()
-			ds.finalize()
-			ds.logDiscoverySummary()
-			return
+			log.Warnf("DNS appears poisoned but no B4 bypass found - continuing anyway (user may have system DoH/DoT)")
 		}
 	}
 

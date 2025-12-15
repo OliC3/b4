@@ -24,6 +24,14 @@ var migrationRegistry = map[int]MigrationFunc{
 	5: migrateV5to6,
 	6: migrateV6to7, // Add TCP syn TTL and drop SACK settings
 	7: migrateV7to8, // Add DNS redirect settings
+	8: migrateV8to9,
+}
+
+// Migration: v8 -> v9
+func migrateV8to9(c *Config) error {
+	log.Tracef("Migration v8->v9: No changes, placeholder migration")
+	c.System.Logging.ErrorFile = DefaultConfig.System.Logging.ErrorFile
+	return nil
 }
 
 // Migration: v7 -> v8 (add DNS redirect settings)

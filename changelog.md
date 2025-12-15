@@ -1,8 +1,9 @@
 # B4 - Bye Bye Big Bro
 
-## [1.2x.x] - 2025-12-13
+## [1.23.x] - 2025-12-13
 
-- IMPROVED: prevent memory leaks by adding fetch cancellation to Connections and implementing LRU cache eviction in ASN lookup utility.
+- ADDED: dd error logging functionality with configurable error log file (default is `/var/log/b4/errors.log`) for crash diagnostics.
+- IMPROVED: prevent memory leaks in UI.
 
 ## [1.22.1] - 2025-12-09
 

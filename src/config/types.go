@@ -127,6 +127,7 @@ type Logging struct {
 	Level      log.Level `json:"level" bson:"level"`
 	Instaflush bool      `json:"instaflush" bson:"instaflush"`
 	Syslog     bool      `json:"syslog" bson:"syslog"`
+	ErrorFile  string    `json:"error_file" bson:"error_file"`
 }
 
 type SetConfig struct {

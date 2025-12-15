@@ -7,6 +7,7 @@ import (
 	"log"
 	"log/syslog"
 	"os"
+	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -22,7 +23,12 @@ const (
 	LevelDebug
 )
 
-var CurLevel atomic.Int32
+var (
+	CurLevel  atomic.Int32
+	errFile   *os.File
+	errLogger *log.Logger
+	errMu     sync.Mutex
+)
 
 // multi is a simple fan-out writer (stderr + optional syslog).
 type multi struct {
@@ -110,10 +116,54 @@ func Flush() {
 	}
 }
 
+func InitErrorFile(path string) error {
+	if path == "" {
+		return nil
+	}
+	errMu.Lock()
+	defer errMu.Unlock()
+
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("failed to create log directory: %w", err)
+	}
+
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		return err
+	}
+	errFile = f
+	errLogger = log.New(f, "", log.Ldate|log.Ltime|log.Lmicroseconds)
+	return nil
+}
+
+// ADD new function
+func CloseErrorFile() {
+	errMu.Lock()
+	defer errMu.Unlock()
+	if errFile != nil {
+		_ = errFile.Sync()
+		_ = errFile.Close()
+		errFile = nil
+		errLogger = nil
+	}
+}
+
 // ---- printing ------------------------------------------------------------
 
 func Errorf(format string, a ...any) error {
-	out("[ERROR] "+format, a...)
+	msg := fmt.Sprintf("[ERROR] "+format, a...)
+	out("%s", msg)
+
+	errMu.Lock()
+	if errLogger != nil {
+		errLogger.Println(msg)
+		if errFile != nil {
+			_ = errFile.Sync()
+		}
+	}
+	errMu.Unlock()
+
 	return fmt.Errorf(format, a...)
 }
 
