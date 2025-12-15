@@ -116,12 +116,12 @@ type DPIProber struct {
 }
 
 // NewDPIProber creates a new prober for the given domain
-func NewDPIProber(domain string, timeout time.Duration) *DPIProber {
+func NewDPIProber(domain string, refDomain string, timeout time.Duration) *DPIProber {
 	return &DPIProber{
 		domain:          domain,
 		timeout:         timeout,
 		results:         make(map[string]*ProbeResult),
-		referenceDomain: "example.com", // Should never be blocked
+		referenceDomain: refDomain,
 	}
 }
 

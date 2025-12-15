@@ -229,7 +229,7 @@ func (api *API) handleFingerprint(w http.ResponseWriter, r *http.Request) {
 	}
 
 	timeout := time.Duration(api.cfg.System.Checker.DiscoveryTimeoutSec) * time.Second
-	prober := discovery.NewDPIProber(req.Domain, timeout)
+	prober := discovery.NewDPIProber(req.Domain, api.cfg.System.Checker.ReferenceDomain, timeout)
 
 	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 	defer cancel()

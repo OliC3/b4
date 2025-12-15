@@ -215,7 +215,7 @@ func (ds *DiscoverySuite) RunDiscovery() {
 func (ds *DiscoverySuite) runFingerprinting() *DPIFingerprint {
 	log.Infof("Phase 0: DPI Fingerprinting for %s", ds.domain)
 
-	prober := NewDPIProber(ds.domain, time.Duration(ds.cfg.System.Checker.DiscoveryTimeoutSec)*time.Second)
+	prober := NewDPIProber(ds.domain, ds.cfg.System.Checker.ReferenceDomain, time.Duration(ds.cfg.System.Checker.DiscoveryTimeoutSec)*time.Second)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
