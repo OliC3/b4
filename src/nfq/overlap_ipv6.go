@@ -30,10 +30,9 @@ func (w *Worker) sendOverlapFragmentsV6(cfg *config.SetConfig, packet []byte, ds
 
 	payload := packet[payloadStart:]
 	seq0 := binary.BigEndian.Uint32(packet[ipv6HdrLen+4 : ipv6HdrLen+8])
-	id0 := binary.BigEndian.Uint16(packet[4:6])
 
 	sniStart, sniEnd, ok := locateSNI(payload)
-	if !ok || sniEnd <= sniStart {
+	if !ok || sniEnd <= sniStart || sniEnd > payloadLen || sniStart < 0 {
 		w.sendTCPSegmentsv6(cfg, packet, dst)
 		return
 	}
@@ -75,7 +74,6 @@ func (w *Worker) sendOverlapFragmentsV6(cfg *config.SetConfig, packet []byte, ds
 	}
 	copy(seg2[payloadStart+sniStart:payloadStart+sniEnd], fakeSNI[:sniLen])
 
-	binary.BigEndian.PutUint16(seg2[4:6], id0+1)
 	binary.BigEndian.PutUint16(seg2[4:6], uint16(seg2Len-ipv6HdrLen))
 	seg2[ipv6HdrLen+13] &^= 0x08
 	sock.FixTCPChecksumV6(seg2)

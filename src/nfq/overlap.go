@@ -27,7 +27,7 @@ func (w *Worker) sendOverlapFragments(cfg *config.SetConfig, packet []byte, dst 
 	id0 := binary.BigEndian.Uint16(packet[4:6])
 
 	sniStart, sniEnd, ok := locateSNI(payload)
-	if !ok || sniEnd <= sniStart {
+	if !ok || sniEnd <= sniStart || sniEnd > payloadLen || sniStart < 0 {
 		w.sendTCPFragments(cfg, packet, dst)
 		return
 	}

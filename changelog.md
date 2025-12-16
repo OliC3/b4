@@ -1,5 +1,9 @@
 # B4 - Bye Bye Big Bro
 
+## [1.23.1] - 2025-12-16
+
+- FIXED: crash in `overlap` fragmentation strategy when SNI extends beyond payload bounds (index out of range panic).
+
 ## [1.23.0] - 2025-12-16
 
 - ADDED: dd error logging functionality with configurable error log file (default is `/var/log/b4/errors.log`) for crash diagnostics.
