@@ -88,6 +88,38 @@ interface SetsManagerProps {
   onRefresh: () => void;
 }
 
+interface SortableSetCardProps {
+  id: string;
+  children: React.ReactNode;
+}
+
+const SortableSetCard = ({ id, children }: SortableSetCardProps) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  return (
+    <Box
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.4 : 1,
+        zIndex: isDragging ? 1 : 0,
+      }}
+      {...attributes}
+      {...listeners}
+    >
+      {children}
+    </Box>
+  );
+};
+
 export const SetsManager = ({ config, onRefresh }: SetsManagerProps) => {
   const { showSuccess, showError } = useSnackbar();
   const {
@@ -349,38 +381,6 @@ export const SetsManager = ({ config, onRefresh }: SetsManagerProps) => {
       return false;
     });
   }, [sets, filterText]);
-
-  interface SortableSetCardProps {
-    id: string;
-    children: React.ReactNode;
-  }
-
-  const SortableSetCard = ({ id, children }: SortableSetCardProps) => {
-    const {
-      attributes,
-      listeners,
-      setNodeRef,
-      transform,
-      transition,
-      isDragging,
-    } = useSortable({ id });
-
-    return (
-      <Box
-        ref={setNodeRef}
-        style={{
-          transform: CSS.Transform.toString(transform),
-          transition,
-          opacity: isDragging ? 0.4 : 1,
-          zIndex: isDragging ? 1 : 0,
-        }}
-        {...attributes}
-        {...listeners}
-      >
-        {children}
-      </Box>
-    );
-  };
 
   return (
     <Stack spacing={3}>
