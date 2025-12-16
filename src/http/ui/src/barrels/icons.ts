@@ -61,4 +61,5 @@ export {
   CloudDownload as CloudDownloadIcon,
   CheckCircle as CheckCircleIcon,
   GitHub as GitHubIcon,
+  KeyboardArrowDown as ArrowDownIcon,
 } from "@mui/icons-material";

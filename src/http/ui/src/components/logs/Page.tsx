@@ -9,10 +9,12 @@ import {
 } from "@mui/material";
 import { ClearIcon } from "@b4.icons";
 import { B4Badge, B4TextField, B4Switch, B4TooltipButton } from "@b4.elements";
-import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
-import { useWebSocket } from "../../context/B4WsProvider";
+import { ArrowDownIcon } from "@b4.icons";
+import { useWebSocket } from "@context/B4WsProvider";
+import { useSnackbar } from "@context/SnackbarProvider";
 
 export function LogsPage() {
+  const { showSuccess } = useSnackbar();
   const [filter, setFilter] = useState("");
   const [autoScroll, setAutoScroll] = useState(true);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
@@ -63,12 +65,14 @@ export function LogsPage() {
       if ((e.ctrlKey && e.key === "x") || e.key === "Delete") {
         e.preventDefault();
         clearLogs();
+        showSuccess("Logs cleared");
       } else if (e.key === "p" || e.key === "Pause") {
         e.preventDefault();
         setPauseLogs(!pauseLogs);
+        showSuccess(`Logs ${!pauseLogs ? "paused" : "resumed"}`);
       }
     },
-    [clearLogs, pauseLogs, setPauseLogs]
+    [clearLogs, pauseLogs, setPauseLogs, showSuccess]
   );
 
   useEffect(() => {
@@ -221,7 +225,7 @@ export function LogsPage() {
               }}
               size="small"
             >
-              <KeyboardArrowDownIcon />
+              <ArrowDownIcon />
             </IconButton>
           )}
         </Box>
