@@ -62,9 +62,9 @@ export function useIpActions() {
 
         if (response.ok) {
           showSuccess(
-            `IP ${
+            `${
               Array.isArray(modalState.selected)
-                ? modalState.selected.join(", ")
+                ? modalState.selected.length + " entries"
                 : modalState.selected
             } added successfully`
           );
