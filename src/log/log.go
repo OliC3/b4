@@ -26,10 +26,11 @@ const (
 )
 
 var (
-	CurLevel  atomic.Int32
-	errFile   *os.File
-	errLogger *log.Logger
-	errMu     sync.Mutex
+	CurLevel   atomic.Int32
+	errFile    *os.File
+	errLogger  *log.Logger
+	errMu      sync.Mutex
+	origStderr int
 )
 
 // multi is a simple fan-out writer (stderr + optional syslog).
@@ -137,9 +138,20 @@ func InitErrorFile(path string) error {
 	errFile = f
 	errLogger = log.New(f, "", log.Ldate|log.Ltime|log.Lmicroseconds)
 
+	// Save original stderr fd before redirecting
+	origStderr, _ = unix.Dup(int(os.Stderr.Fd()))
+
+	// Redirect stderr to error file (captures panics)
 	unix.Dup2(int(f.Fd()), int(os.Stderr.Fd()))
 
 	return nil
+}
+
+func OrigStderr() *os.File {
+	if origStderr == 0 {
+		return os.Stderr
+	}
+	return os.NewFile(uintptr(origStderr), "stderr")
 }
 
 // ADD new function

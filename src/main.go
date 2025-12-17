@@ -287,8 +287,6 @@ func gracefulShutdown(cfg *config.Config, pool *nfq.Pool, httpServer *http.Serve
 }
 
 func initLogging(cfg *config.Config) error {
-	w := io.MultiWriter(os.Stderr, b4http.LogWriter())
-	log.Init(w, log.Level(cfg.System.Logging.Level), cfg.System.Logging.Instaflush)
 
 	fmt.Fprintf(os.Stderr, "[INIT] Logging initialized at level %d\n", cfg.System.Logging.Level)
 
@@ -307,6 +305,9 @@ func initLogging(cfg *config.Config) error {
 			log.Infof("Error logging to file: %s", cfg.System.Logging.ErrorFile)
 		}
 	}
+
+	w := io.MultiWriter(log.OrigStderr(), b4http.LogWriter())
+	log.Init(w, log.Level(cfg.System.Logging.Level), cfg.System.Logging.Instaflush)
 
 	currentLogLevel = log.Level(cfg.System.Logging.Level)
 	return nil
