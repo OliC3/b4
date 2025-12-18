@@ -126,26 +126,37 @@ func (n *NFTablesManager) Apply() error {
 
 	markAccept := fmt.Sprintf("0x%x", n.cfg.Queue.Mark)
 
-	// MAC whitelist mode vs all traffic mode
 	if cfg.Queue.Devices.Enabled && len(cfg.Queue.Devices.Mac) > 0 {
 		// Create forward chain
 		if err := n.createChain("forward", "forward", 149, "accept"); err != nil {
 			return err
 		}
 
-		// Add rule for each whitelisted MAC
-		for _, mac := range cfg.Queue.Devices.Mac {
-			mac = strings.ToUpper(strings.TrimSpace(mac))
-			if mac == "" {
-				continue
+		if cfg.Queue.Devices.WhiteIsBlack {
+			for _, mac := range cfg.Queue.Devices.Mac {
+				mac = strings.ToUpper(strings.TrimSpace(mac))
+				if mac == "" {
+					continue
+				}
+				if err := n.addRuleArgs("forward", "ether", "saddr", mac, "return"); err != nil {
+					return err
+				}
 			}
-			if err := n.addRuleArgs("forward", "ether", "saddr", mac, "jump", nftChainName); err != nil {
+			if err := n.addRuleArgs("forward", "jump", nftChainName); err != nil {
 				return err
 			}
+		} else {
+			for _, mac := range cfg.Queue.Devices.Mac {
+				mac = strings.ToUpper(strings.TrimSpace(mac))
+				if mac == "" {
+					continue
+				}
+				if err := n.addRuleArgs("forward", "ether", "saddr", mac, "jump", nftChainName); err != nil {
+					return err
+				}
+			}
 		}
-		log.Infof("NFTABLES: MAC whitelist mode - %d devices", len(cfg.Queue.Devices.Mac))
 	} else {
-		// All traffic mode (current behavior)
 		if err := n.createChain("postrouting", "postrouting", 149, "accept"); err != nil {
 			return err
 		}

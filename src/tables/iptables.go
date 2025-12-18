@@ -241,17 +241,33 @@ func (manager *IPTablesManager) buildManifest() (Manifest, error) {
 			Rule{manager: manager, IPT: ipt, Table: "mangle", Chain: chainName, Action: "A", Spec: udpSpec},
 		)
 
-		// MAC whitelist mode vs all traffic mode
-		if cfg.Queue.Devices.Enabled {
-			for _, mac := range cfg.Queue.Devices.Mac {
-				mac = strings.ToUpper(strings.TrimSpace(mac))
-				if mac == "" {
-					continue
-				}
+		if cfg.Queue.Devices.Enabled && len(cfg.Queue.Devices.Mac) > 0 {
+			if cfg.Queue.Devices.WhiteIsBlack {
 				rules = append(rules,
 					Rule{manager: manager, IPT: ipt, Table: "mangle", Chain: "FORWARD", Action: "I",
-						Spec: []string{"-m", "mac", "--mac-source", mac, "-j", chainName}},
+						Spec: []string{"-j", chainName}},
 				)
+				for _, mac := range cfg.Queue.Devices.Mac {
+					mac = strings.ToUpper(strings.TrimSpace(mac))
+					if mac == "" {
+						continue
+					}
+					rules = append(rules,
+						Rule{manager: manager, IPT: ipt, Table: "mangle", Chain: "FORWARD", Action: "I",
+							Spec: []string{"-m", "mac", "--mac-source", mac, "-j", "RETURN"}},
+					)
+				}
+			} else {
+				for _, mac := range cfg.Queue.Devices.Mac {
+					mac = strings.ToUpper(strings.TrimSpace(mac))
+					if mac == "" {
+						continue
+					}
+					rules = append(rules,
+						Rule{manager: manager, IPT: ipt, Table: "mangle", Chain: "FORWARD", Action: "I",
+							Spec: []string{"-m", "mac", "--mac-source", mac, "-j", chainName}},
+					)
+				}
 			}
 		} else {
 			rules = append(rules,
@@ -260,7 +276,6 @@ func (manager *IPTablesManager) buildManifest() (Manifest, error) {
 			)
 		}
 
-		// DNS response always needed
 		rules = append(rules,
 			Rule{manager: manager, IPT: ipt, Table: "mangle", Chain: "PREROUTING", Action: "I", Spec: dnsResponseSpec},
 			Rule{manager: manager, IPT: ipt, Table: "mangle", Chain: "OUTPUT", Action: "I",
@@ -284,10 +299,6 @@ func (ipt *IPTablesManager) Apply() error {
 		return err
 	}
 	result := m.Apply()
-
-	if ipt.cfg.Queue.Devices.Enabled {
-		log.Infof("IPTABLES: MAC whitelist mode - %d devices", len(ipt.cfg.Queue.Devices.Mac))
-	}
 
 	if log.Level(log.CurLevel.Load()) >= log.LevelTrace {
 		iptables_trace, _ := run("sh", "-c", "cat /proc/net/netfilter/nfnetlink_queue && iptables -t mangle -vnL --line-numbers")
