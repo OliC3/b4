@@ -96,8 +96,8 @@ kernel_mod_load() {
 		insmod "$nfqueue_mod_path" >/dev/null 2>&1 && echo "xt_NFQUEUE.ko loaded"
 	fi
 
-	(modprobe xt_connbytes --first-time >/dev/null 2>&1 && echo "xt_connbytes loaded") || true
-	(modprobe xt_NFQUEUE --first-time >/dev/null 2>&1 && echo "xt_NFQUEUE loaded") || true
+	(modprobe xt_connbytes >/dev/null 2>&1 && echo "xt_connbytes loaded") || true
+	(modprobe xt_NFQUEUE >/dev/null 2>&1 && echo "xt_NFQUEUE loaded") || true
 }
 
 if [ "$1" = "start" ] || [ "$1" = "restart" ]
@@ -165,8 +165,8 @@ kernel_mod_load() {
 		insmod "$nfqueue_mod_path" >/dev/null 2>&1 && echo "xt_NFQUEUE.ko loaded"
 	fi
 
-	(modprobe xt_connbytes --first-time >/dev/null 2>&1 && echo "xt_connbytes loaded") || true
-	(modprobe xt_NFQUEUE --first-time >/dev/null 2>&1 && echo "xt_NFQUEUE loaded") || true
+	(modprobe xt_connbytes>/dev/null 2>&1 && echo "xt_connbytes loaded") || true
+	(modprobe xt_NFQUEUE >/dev/null 2>&1 && echo "xt_NFQUEUE loaded") || true
 }
 
 

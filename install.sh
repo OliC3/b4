@@ -501,7 +501,7 @@ detect_architecture() {
 get_latest_version() {
     api_url="https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases/latest"
 
-    version=$(fetch_stdout "$api_url" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+    version=$(fetch_stdout "$api_url" | grep -o '"tag_name": *"[^"]*"' | head -1 | cut -d'"' -f4)
 
     if [ -z "$version" ]; then
         print_error "Failed to fetch latest version"
@@ -693,8 +693,8 @@ kernel_mod_load() {
 		insmod "$nfqueue_mod_path" >/dev/null 2>&1 && echo "xt_NFQUEUE.ko loaded"
 	fi
 
-	(modprobe xt_connbytes --first-time >/dev/null 2>&1 && echo "xt_connbytes loaded") || true
-	(modprobe xt_NFQUEUE --first-time >/dev/null 2>&1 && echo "xt_NFQUEUE loaded") || true
+	(modprobe xt_connbytes >/dev/null 2>&1 && echo "xt_connbytes loaded") || true
+	(modprobe xt_NFQUEUE >/dev/null 2>&1 && echo "xt_NFQUEUE loaded") || true
 }
 
 if [ "$1" = "start" ] || [ "$1" = "restart" ]
@@ -762,8 +762,8 @@ kernel_mod_load() {
 		insmod "$nfqueue_mod_path" >/dev/null 2>&1 && echo "xt_NFQUEUE.ko loaded"
 	fi
 
-	(modprobe xt_connbytes --first-time >/dev/null 2>&1 && echo "xt_connbytes loaded") || true
-	(modprobe xt_NFQUEUE --first-time >/dev/null 2>&1 && echo "xt_NFQUEUE loaded") || true
+	(modprobe xt_connbytes>/dev/null 2>&1 && echo "xt_connbytes loaded") || true
+	(modprobe xt_NFQUEUE >/dev/null 2>&1 && echo "xt_NFQUEUE loaded") || true
 }
 
 

@@ -4,11 +4,14 @@ import (
 	"bytes"
 	"os/exec"
 	"strings"
+	"sync"
 
 	"github.com/daniellavrushin/b4/config"
 	"github.com/daniellavrushin/b4/http/handler"
 	"github.com/daniellavrushin/b4/log"
 )
+
+var modulesLoaded sync.Once
 
 // AddRulesAuto automatically detects and uses the appropriate firewall backend
 func AddRules(cfg *config.Config) error {
@@ -99,15 +102,12 @@ func hasBinary(name string) bool {
 }
 
 func loadKernelModules() {
-	// Common netfilter modules
-	_, _ = run("sh", "-c", "modprobe nf_conntrack >/dev/null 2>&1 || true")
-
-	// iptables specific
-	_, _ = run("sh", "-c", "modprobe xt_connbytes --first-time >/dev/null 2>&1 || true")
-	_, _ = run("sh", "-c", "modprobe xt_NFQUEUE --first-time >/dev/null 2>&1 || true")
-
-	// nftables specific (will fail silently if not needed)
-	_, _ = run("sh", "-c", "modprobe nf_tables >/dev/null 2>&1 || true")
-	_, _ = run("sh", "-c", "modprobe nft_queue >/dev/null 2>&1 || true")
-	_, _ = run("sh", "-c", "modprobe nft_ct >/dev/null 2>&1 || true")
+	modulesLoaded.Do(func() {
+		_, _ = run("sh", "-c", "modprobe -q nf_conntrack 2>/dev/null || true")
+		_, _ = run("sh", "-c", "modprobe -q xt_connbytes 2>/dev/null || true")
+		_, _ = run("sh", "-c", "modprobe -q xt_NFQUEUE 2>/dev/null || true")
+		_, _ = run("sh", "-c", "modprobe -q nf_tables 2>/dev/null || true")
+		_, _ = run("sh", "-c", "modprobe -q nft_queue 2>/dev/null || true")
+		_, _ = run("sh", "-c", "modprobe -q nft_ct 2>/dev/null || true")
+	})
 }
