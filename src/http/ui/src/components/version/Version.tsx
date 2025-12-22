@@ -8,33 +8,30 @@ import { GitHubIcon } from "@b4.icons";
 
 export default function Version() {
   const [updateModalOpen, setUpdateModalOpen] = useState(false);
-  const { latestRelease, isNewVersionAvailable, isLoading, currentVersion } =
-    useGitHubRelease();
+  const {
+    releases,
+    latestRelease,
+    isNewVersionAvailable,
+    isLoading,
+    currentVersion,
+    includePrerelease,
+    setIncludePrerelease,
+  } = useGitHubRelease();
 
   const handleVersionClick = () => {
-    if (isNewVersionAvailable && latestRelease) {
-      setUpdateModalOpen(true);
-    }
+    setUpdateModalOpen(true);
   };
 
   const handleDismissUpdate = () => {
     if (latestRelease) {
       dismissVersion(latestRelease.tag_name);
-      setUpdateModalOpen(false);
     }
-  };
-
-  const handleCloseModal = () => {
     setUpdateModalOpen(false);
   };
 
   return (
     <>
-      <Box
-        sx={{
-          py: 2,
-        }}
-      >
+      <Box sx={{ py: 2 }}>
         <Divider sx={{ mb: 2, borderColor: colors.border.default }} />
         <Stack spacing={1.5} alignItems="center">
           <Link
@@ -47,10 +44,7 @@ export default function Version() {
               gap: 0.5,
               color: colors.text.secondary,
               textDecoration: "none",
-              transition: "color 0.2s ease",
-              "&:hover": {
-                color: colors.secondary,
-              },
+              "&:hover": { color: colors.secondary },
             }}
           >
             <GitHubIcon sx={{ fontSize: "1rem" }} />
@@ -65,18 +59,15 @@ export default function Version() {
         </Stack>
       </Box>
 
-      {latestRelease && (
-        <UpdateModal
-          open={updateModalOpen}
-          onClose={handleCloseModal}
-          onDismiss={handleDismissUpdate}
-          currentVersion={currentVersion}
-          latestVersion={latestRelease.tag_name}
-          releaseNotes={latestRelease.body}
-          releaseUrl={latestRelease.html_url}
-          publishedAt={latestRelease.published_at}
-        />
-      )}
+      <UpdateModal
+        open={updateModalOpen}
+        onClose={() => setUpdateModalOpen(false)}
+        onDismiss={handleDismissUpdate}
+        currentVersion={currentVersion}
+        releases={releases}
+        includePrerelease={includePrerelease}
+        onTogglePrerelease={setIncludePrerelease}
+      />
     </>
   );
 }

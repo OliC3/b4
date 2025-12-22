@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
-interface GitHubRelease {
+export interface GitHubRelease {
   tag_name: string;
   name: string;
   body: string;
@@ -10,46 +10,36 @@ interface GitHubRelease {
 }
 
 interface UseGitHubReleaseResult {
+  releases: GitHubRelease[];
   latestRelease: GitHubRelease | null;
   isNewVersionAvailable: boolean;
   isLoading: boolean;
   error: string | null;
   currentVersion: string;
+  includePrerelease: boolean;
+  setIncludePrerelease: (include: boolean) => void;
 }
 
 const GITHUB_REPO = "DanielLavrushin/b4";
-const GITHUB_API_URL = `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`;
+const GITHUB_API_URL = `https://api.github.com/repos/${GITHUB_REPO}/releases?per_page=15`;
 const DISMISSED_VERSIONS_KEY = "b4_dismissed_versions";
+const INCLUDE_PRERELEASE_KEY = "b4_include_prerelease";
 
-/**
- * Compares two semantic version strings
- * Returns true if version1 is less than version2
- */
-const isVersionLower = (version1: string, version2: string): boolean => {
-  // Remove 'v' prefix if present
-  const v1 = version1.replace(/^v/, "");
-  const v2 = version2.replace(/^v/, "");
-
-  // Handle dev version
-  if (v1 === "dev") return true;
-
-  const parts1 = v1.split(".").map(Number);
-  const parts2 = v2.split(".").map(Number);
-
-  for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
-    const part1 = parts1[i] || 0;
-    const part2 = parts2[i] || 0;
-
-    if (part1 < part2) return true;
-    if (part1 > part2) return false;
+export const compareVersions = (v1: string, v2: string): number => {
+  const normalize = (v: string) => v.replace(/^v/, "").split(".").map(Number);
+  const [a, b] = [normalize(v1), normalize(v2)];
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    if ((a[i] || 0) > (b[i] || 0)) return 1;
+    if ((a[i] || 0) < (b[i] || 0)) return -1;
   }
-
-  return false;
+  return 0;
 };
 
-/**
- * Get list of dismissed version updates from localStorage
- */
+const isVersionLower = (version1: string, version2: string): boolean => {
+  if (version1.replace(/^v/, "") === "dev") return true;
+  return compareVersions(version1, version2) < 0;
+};
+
 const getDismissedVersions = (): string[] => {
   try {
     const dismissed = localStorage.getItem(DISMISSED_VERSIONS_KEY);
@@ -59,17 +49,10 @@ const getDismissedVersions = (): string[] => {
   }
 };
 
-/**
- * Check if a specific version has been dismissed
- */
 export const isVersionDismissed = (version: string): boolean => {
-  const dismissed = getDismissedVersions();
-  return dismissed.includes(version);
+  return getDismissedVersions().includes(version);
 };
 
-/**
- * Dismiss a specific version update
- */
 export const dismissVersion = (version: string): void => {
   try {
     const dismissed = getDismissedVersions();
@@ -82,68 +65,83 @@ export const dismissVersion = (version: string): void => {
   }
 };
 
-/**
- * Hook to fetch and manage GitHub release information
- */
 export const useGitHubRelease = (): UseGitHubReleaseResult => {
-  const [latestRelease, setLatestRelease] = useState<GitHubRelease | null>(
-    null
-  );
+  const [allReleases, setAllReleases] = useState<GitHubRelease[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [includePrerelease, setIncludePrereleaseState] = useState<boolean>(
+    () => {
+      try {
+        return localStorage.getItem(INCLUDE_PRERELEASE_KEY) === "true";
+      } catch {
+        return false;
+      }
+    }
+  );
 
   const currentVersion = import.meta.env.VITE_APP_VERSION || "dev";
 
+  const setIncludePrerelease = useCallback((include: boolean) => {
+    setIncludePrereleaseState(include);
+    try {
+      localStorage.setItem(INCLUDE_PRERELEASE_KEY, String(include));
+    } catch {
+      // ignore
+    }
+  }, []);
+
   useEffect(() => {
-    const fetchLatestRelease = async () => {
+    const fetchReleases = async () => {
       try {
         setIsLoading(true);
         setError(null);
 
         const response = await fetch(GITHUB_API_URL, {
-          headers: {
-            Accept: "application/vnd.github.v3+json",
-          },
+          headers: { Accept: "application/vnd.github.v3+json" },
         });
 
         if (!response.ok) {
           throw new Error(`GitHub API returned ${response.status}`);
         }
 
-        const data: GitHubRelease = (await response.json()) as GitHubRelease;
-
-        // Only set if it's not a prerelease
-        if (!data.prerelease) {
-          setLatestRelease(data);
-        }
+        const data = (await response.json()) as GitHubRelease[];
+        setAllReleases(data.slice(0, 10));
       } catch (err) {
-        console.error("Failed to fetch GitHub release:", err);
+        console.error("Failed to fetch GitHub releases:", err);
         setError(err instanceof Error ? err.message : "Unknown error");
       } finally {
         setIsLoading(false);
       }
     };
 
-    void fetchLatestRelease();
-
-    // Check for updates every 6 hours
-    const interval = setInterval(() => {
-      void fetchLatestRelease();
-    }, 6 * 60 * 60 * 1000);
-
+    void fetchReleases();
+    const interval = setInterval(
+      () => void fetchReleases(),
+      6 * 60 * 60 * 1000
+    );
     return () => clearInterval(interval);
   }, []);
 
-  const isNewVersionAvailable =
-    latestRelease !== null &&
-    isVersionLower(currentVersion, latestRelease.tag_name) &&
-    !isVersionDismissed(latestRelease.tag_name);
+  const releases = includePrerelease
+    ? allReleases
+    : allReleases.filter((r) => !r.prerelease);
 
+  const latestRelease = releases.length > 0 ? releases[0] : null;
+
+  const latestStableRelease = allReleases.find((r) => !r.prerelease) || null;
+
+  const isNewVersionAvailable =
+    latestStableRelease !== null &&
+    isVersionLower(currentVersion, latestStableRelease.tag_name) &&
+    !isVersionDismissed(latestStableRelease.tag_name);
   return {
+    releases,
     latestRelease,
     isNewVersionAvailable,
     isLoading,
     error,
     currentVersion,
+    includePrerelease,
+    setIncludePrerelease,
   };
 };
