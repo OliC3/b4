@@ -133,6 +133,7 @@ func (api *API) handleGeodatDownload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	api.geodataManager.UpdatePaths(geositePath, geoipPath)
+	api.geodataManager.ClearCache()
 
 	for _, set := range api.cfg.Sets {
 		log.Infof("Reloading geo targets for set: %s", set.Name)
