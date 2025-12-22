@@ -24,13 +24,7 @@ func (w *Worker) sendDisorderFragmentsV6(cfg *config.SetConfig, packet []byte, d
 		splits = []int{1, pi.PayloadLen / 2, pi.PayloadLen * 3 / 4}
 	}
 
-	validSplits := []int{0}
-	for _, s := range splits {
-		if s > 0 && s < pi.PayloadLen {
-			validSplits = append(validSplits, s)
-		}
-	}
-	validSplits = append(validSplits, pi.PayloadLen)
+	validSplits := BuildValidSplits(splits, pi.PayloadLen)
 
 	segments := make([]Segment, 0, len(validSplits)-1)
 	for i := 0; i < len(validSplits)-1; i++ {
@@ -46,14 +40,7 @@ func (w *Worker) sendDisorderFragmentsV6(cfg *config.SetConfig, packet []byte, d
 	r := utils.NewRand()
 	ShuffleSegments(segments, disorder.ShuffleMode, r)
 
-	minJitter := disorder.MinJitterUs
-	maxJitter := disorder.MaxJitterUs
-	if minJitter <= 0 {
-		minJitter = 1000
-	}
-	if maxJitter <= minJitter {
-		maxJitter = minJitter + 2000
-	}
+	minJitter, maxJitter := GetDisorderJitter(disorder)
 
 	seg2d := cfg.TCP.Seg2Delay
 	for i, seg := range segments {

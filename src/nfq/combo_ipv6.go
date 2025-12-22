@@ -18,27 +18,8 @@ func (w *Worker) sendComboFragmentsV6(cfg *config.SetConfig, packet []byte, dst 
 	}
 
 	combo := &cfg.Fragmentation.Combo
-	splits := []int{}
 
-	if combo.FirstByteSplit {
-		splits = append(splits, 1)
-	}
-
-	if combo.ExtensionSplit {
-		if extSplit := findPreSNIExtensionPoint(pi.Payload); extSplit > 1 && extSplit < pi.PayloadLen-5 {
-			splits = append(splits, extSplit)
-		}
-	}
-
-	if cfg.Fragmentation.MiddleSNI {
-		if sniStart, sniEnd, ok := locateSNI(pi.Payload); ok && sniEnd > sniStart {
-			midSNI := sniStart + (sniEnd-sniStart)/2
-			if len(splits) == 0 || midSNI > splits[len(splits)-1]+2 {
-				splits = append(splits, midSNI)
-			}
-		}
-	}
-
+	splits := GetComboSplitPoints(pi.Payload, pi.PayloadLen, combo, cfg.Fragmentation.MiddleSNI)
 	splits = uniqueSorted(splits, pi.PayloadLen)
 	if len(splits) < 1 {
 		splits = []int{pi.PayloadLen / 2}
@@ -71,17 +52,7 @@ func (w *Worker) sendComboFragmentsV6(cfg *config.SetConfig, packet []byte, dst 
 	r := utils.NewRand()
 	ShuffleSegments(segments, combo.ShuffleMode, r)
 
-	// Set PSH flag on highest-sequence segment
-	maxSeqIdx := 0
-	for i := range segments {
-		ClearPSH(segments[i].Data, pi.IPHdrLen)
-		sock.FixTCPChecksumV6(segments[i].Data)
-		if segments[i].Seq > segments[maxSeqIdx].Seq {
-			maxSeqIdx = i
-		}
-	}
-	SetPSH(segments[maxSeqIdx].Data, pi.IPHdrLen)
-	sock.FixTCPChecksumV6(segments[maxSeqIdx].Data)
+	SetMaxSeqPSH(segments, pi.IPHdrLen, sock.FixTCPChecksumV6)
 
 	firstDelayMs := combo.FirstDelayMs
 	if firstDelayMs <= 0 {

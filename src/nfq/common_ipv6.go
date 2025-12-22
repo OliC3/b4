@@ -60,3 +60,19 @@ func BuildSegmentV6(packet []byte, pi PacketInfo, payloadSlice []byte, seqOffset
 	sock.FixTCPChecksumV6(seg)
 	return seg
 }
+
+func (w *Worker) SendTwoSegmentsV6(seg1, seg2 []byte, dst net.IP, delay int, reverse bool) {
+	if reverse {
+		_ = w.sock.SendIPv6(seg2, dst)
+		if delay > 0 {
+			time.Sleep(time.Duration(delay) * time.Millisecond)
+		}
+		_ = w.sock.SendIPv6(seg1, dst)
+	} else {
+		_ = w.sock.SendIPv6(seg1, dst)
+		if delay > 0 {
+			time.Sleep(time.Duration(delay) * time.Millisecond)
+		}
+		_ = w.sock.SendIPv6(seg2, dst)
+	}
+}

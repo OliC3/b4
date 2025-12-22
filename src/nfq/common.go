@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"math/rand"
 	"net"
+	"sort"
 	"time"
 
 	"github.com/daniellavrushin/b4/config"
@@ -128,4 +129,196 @@ func GetSNISplitPoints(payload []byte, payloadLen int, middleSNI bool, sniPositi
 	}
 
 	return splits
+}
+
+func (w *Worker) SendTwoSegmentsV4(seg1, seg2 []byte, dst net.IP, delay int, reverse bool) {
+	if reverse {
+		_ = w.sock.SendIPv4(seg2, dst)
+		if delay > 0 {
+			time.Sleep(time.Duration(delay) * time.Millisecond)
+		}
+		_ = w.sock.SendIPv4(seg1, dst)
+	} else {
+		_ = w.sock.SendIPv4(seg1, dst)
+		if delay > 0 {
+			time.Sleep(time.Duration(delay) * time.Millisecond)
+		}
+		_ = w.sock.SendIPv4(seg2, dst)
+	}
+}
+
+func uniqueSorted(splits []int, maxVal int) []int {
+	seen := make(map[int]bool)
+	result := make([]int, 0, len(splits))
+	for _, s := range splits {
+		if s > 0 && s < maxVal && !seen[s] {
+			seen[s] = true
+			result = append(result, s)
+		}
+	}
+	sort.Ints(result)
+	return result
+}
+
+func locateSNI(payload []byte) (start, end int, ok bool) {
+	if len(payload) < 5 || payload[0] != TLSHandshakeType {
+		return 0, 0, false
+	}
+
+	p := 5
+
+	if p+4 > len(payload) || payload[p] != TLSClientHello {
+		return 0, 0, false
+	}
+
+	p += 4
+
+	if p+2+32 > len(payload) {
+		return 0, 0, false
+	}
+	p += 2 + 32
+
+	if p >= len(payload) {
+		return 0, 0, false
+	}
+	sidLen := int(payload[p])
+	p++
+	if p+sidLen > len(payload) {
+		return 0, 0, false
+	}
+	p += sidLen
+
+	if p+2 > len(payload) {
+		return 0, 0, false
+	}
+	csLen := int(binary.BigEndian.Uint16(payload[p : p+2]))
+	p += 2
+	if p+csLen > len(payload) {
+		return 0, 0, false
+	}
+	p += csLen
+
+	if p >= len(payload) {
+		return 0, 0, false
+	}
+	cmLen := int(payload[p])
+	p++
+	if p+cmLen > len(payload) {
+		return 0, 0, false
+	}
+	p += cmLen
+
+	if p+2 > len(payload) {
+		return 0, 0, false
+	}
+	extLen := int(binary.BigEndian.Uint16(payload[p : p+2]))
+	p += 2
+	if p+extLen > len(payload) {
+		extLen = len(payload) - p
+	}
+	e := p
+	ee := p + extLen
+
+	for e+4 <= ee {
+		extType := binary.BigEndian.Uint16(payload[e : e+2])
+		extDataLen := int(binary.BigEndian.Uint16(payload[e+2 : e+4]))
+		e += 4
+		if e+extDataLen > ee {
+			break
+		}
+
+		if extType == 0 && extDataLen >= 5 {
+			q := e
+			if q+2 > e+extDataLen {
+				break
+			}
+			listLen := int(binary.BigEndian.Uint16(payload[q : q+2]))
+			q += 2
+			if q+listLen > e+extDataLen {
+				break
+			}
+			if q+3 > e+extDataLen {
+				break
+			}
+			nameType := payload[q]
+			q++
+			if nameType != 0 {
+				break
+			}
+			nameLen := int(binary.BigEndian.Uint16(payload[q : q+2]))
+			q += 2
+			if nameLen == 0 || q+nameLen > e+extDataLen {
+				break
+			}
+			return q, q + nameLen, true
+		}
+
+		e += extDataLen
+	}
+	return 0, 0, false
+}
+
+func SetMaxSeqPSH(segments []Segment, ipHdrLen int, fixChecksum func([]byte)) {
+	maxSeqIdx := 0
+	for i := range segments {
+		ClearPSH(segments[i].Data, ipHdrLen)
+		fixChecksum(segments[i].Data)
+		if segments[i].Seq > segments[maxSeqIdx].Seq {
+			maxSeqIdx = i
+		}
+	}
+	SetPSH(segments[maxSeqIdx].Data, ipHdrLen)
+	fixChecksum(segments[maxSeqIdx].Data)
+}
+
+func GetComboSplitPoints(payload []byte, payloadLen int, combo *config.ComboFragConfig, middleSNI bool) []int {
+	splits := []int{}
+
+	if combo.FirstByteSplit {
+		splits = append(splits, 1)
+	}
+
+	if combo.ExtensionSplit {
+		if extSplit := findPreSNIExtensionPoint(payload); extSplit > 1 && extSplit < payloadLen-5 {
+			splits = append(splits, extSplit)
+		}
+	}
+
+	if middleSNI {
+		if sniStart, sniEnd, ok := locateSNI(payload); ok && sniEnd > sniStart {
+			sniLen := sniEnd - sniStart
+			if sniStart > 2 {
+				splits = append(splits, sniStart-1)
+			}
+			splits = append(splits, sniStart+sniLen/2)
+			if sniLen > 15 {
+				splits = append(splits, sniStart+sniLen*3/4)
+			}
+		}
+	}
+
+	return splits
+}
+
+func GetDisorderJitter(disorder *config.DisorderFragConfig) (minJitter, maxJitter int) {
+	minJitter = disorder.MinJitterUs
+	maxJitter = disorder.MaxJitterUs
+	if minJitter <= 0 {
+		minJitter = 1000
+	}
+	if maxJitter <= minJitter {
+		maxJitter = minJitter + 2000
+	}
+	return
+}
+
+func BuildValidSplits(splits []int, payloadLen int) []int {
+	validSplits := []int{0}
+	for _, s := range splits {
+		if s > 0 && s < payloadLen {
+			validSplits = append(validSplits, s)
+		}
+	}
+	validSplits = append(validSplits, payloadLen)
+	return validSplits
 }

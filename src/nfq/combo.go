@@ -2,7 +2,6 @@ package nfq
 
 import (
 	"net"
-	"sort"
 	"time"
 
 	"github.com/daniellavrushin/b4/config"
@@ -20,32 +19,11 @@ func (w *Worker) sendComboFragments(cfg *config.SetConfig, packet []byte, dst ne
 	}
 
 	combo := &cfg.Fragmentation.Combo
-	splits := []int{}
 
-	if combo.FirstByteSplit {
-		splits = append(splits, 1)
-	}
-
-	if combo.ExtensionSplit {
-		if extSplit := findPreSNIExtensionPoint(pi.Payload); extSplit > 1 && extSplit < pi.PayloadLen-5 {
-			splits = append(splits, extSplit)
-		}
-	}
-
-	if cfg.Fragmentation.MiddleSNI {
-		if sniStart, sniEnd, ok := locateSNI(pi.Payload); ok && sniEnd > sniStart {
-			sniLen := sniEnd - sniStart
-			if sniStart > 2 {
-				splits = append(splits, sniStart-1)
-			}
-			splits = append(splits, sniStart+sniLen/2)
-			if sniLen > 15 {
-				splits = append(splits, sniStart+sniLen*3/4)
-			}
-		}
-	}
+	splits := GetComboSplitPoints(pi.Payload, pi.PayloadLen, combo, cfg.Fragmentation.MiddleSNI)
 
 	splits = uniqueSorted(splits, pi.PayloadLen)
+
 	if len(splits) < 1 {
 		splits = []int{pi.PayloadLen / 2}
 	}
@@ -58,8 +36,6 @@ func (w *Worker) sendComboFragments(cfg *config.SetConfig, packet []byte, dst ne
 			continue
 		}
 		seg := BuildSegmentV4(packet, pi, pi.Payload[prevEnd:splitPos], uint32(prevEnd), uint16(i))
-		ClearPSH(seg, pi.IPHdrLen)
-		sock.FixTCPChecksum(seg)
 		segments = append(segments, Segment{Data: seg, Seq: pi.Seq0 + uint32(prevEnd)})
 		prevEnd = splitPos
 	}
@@ -77,18 +53,7 @@ func (w *Worker) sendComboFragments(cfg *config.SetConfig, packet []byte, dst ne
 	r := utils.NewRand()
 	ShuffleSegments(segments, combo.ShuffleMode, r)
 
-	// Set PSH flag on highest-sequence segment
-	maxSeqIdx := 0
-	for i := range segments {
-		ClearPSH(segments[i].Data, pi.IPHdrLen)
-		sock.FixTCPChecksum(segments[i].Data)
-		if segments[i].Seq > segments[maxSeqIdx].Seq {
-			maxSeqIdx = i
-		}
-	}
-
-	SetPSH(segments[maxSeqIdx].Data, pi.IPHdrLen)
-	sock.FixTCPChecksum(segments[maxSeqIdx].Data)
+	SetMaxSeqPSH(segments, pi.IPHdrLen, sock.FixTCPChecksum)
 
 	// Send with delays
 	firstDelayMs := combo.FirstDelayMs
@@ -110,19 +75,4 @@ func (w *Worker) sendComboFragments(cfg *config.SetConfig, packet []byte, dst ne
 			time.Sleep(time.Duration(r.Intn(jitterMaxUs)) * time.Microsecond)
 		}
 	}
-}
-
-func uniqueSorted(splits []int, maxVal int) []int {
-	seen := make(map[int]bool)
-	result := make([]int, 0, len(splits))
-
-	for _, s := range splits {
-		if s > 0 && s < maxVal && !seen[s] {
-			seen[s] = true
-			result = append(result, s)
-		}
-	}
-
-	sort.Ints(result)
-	return result
 }
