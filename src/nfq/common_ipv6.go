@@ -45,6 +45,9 @@ done:
 
 	tcpHdrLen := int((packet[offset+12] >> 4) * 4)
 	payloadStart := offset + tcpHdrLen
+	if payloadStart > len(packet) {
+		return PacketInfo{}, false
+	}
 	payloadLen := len(packet) - payloadStart
 
 	return PacketInfo{

@@ -21,6 +21,9 @@ func ExtractPacketInfoV4(packet []byte) (PacketInfo, bool) {
 	}
 	tcpHdrLen := int((packet[ipHdrLen+12] >> 4) * 4)
 	payloadStart := ipHdrLen + tcpHdrLen
+	if payloadStart > len(packet) {
+		return PacketInfo{}, false
+	}
 	payloadLen := len(packet) - payloadStart
 
 	return PacketInfo{
