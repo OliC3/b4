@@ -115,10 +115,9 @@ func (w *Worker) Start() error {
 				nextHeader := raw[6]
 				offset := 40
 
-				// Skip extension headers
 				for {
 					switch nextHeader {
-					case 0, 43, 44, 60: // Hop-by-Hop, Routing, Fragment, Destination Options
+					case 0, 43, 60: // Hop-by-Hop, Routing, Destination Options
 						if len(raw) < offset+2 {
 							_ = q.SetVerdict(id, nfqueue.NfAccept)
 							return 0
@@ -126,6 +125,13 @@ func (w *Worker) Start() error {
 						nextHeader = raw[offset]
 						hdrLen := int(raw[offset+1])*8 + 8
 						offset += hdrLen
+					case 44:
+						if len(raw) < offset+8 {
+							_ = q.SetVerdict(id, nfqueue.NfAccept)
+							return 0
+						}
+						nextHeader = raw[offset]
+						offset += 8
 					default:
 						goto done
 					}

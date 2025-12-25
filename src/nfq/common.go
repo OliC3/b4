@@ -76,13 +76,6 @@ func ShuffleSegments(segments []Segment, mode string, r *rand.Rand) {
 	}
 }
 
-func (w *Worker) SendWithDelayV4(seg []byte, dst net.IP, delayMs int) {
-	_ = w.sock.SendIPv4(seg, dst)
-	if delayMs > 0 {
-		time.Sleep(time.Duration(delayMs) * time.Millisecond)
-	}
-}
-
 func (w *Worker) SendSegmentsV4(segs [][]byte, dst net.IP, cfg *config.SetConfig) {
 	delay := cfg.TCP.Seg2Delay
 	if cfg.Fragmentation.ReverseOrder {
@@ -363,61 +356,4 @@ func BuildFakeOverlapSegmentV4(packet []byte, pi PacketInfo, payloadLen int, seq
 	}
 
 	return seg
-}
-
-func (w *Worker) SendFakeThenRealV4(packet []byte, pi PacketInfo, realPayload []byte, seqOffset uint32, dst net.IP, cfg *config.SetConfig) {
-	overlapPattern := cfg.Fragmentation.SeqOverlapBytes
-	overlapLen := len(overlapPattern)
-	if overlapLen == 0 || overlapLen > len(realPayload) {
-		seg := BuildSegmentV4(packet, pi, realPayload, seqOffset, 0)
-		_ = w.sock.SendIPv4(seg, dst)
-		return
-	}
-
-	fakeSeg := BuildFakeOverlapSegmentV4(packet, pi, overlapLen, seqOffset, 0, overlapPattern, cfg.Faking.TTL, true)
-	if fakeSeg != nil {
-		_ = w.sock.SendIPv4(fakeSeg, dst)
-	}
-
-	if cfg.TCP.Seg2Delay > 0 {
-		time.Sleep(time.Duration(cfg.TCP.Seg2Delay) * time.Millisecond)
-	} else {
-		time.Sleep(100 * time.Microsecond)
-	}
-
-	realSeg := BuildSegmentV4(packet, pi, realPayload, seqOffset, 1)
-	_ = w.sock.SendIPv4(realSeg, dst)
-}
-
-func (w *Worker) SendOverlapSequenceV4(packet []byte, pi PacketInfo, segments []Segment, overlapFirstN int, dst net.IP, cfg *config.SetConfig) {
-	overlapPattern := cfg.Fragmentation.SeqOverlapBytes
-	if len(overlapPattern) == 0 || overlapFirstN <= 0 {
-		for _, seg := range segments {
-			_ = w.sock.SendIPv4(seg.Data, dst)
-			if cfg.TCP.Seg2Delay > 0 {
-				time.Sleep(time.Duration(cfg.TCP.Seg2Delay) * time.Millisecond)
-			}
-		}
-		return
-	}
-
-	for i, seg := range segments {
-		if i < overlapFirstN {
-			payloadLen := len(seg.Data) - pi.PayloadStart
-			if payloadLen > 0 {
-				seqOffset := seg.Seq - pi.Seq0
-				fakeSeg := BuildFakeOverlapSegmentV4(packet, pi, payloadLen, seqOffset, uint16(i*2), overlapPattern, cfg.Faking.TTL, true)
-				if fakeSeg != nil {
-					_ = w.sock.SendIPv4(fakeSeg, dst)
-					time.Sleep(50 * time.Microsecond)
-				}
-			}
-		}
-
-		_ = w.sock.SendIPv4(seg.Data, dst)
-
-		if i < len(segments)-1 && cfg.TCP.Seg2Delay > 0 {
-			time.Sleep(time.Duration(cfg.TCP.Seg2Delay) * time.Millisecond)
-		}
-	}
 }

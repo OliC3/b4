@@ -98,8 +98,6 @@ func (w *Worker) sendOscillatingWindows(packet []byte, dst net.IP, ipHdrLen int,
 		// Small delay between fakes
 		time.Sleep(100 * time.Microsecond)
 	}
-
-	_ = w.sock.SendIPv4(packet, dst)
 }
 
 // sendZeroWindow sends zero window probe attack
