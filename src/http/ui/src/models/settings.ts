@@ -1,12 +1,3 @@
-export interface Capture {
-  protocol: string;
-  domain: string;
-  timestamp: string;
-  size: number;
-  filepath: string;
-  hex_data: string;
-}
-
 export interface GeodatSource {
   name: string;
   geosite_url: string;

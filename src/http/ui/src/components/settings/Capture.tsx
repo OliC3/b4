@@ -49,8 +49,7 @@ export const CaptureSettings = () => {
 
   useEffect(() => {
     if (!uploadForm.domain && uploadForm.file) {
-      uploadForm.domain = uploadForm.file.name;
-      setUploadForm(uploadForm);
+      setUploadForm((prev) => ({ ...prev, domain: prev.file?.name ?? "" }));
     }
   }, [uploadForm]);
 

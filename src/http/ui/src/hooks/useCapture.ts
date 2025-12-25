@@ -1,5 +1,5 @@
 import { captureApi } from "@api/capture";
-import { Capture } from "@models/settings";
+import { Capture } from "@b4.capture";
 import { useCallback, useState } from "react";
 
 export function useCaptures() {
@@ -8,11 +8,13 @@ export function useCaptures() {
 
   const loadCaptures = useCallback(async () => {
     try {
+      setLoading(true);
       const list = await captureApi.list();
       setCaptures(list);
       return list;
     } catch (e) {
       console.error("Failed to load captures:", e);
+      setLoading(false);
       return [];
     }
   }, []);
