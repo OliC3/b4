@@ -1,5 +1,9 @@
 # B4 - Bye Bye Big Bro
 
+## [1.26.4] - 2025-12-xx
+
+- IMPROVED: `Discovery` now uses DNS-over-HTTPS (encrypted DNS via `Google`/`Quad9`/`Cloudflare`) to detect when your ISP returns fake IP addresses for blocked sites. When DNS poisoning is detected, B4 connects directly to the real server to continue testing bypass strategies.
+
 ## [1.26.3] - 2025-12-26
 
 - FIXED: UDP port ranges (e.g., `50000-50032`) now work correctly on both `iptables` and `nftables` systems. Previously, port ranges could cause startup failures on older devices.

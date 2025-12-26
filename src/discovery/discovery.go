@@ -49,6 +49,8 @@ type DiscoverySuite struct {
 	workingPayloads []PayloadTestResult
 	bestPayload     int
 	baselineFailed  bool
+
+	dnsResult *DNSDiscoveryResult
 }
 
 func NewDiscoverySuite(input string, pool *nfq.Pool) *DiscoverySuite {
@@ -122,8 +124,11 @@ func (ds *DiscoverySuite) RunDiscovery() {
 		if dnsResult.hasWorkingConfig() {
 			log.Infof("DNS poisoned - applying discovered DNS bypass for TCP testing")
 			ds.applyDNSConfig(dnsResult)
+		} else if len(dnsResult.ExpectedIPs) > 0 {
+			log.Infof("DNS poisoned, no bypass - using direct IPs: %v", dnsResult.ExpectedIPs)
+			ds.dnsResult = dnsResult
 		} else {
-			log.Warnf("DNS appears poisoned but no B4 bypass found - continuing anyway (user may have system DoH/DoT)")
+			log.Warnf("DNS poisoned but no expected IP known - discovery may fail")
 		}
 	}
 
@@ -780,6 +785,30 @@ func (ds *DiscoverySuite) testPreset(preset ConfigPreset) CheckResult {
 }
 
 func (ds *DiscoverySuite) fetchWithTimeout(timeout time.Duration) CheckResult {
+	var directIPs []string
+	if ds.dnsResult != nil {
+		directIPs = ds.dnsResult.ExpectedIPs
+	}
+
+	if len(directIPs) == 0 {
+		return ds.fetchWithTimeoutUsingIP(timeout, "")
+	}
+
+	var lastResult CheckResult
+	for i, ip := range directIPs {
+		lastResult = ds.fetchWithTimeoutUsingIP(timeout, ip)
+		if lastResult.Status == CheckStatusComplete {
+			return lastResult
+		}
+		if i < len(directIPs)-1 {
+			log.Tracef("Direct IP %s failed, trying next", ip)
+		}
+	}
+
+	return lastResult
+}
+
+func (ds *DiscoverySuite) fetchWithTimeoutUsingIP(timeout time.Duration, ip string) CheckResult {
 	result := CheckResult{
 		Domain:    ds.Domain,
 		Status:    CheckStatusRunning,
@@ -789,17 +818,35 @@ func (ds *DiscoverySuite) fetchWithTimeout(timeout time.Duration) CheckResult {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	client := &http.Client{
-		Timeout: timeout,
-		Transport: &http.Transport{
-			TLSClientConfig:       &tls.Config{InsecureSkipVerify: true},
-			ResponseHeaderTimeout: timeout,
-			IdleConnTimeout:       timeout,
-			DialContext: (&net.Dialer{
+	transport := &http.Transport{
+		TLSClientConfig:       &tls.Config{InsecureSkipVerify: true},
+		ResponseHeaderTimeout: timeout,
+		IdleConnTimeout:       timeout,
+	}
+
+	if ip != "" {
+		transport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+			_, port, _ := net.SplitHostPort(addr)
+			if port == "" {
+				port = "443"
+			}
+			directAddr := net.JoinHostPort(ip, port)
+			log.Tracef("DNS bypass: connecting to %s instead of %s", directAddr, addr)
+			return (&net.Dialer{
 				Timeout:   timeout / 2,
 				KeepAlive: timeout,
-			}).DialContext,
-		},
+			}).DialContext(ctx, network, directAddr)
+		}
+	} else {
+		transport.DialContext = (&net.Dialer{
+			Timeout:   timeout / 2,
+			KeepAlive: timeout,
+		}).DialContext
+	}
+
+	client := &http.Client{
+		Timeout:   timeout,
+		Transport: transport,
 	}
 
 	req, err := http.NewRequestWithContext(ctx, "GET", ds.CheckURL, nil)

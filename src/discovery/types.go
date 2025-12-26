@@ -129,6 +129,7 @@ type DNSProbeResult struct {
 
 type DNSDiscoveryResult struct {
 	IsPoisoned    bool             `json:"is_poisoned"`
+	ExpectedIPs   []string         `json:"expected_ips,omitempty"`
 	BestServer    string           `json:"best_server,omitempty"`
 	NeedsFragment bool             `json:"needs_fragment"`
 	ProbeResults  []DNSProbeResult `json:"probe_results,omitempty"`
