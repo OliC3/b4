@@ -352,7 +352,6 @@ func (cfg *Config) CollectUDPPorts() []string {
 		for _, p := range strings.Split(set.UDP.DPortFilter, ",") {
 			p = strings.TrimSpace(p)
 			if p != "" {
-				p = strings.ReplaceAll(p, "-", ":")
 				portSet[p] = true
 			}
 		}

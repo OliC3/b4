@@ -220,6 +220,10 @@ func (manager *IPTablesManager) buildManifest() (Manifest, error) {
 		)
 
 		udpPorts := cfg.CollectUDPPorts()
+		for i, p := range udpPorts {
+			udpPorts[i] = strings.ReplaceAll(p, "-", ":")
+		}
+
 		udpPortSpec := []string{"-p", "udp", "-m", "multiport", "--dports", strings.Join(udpPorts, ",")}
 		udpSpec := append(
 			append(udpPortSpec,

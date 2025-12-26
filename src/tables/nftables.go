@@ -207,6 +207,10 @@ func (n *NFTablesManager) Apply() error {
 
 	// UDP ports
 	udpPorts := cfg.CollectUDPPorts()
+	for i, p := range udpPorts {
+		udpPorts[i] = strings.ReplaceAll(p, ":", "-")
+	}
+
 	var udpPortExpr string
 	if len(udpPorts) == 1 {
 		udpPortExpr = udpPorts[0]

@@ -134,13 +134,23 @@ export const TargetSettings = ({
   };
 
   const handleAddBypassDomain = () => {
-    if (newBypassDomain.trim()) {
-      onChange("targets.sni_domains", [
-        ...config.targets.sni_domains,
-        newBypassDomain.trim(),
-      ]);
-      setNewBypassDomain("");
+    const value = newBypassDomain.trim();
+    if (!value) return;
+
+    const domainRange = value.split(/[\s,|]+/).filter(Boolean);
+    const existing = new Set(config.targets.sni_domains);
+    const next = [...config.targets.sni_domains];
+
+    for (const raw of domainRange) {
+      const domain = raw.trim();
+      if (domain && !existing.has(domain)) {
+        existing.add(domain);
+        next.push(domain);
+      }
     }
+
+    onChange("targets.sni_domains", next);
+    setNewBypassDomain("");
   };
 
   const handleAddBypassIP = () => {

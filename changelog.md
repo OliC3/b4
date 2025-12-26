@@ -1,5 +1,10 @@
 # B4 - Bye Bye Big Bro
 
+## [1.26.3] - 2025-12-26
+
+- FIXED: UDP port ranges (e.g., `50000-50032`) now work correctly on both `iptables` and `nftables` systems. Previously, port ranges could cause startup failures on older devices.
+- IMPROVED: Paste multiple domains at once when adding to `Targets` (separated by spaces, commas, or pipes).
+
 ## [1.26.2] - 2025-12-25
 
 - FIXED: Normalize UDP port filter format by replacing dashes with colons before creating UDP rules in the `iptables`.
