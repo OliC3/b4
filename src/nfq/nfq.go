@@ -304,10 +304,6 @@ func (w *Worker) Start() error {
 					return 0
 				}
 
-				if set == nil {
-					set = cfg.MainSet
-				}
-
 				matchedIP := matched
 				matchedPort := false
 				matchedQUIC := false
@@ -320,10 +316,16 @@ func (w *Worker) Start() error {
 					ipTarget = st.Name
 				}
 
-				if mport, portSet := matcher.MatchUDPPort(dport); mport {
+				if matchedIP && matcher.PortMatchesSet(dport, st) {
 					matchedPort = true
-					set = portSet
-					ipTarget = portSet.Name
+				} else {
+					if mport, portSet := matcher.MatchUDPPortOnly(dport); mport {
+						matchedPort = true
+						set = portSet
+						if !matchedIP {
+							ipTarget = portSet.Name
+						}
+					}
 				}
 
 				isSTUN = stun.IsSTUNMessage(payload)

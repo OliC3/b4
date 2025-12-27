@@ -368,3 +368,29 @@ func (s *SuffixSet) GetCacheStats() map[string]interface{} {
 		"regex_cache_limit":  10000,
 	}
 }
+
+func (s *SuffixSet) PortMatchesSet(dport uint16, targetSet *config.SetConfig) bool {
+	if s == nil || targetSet == nil {
+		return false
+	}
+	port := int(dport)
+	for _, r := range s.portRanges {
+		if r.set == targetSet && port >= r.min && port <= r.max {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *SuffixSet) MatchUDPPortOnly(dport uint16) (bool, *config.SetConfig) {
+	if s == nil || len(s.portRanges) == 0 {
+		return false, nil
+	}
+	port := int(dport)
+	for _, r := range s.portRanges {
+		if len(r.set.Targets.IpsToMatch) == 0 && port >= r.min && port <= r.max {
+			return true, r.set
+		}
+	}
+	return false, nil
+}
