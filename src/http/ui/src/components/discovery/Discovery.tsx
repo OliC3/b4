@@ -22,8 +22,6 @@ import {
   CollapseIcon,
   ImprovementIcon,
   DiscoveryIcon,
-  FingerprintIcon,
-  SecurityIcon,
 } from "@b4.icons";
 import { colors } from "@design";
 import { B4SetConfig } from "@models/config";
@@ -36,9 +34,6 @@ import {
   StrategyFamily,
   DiscoveryPhase,
   DomainPresetResult,
-  DPIFingerprint,
-  DPIType,
-  BlockingMethod,
 } from "@b4.discovery";
 import { useSets } from "@hooks/useSets";
 
@@ -66,7 +61,6 @@ const familyNames: Record<StrategyFamily, string> = {
 
 // Friendly names for phases
 const phaseNames: Record<DiscoveryPhase, string> = {
-  fingerprint: "DPI Fingerprinting",
   baseline: "Baseline Test",
   strategy_detection: "Strategy Detection",
   optimization: "Optimization",
@@ -190,7 +184,6 @@ export const DiscoveryRunner = () => {
       strategy_detection: [],
       optimization: [],
       combination: [],
-      fingerprint: [],
       dns_detection: [],
     };
 
@@ -200,142 +193,6 @@ export const DiscoveryRunner = () => {
     });
 
     return grouped;
-  };
-
-  const FingerprintDisplay = ({
-    fingerprint,
-  }: {
-    fingerprint: DPIFingerprint;
-  }) => {
-    const dpiTypeLabels: Record<DPIType, string> = {
-      unknown: "Unknown DPI",
-      tspu: "TSPU (Russia)",
-      sandvine: "Sandvine",
-      huawei: "Huawei",
-      allot: "Allot",
-      fortigate: "FortiGate",
-      none: "No DPI Detected",
-    };
-
-    const blockingLabels: Record<BlockingMethod, string> = {
-      rst_inject: "RST Injection",
-      timeout: "Silent Drop",
-      redirect: "HTTP Redirect",
-      content_inject: "Content Injection",
-      tls_alert: "TLS Alert",
-      none: "None",
-    };
-
-    return (
-      <Paper
-        elevation={0}
-        sx={{
-          p: 2,
-          mb: 2,
-          bgcolor: colors.accent.primary,
-          border: `1px solid ${colors.border.default}`,
-          borderRadius: 2,
-        }}
-      >
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
-          <FingerprintIcon sx={{ color: colors.secondary }} />
-          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-            DPI Fingerprint
-          </Typography>
-          <B4Badge
-            label={`${fingerprint.confidence}% confidence`}
-            size="small"
-          />
-        </Box>
-
-        {/* Main Info Row */}
-        <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mb: 2 }}>
-          <B4Badge
-            icon={<SecurityIcon />}
-            label={dpiTypeLabels[fingerprint.type]}
-            color="primary"
-          />
-          <B4Badge
-            label={`Method: ${blockingLabels[fingerprint.blocking_method]}`}
-            color="primary"
-          />
-          {fingerprint.dpi_hop_count > 0 && (
-            <B4Badge
-              label={`${fingerprint.dpi_hop_count} hops away`}
-              variant="outlined"
-            />
-          )}
-          {fingerprint.is_inline && (
-            <B4Badge label="Inline DPI" color="error" />
-          )}
-          {fingerprint.optimal_ttl > 0 && (
-            <B4Badge
-              label={`Optimal TTL: ${fingerprint.optimal_ttl}`}
-              color="primary"
-            />
-          )}
-        </Stack>
-
-        {/* Vulnerabilities */}
-        <Typography
-          variant="caption"
-          sx={{ color: colors.text.secondary, display: "block", mb: 1 }}
-        >
-          Vulnerabilities Detected:
-        </Typography>
-        <Stack
-          direction="row"
-          spacing={0.5}
-          flexWrap="wrap"
-          gap={0.5}
-          sx={{ mb: 2 }}
-        >
-          <B4Badge
-            label="TTL"
-            color={fingerprint.vulnerable_to_ttl ? "secondary" : "primary"}
-            variant={fingerprint.vulnerable_to_ttl ? "filled" : "outlined"}
-          />
-          <B4Badge
-            label="Fragmentation"
-            color={fingerprint.vulnerable_to_frag ? "secondary" : "primary"}
-            variant={fingerprint.vulnerable_to_frag ? "filled" : "outlined"}
-          />
-          <B4Badge
-            label="Desync"
-            color={fingerprint.vulnerable_to_desync ? "secondary" : "primary"}
-            variant={fingerprint.vulnerable_to_desync ? "filled" : "outlined"}
-          />
-          <B4Badge
-            label="OOB"
-            color={fingerprint.vulnerable_to_oob ? "secondary" : "primary"}
-            variant={fingerprint.vulnerable_to_oob ? "filled" : "outlined"}
-          />
-        </Stack>
-
-        {/* Recommended Strategies */}
-        {fingerprint.recommended_families &&
-          fingerprint.recommended_families.length > 0 && (
-            <>
-              <Typography
-                variant="caption"
-                sx={{ color: colors.text.secondary, display: "block", mb: 1 }}
-              >
-                Recommended Strategies (priority order):
-              </Typography>
-              <Stack direction="row" spacing={0.5} flexWrap="wrap" gap={0.5}>
-                {fingerprint.recommended_families.map((family, idx) => (
-                  <B4Badge
-                    key={family}
-                    label={`${idx + 1}. ${familyNames[family] || family}`}
-                    color="secondary"
-                    variant={idx === 0 ? "filled" : "outlined"}
-                  />
-                ))}
-              </Stack>
-            </>
-          )}
-      </Paper>
-    );
   };
 
   return (
@@ -427,38 +284,25 @@ export const DiscoveryRunner = () => {
                 <Typography variant="body2" color="text.secondary">
                   {suite.current_phase && (
                     <B4Badge
-                      icon={
-                        suite.current_phase === "fingerprint" ? (
-                          <FingerprintIcon />
-                        ) : undefined
-                      }
                       label={phaseNames[suite.current_phase]}
                       size="small"
-                      color={
-                        suite.current_phase === "fingerprint"
-                          ? "primary"
-                          : "secondary"
-                      }
+                      color="primary"
                       sx={{ mr: 2 }}
                     />
                   )}
-                  {suite.current_phase === "fingerprint"
-                    ? "Analyzing DPI system..."
-                    : suite.current_phase === "dns_detection"
+                  {suite.current_phase === "dns_detection"
                     ? "Checking DNS..."
                     : `${suite.completed_checks} of ${suite.total_checks} checks`}
                 </Typography>
               </Box>
-              {suite.current_phase !== "fingerprint" &&
-                suite.current_phase !== "dns_detection" && (
-                  <Typography variant="body2" color="text.secondary">
-                    {isNaN(progress) ? "0" : progress.toFixed(0)}%
-                  </Typography>
-                )}
+              {suite.current_phase !== "dns_detection" && (
+                <Typography variant="body2" color="text.secondary">
+                  {isNaN(progress) ? "0" : progress.toFixed(0)}%
+                </Typography>
+              )}
             </Box>
             <LinearProgress
               variant={
-                suite.current_phase === "fingerprint" ||
                 suite.current_phase === "dns_detection"
                   ? "indeterminate"
                   : "determinate"
@@ -480,23 +324,6 @@ export const DiscoveryRunner = () => {
 
       {/* Discovery Log Panel */}
       <DiscoveryLogPanel running={running} />
-
-      {/* Fingerprint Results - Show as soon as available */}
-      {suite?.fingerprint && suite.fingerprint.type !== "none" && (
-        <FingerprintDisplay fingerprint={suite.fingerprint} />
-      )}
-
-      {/* No DPI Alert */}
-      {suite?.fingerprint && suite.fingerprint.type === "none" && (
-        <B4Alert
-          severity="success"
-          icon={<FingerprintIcon />}
-          sx={{ bgcolor: colors.accent.secondary }}
-        >
-          <strong>No DPI Detected!</strong> The domain appears to be accessible
-          without any bypass techniques.
-        </B4Alert>
-      )}
 
       {suite?.domain_discovery_results &&
         Object.keys(suite.domain_discovery_results).length > 0 && (
@@ -711,12 +538,6 @@ export const DiscoveryRunner = () => {
                     {/* Expanded Details */}
                     <Collapse in={isExpanded}>
                       <Box sx={{ p: 3 }}>
-                        {domainResult.fingerprint && (
-                          <FingerprintDisplay
-                            fingerprint={domainResult.fingerprint}
-                          />
-                        )}
-
                         <Divider
                           sx={{ my: 2, borderColor: colors.border.default }}
                         />

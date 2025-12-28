@@ -20,45 +20,12 @@ export type StrategyFamily =
   | "mutation";
 
 export type DiscoveryPhase =
-  | "fingerprint"
   | "baseline"
   | "strategy_detection"
   | "optimization"
   | "dns_detection"
   | "combination";
 
-export type DPIType =
-  | "unknown"
-  | "tspu"
-  | "sandvine"
-  | "huawei"
-  | "allot"
-  | "fortigate"
-  | "none";
-
-export type BlockingMethod =
-  | "rst_inject"
-  | "timeout"
-  | "redirect"
-  | "content_inject"
-  | "tls_alert"
-  | "none";
-
-export interface DPIFingerprint {
-  type: DPIType;
-  blocking_method: BlockingMethod;
-  inspection_depth: string;
-  rst_latency_ms: number;
-  dpi_hop_count: number;
-  is_inline: boolean;
-  confidence: number;
-  optimal_ttl: number;
-  vulnerable_to_ttl: boolean;
-  vulnerable_to_frag: boolean;
-  vulnerable_to_desync: boolean;
-  vulnerable_to_oob: boolean;
-  recommended_families: StrategyFamily[];
-}
 export interface DomainPresetResult {
   preset_name: string;
   family?: StrategyFamily;
@@ -80,7 +47,6 @@ export interface DiscoveryResult {
   results: Record<string, DomainPresetResult>;
   baseline_speed?: number;
   improvement?: number;
-  fingerprint?: DPIFingerprint;
 }
 
 export interface DiscoverySuite {
@@ -92,7 +58,6 @@ export interface DiscoverySuite {
   completed_checks: number;
   current_phase?: DiscoveryPhase;
   domain_discovery_results?: Record<string, DiscoveryResult>;
-  fingerprint?: DPIFingerprint;
 }
 
 export interface DiscoveryResponse {

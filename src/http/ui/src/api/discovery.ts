@@ -9,6 +9,4 @@ export const discoveryApi = {
   cancel: (id: string) => apiDelete(`/api/discovery/cancel/${id}`),
   addPresetAsSet: (preset: B4SetConfig) =>
     apiPost<B4SetConfig>("/api/discovery/add", preset),
-  fingerprint: (domain: string) =>
-    apiPost<{ domain: string }>("/api/discovery/fingerprint", { domain }),
 };

@@ -48,7 +48,6 @@ type DiscoverySuite struct {
 	// Detected working payload(s)
 	workingPayloads []PayloadTestResult
 	bestPayload     int
-	baselineFailed  bool
 
 	dnsResult *DNSDiscoveryResult
 }
@@ -116,20 +115,6 @@ func (ds *DiscoverySuite) RunDiscovery() {
 
 	log.DiscoveryLogf("Starting discovery for domain: %s", ds.Domain)
 
-	ds.setPhase(PhaseFingerprint)
-	fingerprint := ds.runFingerprinting()
-	ds.domainResult.Fingerprint = fingerprint
-
-	if fingerprint != nil {
-		log.DiscoveryLogf("DPI Fingerprint: %s (confidence: %d%%)", fingerprint.Type, fingerprint.Confidence)
-		if fingerprint.BlockingMethod != BlockingNone {
-			log.DiscoveryLogf("  Blocking method: %s", fingerprint.BlockingMethod)
-		}
-		if fingerprint.OptimalTTL > 0 {
-			log.DiscoveryLogf("  Optimal TTL: %d", fingerprint.OptimalTTL)
-		}
-	}
-
 	ds.setPhase(PhaseDNS)
 	dnsResult := ds.runDNSDiscovery()
 	ds.domainResult.DNSResult = dnsResult
@@ -154,42 +139,7 @@ func (ds *DiscoverySuite) RunDiscovery() {
 		ds.dnsResult = dnsResult
 	}
 
-	if fingerprint != nil && fingerprint.Type == DPITypeNone {
-		log.DiscoveryLogf("Fingerprint suggests no DPI for %s - verifying with download test", ds.Domain)
-
-		baselinePreset := GetPhase1Presets()[0] // no-bypass preset
-		baselineResult := ds.testPreset(baselinePreset)
-		ds.storeResult(baselinePreset, baselineResult)
-
-		if baselineResult.Status == CheckStatusComplete {
-			dnsNeeded := dnsResult != nil && dnsResult.IsPoisoned && dnsResult.hasWorkingConfig()
-			if dnsNeeded {
-				log.DiscoveryLogf("Verified: TCP works for %s (%.2f KB/s) but DNS bypass required", ds.Domain, baselineResult.Speed/1024)
-				ds.domainResult.BestPreset = "dns-only"
-			} else {
-				log.DiscoveryLogf("Verified: no DPI detected for %s (%.2f KB/s)", ds.Domain, baselineResult.Speed/1024)
-				ds.domainResult.BestPreset = "no-bypass"
-			}
-			ds.domainResult.BestSpeed = baselineResult.Speed
-			ds.domainResult.BestSuccess = true
-			ds.restoreConfig()
-			ds.finalize()
-			return
-		}
-
-		log.DiscoveryLogf("Fingerprint said no DPI but download failed: %s - continuing discovery", baselineResult.Error)
-		fingerprint.Type = DPITypeUnknown
-		fingerprint.BlockingMethod = BlockingTimeout
-		ds.domainResult.Fingerprint = fingerprint
-	}
-
 	phase1Presets := GetPhase1Presets()
-	if fingerprint != nil && len(fingerprint.RecommendedFamilies) > 0 {
-		phase1Presets = FilterPresetsByFingerprint(phase1Presets, fingerprint)
-		for i := range phase1Presets {
-			ApplyFingerprintToPreset(&phase1Presets[i], fingerprint)
-		}
-	}
 
 	ds.CheckSuite.mu.Lock()
 	ds.TotalChecks = len(phase1Presets)
@@ -220,7 +170,6 @@ func (ds *DiscoverySuite) RunDiscovery() {
 		}
 
 		log.DiscoveryLogf("TCP works for %s but DNS bypass required - testing minimal preset", ds.Domain)
-		ds.baselineFailed = false
 	}
 
 	if len(workingFamilies) == 0 {
@@ -257,23 +206,6 @@ func (ds *DiscoverySuite) RunDiscovery() {
 	ds.logDiscoverySummary()
 }
 
-func (ds *DiscoverySuite) runFingerprinting() *DPIFingerprint {
-	log.Infof("Phase 0: DPI Fingerprinting for %s", ds.Domain)
-
-	prober := NewDPIProber(ds.Domain, ds.cfg.System.Checker.ReferenceDomain, time.Duration(ds.cfg.System.Checker.DiscoveryTimeoutSec)*time.Second)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	fingerprint := prober.Fingerprint(ctx)
-
-	ds.CheckSuite.mu.Lock()
-	ds.Fingerprint = fingerprint
-	ds.CheckSuite.mu.Unlock()
-
-	return fingerprint
-}
-
 func (ds *DiscoverySuite) runPhase1(presets []ConfigPreset) ([]StrategyFamily, float64, bool) {
 	var workingFamilies []StrategyFamily
 	var baselineSpeed float64
@@ -288,8 +220,6 @@ func (ds *DiscoverySuite) runPhase1(presets []ConfigPreset) ([]StrategyFamily, f
 		baselineSpeed = baselineResult.Speed
 		return workingFamilies, baselineSpeed, true
 	}
-
-	ds.baselineFailed = true
 
 	ds.detectWorkingPayloads(presets)
 
@@ -534,11 +464,7 @@ func (ds *DiscoverySuite) optimizeFakeSNI() ConfigPreset {
 		Config: base,
 	}
 
-	var ttlHint uint8
-	if ds.Fingerprint != nil && ds.Fingerprint.OptimalTTL > 0 {
-		ttlHint = ds.Fingerprint.OptimalTTL
-	}
-	optimalTTL, speed := ds.findOptimalTTL(basePreset, ttlHint)
+	optimalTTL, speed := ds.findOptimalTTL(basePreset, 0)
 	if optimalTTL == 0 {
 		log.DiscoveryLogf("  No working TTL found for FakeSNI")
 		return basePreset
@@ -589,9 +515,6 @@ func (ds *DiscoverySuite) optimizeTCPFrag() ConfigPreset {
 	base.Faking.SNI = true
 
 	base.Faking.TTL = 8
-	if ds.Fingerprint != nil && ds.Fingerprint.OptimalTTL > 0 {
-		base.Faking.TTL = ds.Fingerprint.OptimalTTL
-	}
 
 	base.Faking.Strategy = "pastseq"
 	base.Faking.SNIType = ds.bestPayload
@@ -639,9 +562,7 @@ func (ds *DiscoverySuite) optimizeTLSRec() ConfigPreset {
 	base.Fragmentation.Strategy = "tls"
 	base.Faking.SNI = true
 	base.Faking.TTL = 8
-	if ds.Fingerprint != nil && ds.Fingerprint.OptimalTTL > 0 {
-		base.Faking.TTL = ds.Fingerprint.OptimalTTL
-	}
+
 	base.Faking.Strategy = "pastseq"
 	base.Faking.SNIType = ds.bestPayload
 
@@ -988,23 +909,6 @@ func (ds *DiscoverySuite) fetchWithTimeoutUsingIP(timeout time.Duration, ip stri
 
 	if duration.Seconds() > 0 {
 		result.Speed = float64(bytesRead) / duration.Seconds()
-	}
-
-	if !ds.baselineFailed {
-		if result.Speed < MIN_SPEED_FOR_SUCCESS {
-			result.Status = CheckStatusFailed
-			result.Error = fmt.Sprintf("too slow: %.0f B/s (need %d B/s)", result.Speed, MIN_SPEED_FOR_SUCCESS)
-			return result
-		}
-		if ds.networkBaseline > 0 {
-			minRelativeSpeed := ds.networkBaseline * 0.3
-			if result.Speed < minRelativeSpeed {
-				result.Status = CheckStatusFailed
-				result.Error = fmt.Sprintf("too slow relative to baseline: %.0f B/s (need 30%% of %.0f B/s)",
-					result.Speed, ds.networkBaseline)
-				return result
-			}
-		}
 	}
 
 	result.Status = CheckStatusComplete
