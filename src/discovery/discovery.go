@@ -31,7 +31,7 @@ const (
 	FailureUnknown      FailureMode = "unknown"
 )
 
-func NewDiscoverySuite(input string, pool *nfq.Pool) *DiscoverySuite {
+func NewDiscoverySuite(input string, pool *nfq.Pool, skipDNS bool) *DiscoverySuite {
 
 	suite := NewCheckSuite(input)
 	return &DiscoverySuite{
@@ -43,6 +43,7 @@ func NewDiscoverySuite(input string, pool *nfq.Pool) *DiscoverySuite {
 		},
 		workingPayloads: []PayloadTestResult{},
 		bestPayload:     config.FakePayloadDefault1, // default
+		skipDNS:         skipDNS,
 	}
 }
 
@@ -94,28 +95,33 @@ func (ds *DiscoverySuite) RunDiscovery() {
 
 	log.DiscoveryLogf("Starting discovery for domain: %s", ds.Domain)
 
-	ds.setPhase(PhaseDNS)
-	dnsResult := ds.runDNSDiscovery()
-	ds.domainResult.DNSResult = dnsResult
+	var dnsResult *DNSDiscoveryResult
+	if ds.skipDNS {
+		log.DiscoveryLogf("Skipping DNS discovery (user requested)")
+	} else {
+		ds.setPhase(PhaseDNS)
+		dnsResult = ds.runDNSDiscovery()
+		ds.domainResult.DNSResult = dnsResult
 
-	if dnsResult != nil && len(dnsResult.ExpectedIPs) > 0 {
-		ds.dnsResult = dnsResult
-		log.DiscoveryLogf("Stored %d target IPs for preset testing: %v", len(dnsResult.ExpectedIPs), dnsResult.ExpectedIPs)
-	}
-
-	if dnsResult != nil && dnsResult.IsPoisoned {
-		if dnsResult.hasWorkingConfig() {
-			log.DiscoveryLogf("DNS poisoned - applying discovered DNS bypass for TCP testing")
-			ds.applyDNSConfig(dnsResult)
-		} else if len(dnsResult.ExpectedIPs) > 0 {
-			log.DiscoveryLogf("DNS poisoned, no bypass - using direct IPs: %v", dnsResult.ExpectedIPs)
-		} else {
-			log.DiscoveryLogf("DNS poisoned but no expected IP known - discovery may fail")
+		if dnsResult != nil && len(dnsResult.ExpectedIPs) > 0 {
+			ds.dnsResult = dnsResult
+			log.DiscoveryLogf("Stored %d target IPs for preset testing: %v", len(dnsResult.ExpectedIPs), dnsResult.ExpectedIPs)
 		}
-	}
 
-	if dnsResult != nil && len(dnsResult.ExpectedIPs) > 0 {
-		ds.dnsResult = dnsResult
+		if dnsResult != nil && dnsResult.IsPoisoned {
+			if dnsResult.hasWorkingConfig() {
+				log.DiscoveryLogf("DNS poisoned - applying discovered DNS bypass for TCP testing")
+				ds.applyDNSConfig(dnsResult)
+			} else if len(dnsResult.ExpectedIPs) > 0 {
+				log.DiscoveryLogf("DNS poisoned, no bypass - using direct IPs: %v", dnsResult.ExpectedIPs)
+			} else {
+				log.DiscoveryLogf("DNS poisoned but no expected IP known - discovery may fail")
+			}
+		}
+
+		if dnsResult != nil && len(dnsResult.ExpectedIPs) > 0 {
+			ds.dnsResult = dnsResult
+		}
 	}
 
 	phase1Presets := GetPhase1Presets()

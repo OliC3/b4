@@ -54,7 +54,10 @@ export function useDiscovery() {
   }, [suiteId, discoveryRunning]);
 
   const startDiscovery = useCallback(
-    async (url: string): Promise<ApiResponse<void>> => {
+    async (
+      url: string,
+      skipDNS: boolean = false
+    ): Promise<ApiResponse<void>> => {
       setError(null);
       setSuite(null);
       setDiscoveryRunning(true);
@@ -63,7 +66,7 @@ export function useDiscovery() {
         if (!url.startsWith("http://") && !url.startsWith("https://")) {
           url = `https://${url}`;
         }
-        const res = await discoveryApi.start(url);
+        const res = await discoveryApi.start(url, skipDNS);
         setSuiteId(res.id); // assuming start returns { id: string }
         return { success: true };
       } catch (e) {

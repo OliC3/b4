@@ -2,6 +2,7 @@ package handler
 
 type DiscoveryRequest struct {
 	CheckURL string `json:"check_url,omitempty"`
+	SkipDNS  bool   `json:"skip_dns,omitempty"`
 }
 
 type DiscoveryResponse struct {

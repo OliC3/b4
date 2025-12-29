@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import {
   Box,
   Button,
@@ -26,7 +26,13 @@ import {
 import { colors } from "@design";
 import { B4SetConfig } from "@models/config";
 import { DiscoveryAddDialog } from "./AddDialog";
-import { B4Alert, B4Badge, B4Section, B4TextField } from "@b4.elements";
+import {
+  B4Alert,
+  B4Badge,
+  B4Section,
+  B4Switch,
+  B4TextField,
+} from "@b4.elements";
 import { useSnackbar } from "@context/SnackbarProvider";
 import { DiscoveryLogPanel } from "./LogPanel";
 import {
@@ -88,6 +94,9 @@ export const DiscoveryRunner = () => {
   );
 
   const [checkUrl, setCheckUrl] = useState("");
+  const [skipDNS, setSkipDNS] = useState(() => {
+    return localStorage.getItem("b4_discovery_skipdns") === "true";
+  });
   const [addingPreset, setAddingPreset] = useState(false);
   const [addDialog, setAddDialog] = useState<{
     open: boolean;
@@ -101,6 +110,10 @@ export const DiscoveryRunner = () => {
     ? (suite.completed_checks / suite.total_checks) * 100
     : 0;
   const isReconnecting = suiteId && running && !suite;
+
+  useEffect(() => {
+    localStorage.setItem("b4_discovery_skipdns", String(skipDNS));
+  }, [skipDNS]);
 
   const handleAddStrategy = (domain: string, result: DomainPresetResult) => {
     setAddDialog({
@@ -127,9 +140,9 @@ export const DiscoveryRunner = () => {
       if (e.key !== "Enter") return;
       if (!checkUrl.trim()) return;
       e.preventDefault();
-      void startDiscovery(checkUrl);
+      void startDiscovery(checkUrl, skipDNS);
     },
-    [checkUrl, startDiscovery]
+    [checkUrl, skipDNS, startDiscovery]
   );
 
   const handleAddNew = async (name: string, domain: string) => {
@@ -221,48 +234,58 @@ export const DiscoveryRunner = () => {
             disabled={running || !!isReconnecting}
             helperText="Enter a domain or full URL to discover optimal bypass configuration"
           />
-          {!running && !suite && (
-            <Button
-              startIcon={<StartIcon />}
-              variant="contained"
-              onClick={() => {
-                void startDiscovery(checkUrl);
-              }}
-              disabled={!checkUrl.trim()}
-              sx={{
-                whiteSpace: "nowrap",
-              }}
-            >
-              Start Discovery
-            </Button>
-          )}
-          {(running || isReconnecting) && (
-            <Button
-              variant="outlined"
-              color="secondary"
-              startIcon={<StopIcon />}
-              onClick={() => {
-                void cancelDiscovery();
-              }}
-              sx={{
-                whiteSpace: "nowrap",
-              }}
-            >
-              Cancel
-            </Button>
-          )}
-          {suite && !running && (
-            <Button
-              variant="outlined"
-              startIcon={<RefreshIcon />}
-              onClick={handleReset}
-              sx={{
-                whiteSpace: "nowrap",
-              }}
-            >
-              New Discovery
-            </Button>
-          )}
+          <Box sx={{ flexShrink: 0 }}>
+            <B4Switch
+              checked={skipDNS}
+              onChange={setSkipDNS}
+              disabled={running || !!isReconnecting}
+              label="Skip DNS"
+            />
+          </Box>
+          <Box sx={{ flexShrink: 0 }}>
+            {!running && !suite && (
+              <Button
+                startIcon={<StartIcon />}
+                variant="contained"
+                onClick={() => {
+                  void startDiscovery(checkUrl, skipDNS);
+                }}
+                disabled={!checkUrl.trim()}
+                sx={{
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Start Discovery
+              </Button>
+            )}
+            {(running || isReconnecting) && (
+              <Button
+                variant="outlined"
+                color="secondary"
+                startIcon={<StopIcon />}
+                onClick={() => {
+                  void cancelDiscovery();
+                }}
+                sx={{
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Cancel
+              </Button>
+            )}
+            {suite && !running && (
+              <Button
+                variant="outlined"
+                startIcon={<RefreshIcon />}
+                onClick={handleReset}
+                sx={{
+                  whiteSpace: "nowrap",
+                }}
+              >
+                New Discovery
+              </Button>
+            )}
+          </Box>
         </Box>
         {error && <B4Alert severity="error">{error}</B4Alert>}
 

@@ -153,4 +153,5 @@ type DiscoverySuite struct {
 	bestPayload     int
 
 	dnsResult *DNSDiscoveryResult
+	skipDNS   bool
 }

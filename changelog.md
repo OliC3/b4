@@ -2,6 +2,7 @@
 
 ## [1.27.3] - 2025-12-28
 
+- ADDED: Added `Skip DNS` toggle in `Discovery` - useful when you know DNS isn't blocked and want faster results.
 - IMPROVED: `Discovery` now finds the optimal TTL for a specific network, instead of using a fixed value.
 - IMPROVED: Removed DPI fingerprinting phase from discovery - it was slow and unreliable. Discovery now starts testing bypass strategies immediately, making the process faster.
 - FIXED: DPI bypass not working for LAN devices on routers using `nftables` (e.g., OpenWrt with fw4 firewall).
