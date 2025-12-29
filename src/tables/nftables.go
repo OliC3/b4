@@ -144,7 +144,7 @@ func (n *NFTablesManager) Apply() error {
 	markAccept := fmt.Sprintf("0x%x", cfg.Queue.Mark)
 
 	if cfg.Queue.Devices.Enabled && len(cfg.Queue.Devices.Mac) > 0 {
-		if err := n.createChain("forward", "forward", -1, "accept"); err != nil {
+		if err := n.createChain("forward", "forward", -150, "accept"); err != nil {
 			return err
 		}
 
@@ -169,7 +169,7 @@ func (n *NFTablesManager) Apply() error {
 			}
 		}
 	} else {
-		if err := n.createChain("postrouting", "postrouting", 149, "accept"); err != nil {
+		if err := n.createChain("postrouting", "postrouting", -150, "accept"); err != nil {
 			return err
 		}
 		if err := n.addRule("postrouting", "jump", nftChainName); err != nil {
