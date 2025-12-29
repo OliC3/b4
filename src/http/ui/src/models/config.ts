@@ -164,6 +164,7 @@ export interface TcpConfig {
 
 export interface WebServerConfig {
   port: number;
+  bind_address: string;
 }
 export interface TableConfig {
   monitor_interval: number;

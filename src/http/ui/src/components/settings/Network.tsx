@@ -4,7 +4,10 @@ import { B4Config } from "@models/config";
 
 interface NetworkSettingsProps {
   config: B4Config;
-  onChange: (field: string, value: number) => void;
+  onChange: (
+    field: string,
+    value: number | boolean | string | string[]
+  ) => void;
 }
 
 export const NetworkSettings = ({ config, onChange }: NetworkSettingsProps) => (
@@ -36,6 +39,26 @@ export const NetworkSettings = ({ config, onChange }: NetworkSettingsProps) => (
         max={16}
         step={1}
         helperText="Number of worker threads for processing packets simultaneously (default 4)"
+      />
+    </B4FormGroup>
+    <B4FormGroup label="Web Server" columns={2}>
+      <B4TextField
+        label="Bind Address"
+        value={config.system.web_server.bind_address || "0.0.0.0"}
+        onChange={(e) =>
+          onChange("system.web_server.bind_address", e.target.value)
+        }
+        placeholder="0.0.0.0"
+        helperText="IP to bind (0.0.0.0 = all, 127.0.0.1 = localhost only, :: = all IPv6)"
+      />
+      <B4TextField
+        label="Port"
+        type="number"
+        value={config.system.web_server.port}
+        onChange={(e) =>
+          onChange("system.web_server.port", Number(e.target.value))
+        }
+        helperText="Web UI port (default: 7000)"
       />
     </B4FormGroup>
   </B4Section>

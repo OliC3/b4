@@ -128,8 +128,9 @@ type TablesConfig struct {
 }
 
 type WebServerConfig struct {
-	Port      int  `json:"port" bson:"port"`
-	IsEnabled bool `json:"-" bson:"-"`
+	Port        int    `json:"port" bson:"port"`
+	BindAddress string `json:"bind_address" bson:"bind_address"`
+	IsEnabled   bool   `json:"-" bson:"-"`
 }
 
 type DiscoveryConfig struct {
