@@ -154,7 +154,7 @@ var DefaultConfig = Config{
 
 		WebServer: WebServerConfig{
 			Port:        7000,
-			BindAddress: "0.0.0.0",
+			BindAddress: "127.0.0.1",
 			IsEnabled:   true,
 		},
 

@@ -36,6 +36,7 @@ var migrationRegistry = map[int]MigrationFunc{
 func migrateV13to14(c *Config) error {
 	log.Tracef("Migration v13->v14: Adding fragmentation strategy field")
 
+	c.System.WebServer.BindAddress = DefaultConfig.System.WebServer.BindAddress
 	for _, set := range c.Sets {
 		set.Fragmentation.Combo.DecoySNIs = DefaultSetConfig.Fragmentation.Combo.DecoySNIs
 		set.Fragmentation.Combo.DecoyEnabled = DefaultSetConfig.Fragmentation.Combo.DecoyEnabled
