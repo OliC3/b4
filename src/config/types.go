@@ -2,9 +2,9 @@ package config
 
 import "github.com/daniellavrushin/b4/log"
 
-const (
-	ConfigOff = "off"
+const ConfigOff = "off"
 
+const (
 	FakePayloadRandom = iota
 	FakePayloadCustom
 	FakePayloadDefault1
@@ -46,6 +46,7 @@ type TCPConfig struct {
 	DesyncMode  string `json:"desync_mode" bson:"desync_mode"`   // "off" "rst", "fin", "ack", "combo", "full"
 	DesyncTTL   uint8  `json:"desync_ttl" bson:"desync_ttl"`     // TTL for desync packets
 	DesyncCount int    `json:"desync_count" bson:"desync_count"` // Number of desync packets
+	PostDesync  bool   `json:"post_desync" bson:"post_desync"`   // Send fake RST after ClientHello
 
 }
 

@@ -324,6 +324,28 @@ export const TcpSettings = ({ config, main, onChange }: TcpSettingsProps) => {
             }
           />
         </Grid>
+        <Grid size={{ xs: 12, md: 6 }}>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={config.tcp.post_desync || false}
+                onChange={(e) => onChange("tcp.post_desync", e.target.checked)}
+                color="primary"
+              />
+            }
+            label={
+              <Box>
+                <Typography variant="body1" fontWeight={500}>
+                  Post-ClientHello RST
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Send fake RST after ClientHello to evict connection from DPI
+                  tracking table
+                </Typography>
+              </Box>
+            }
+          />
+        </Grid>
       </Grid>
     </B4Section>
   );

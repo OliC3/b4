@@ -612,6 +612,11 @@ func (w *Worker) dropAndInjectTCP(cfg *config.SetConfig, raw []byte, dst net.IP)
 	default:
 		w.sendComboFragments(cfg, raw, dst)
 	}
+
+	if cfg.TCP.PostDesync {
+		time.Sleep(50 * time.Millisecond)
+		w.sendPostDesyncRST(cfg, raw, ipHdrLen, dst)
+	}
 }
 
 func (w *Worker) sendTCPFragments(cfg *config.SetConfig, packet []byte, dst net.IP) {

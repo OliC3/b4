@@ -86,12 +86,10 @@ func (w *Worker) dropAndInjectTCPv6(cfg *config.SetConfig, raw []byte, dst net.I
 		w.ManipulateWindowIPv6(cfg, raw, dst)
 	}
 
-	// Inject fake SNI packets if configured
 	if cfg.Faking.SNI && cfg.Faking.SNISeqLength > 0 {
 		w.sendFakeSNISequencev6(cfg, raw, dst)
 	}
 
-	// Apply fragmentation strategy
 	switch cfg.Fragmentation.Strategy {
 	case "tcp":
 		w.sendTCPSegmentsv6(cfg, raw, dst)
@@ -115,6 +113,11 @@ func (w *Worker) dropAndInjectTCPv6(cfg *config.SetConfig, raw []byte, dst net.I
 		_ = w.sock.SendIPv6(raw, dst)
 	default:
 		w.sendComboFragmentsV6(cfg, raw, dst)
+	}
+
+	if cfg.TCP.PostDesync {
+		time.Sleep(50 * time.Millisecond)
+		w.sendPostDesyncRSTv6(cfg, raw, dst)
 	}
 }
 

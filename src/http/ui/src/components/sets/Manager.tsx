@@ -234,6 +234,7 @@ export const SetsManager = ({ config, onRefresh }: SetsManagerProps) => {
         desync_mode: "off",
         desync_ttl: 3,
         desync_count: 3,
+        post_desync: false,
       } as B4SetConfig["tcp"],
       udp: {
         mode: "fake",

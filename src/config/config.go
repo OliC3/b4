@@ -51,6 +51,7 @@ var DefaultSetConfig = SetConfig{
 		DesyncMode:  ConfigOff,
 		DesyncTTL:   3,
 		DesyncCount: 3,
+		PostDesync:  false,
 	},
 
 	DNS: DNSConfig{

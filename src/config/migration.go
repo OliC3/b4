@@ -38,6 +38,7 @@ func migrateV13to14(c *Config) error {
 
 	c.System.WebServer.BindAddress = DefaultConfig.System.WebServer.BindAddress
 	for _, set := range c.Sets {
+		set.TCP.PostDesync = DefaultSetConfig.TCP.PostDesync
 		set.Fragmentation.Combo.DecoySNIs = DefaultSetConfig.Fragmentation.Combo.DecoySNIs
 		set.Fragmentation.Combo.DecoyEnabled = DefaultSetConfig.Fragmentation.Combo.DecoyEnabled
 	}

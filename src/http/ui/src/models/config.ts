@@ -158,6 +158,7 @@ export interface TcpConfig {
   desync_mode: DesyncMode;
   desync_ttl: number;
   desync_count: number;
+  post_desync: boolean;
 }
 
 export interface WebServerConfig {

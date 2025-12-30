@@ -5,6 +5,7 @@
 - ADDED: Web server bind address setting - control which network interface the web UI listens on (e.g., `127.0.0.1` for localhost-only access, `0.0.0.0` for all interfaces). Supports `IPv6`.
 - ADDED: Added `Skip DNS` toggle in `Discovery` - useful when you know DNS isn't blocked and want faster results.
 - ADDED: Support for `MIPS` devices with soft float.
+- ADDED: Post-ClientHello RST injection - sends fake connection reset after the initial handshake to confuse DPI systems that track connection state. Enable with `Post-ClientHello RST` toggle in TCP Desync Set settings.
 - IMPROVED: `Discovery` now finds the optimal TTL for a specific network, instead of using a fixed value.
 - IMPROVED: Removed DPI fingerprinting phase from discovery - it was slow and unreliable. Discovery now starts testing bypass strategies immediately, making the process faster.
 - IMPROVED: Shutdown behavior - B4 now waits up to 5 seconds for in-flight packet operations to complete gracefully before terminating.
