@@ -523,36 +523,6 @@ func GetPhase1Presets() []ConfigPreset {
 			},
 		},
 
-		// 15. Overlap - overlapping segments with fake SNI first
-		{
-			Name:        "overlap-basic",
-			Description: "Overlapping TCP segments exploiting reassembly",
-			Family:      FamilyOverlap,
-			Phase:       PhaseStrategy,
-			Priority:    15,
-			Config: config.SetConfig{
-				TCP: config.TCPConfig{
-					ConnBytesLimit: 19,
-					Seg2Delay:      10,
-				},
-				UDP: defaultUDP(),
-				Fragmentation: config.FragmentationConfig{
-					Strategy: "overlap",
-					Overlap: config.OverlapFragConfig{
-						FakeSNIs: []string{"ya.ru", "vk.com", "mail.ru"},
-					},
-				},
-				Faking: config.FakingConfig{
-					SNI:          true,
-					TTL:          8,
-					Strategy:     "pastseq",
-					SeqOffset:    10000,
-					SNISeqLength: 1,
-					SNIType:      config.FakePayloadDefault1,
-				},
-			},
-		},
-
 		// 16. ExtSplit - split before SNI extension
 		{
 			Name:        "extsplit-basic",
@@ -949,33 +919,6 @@ func GetPhase2Presets(family StrategyFamily) []ConfigPreset {
 					DesyncCount:    15,
 				}),
 			})
-		}
-
-	case FamilyOverlap:
-		fakeSNISets := [][]string{
-			{"ya.ru", "vk.com", "mail.ru"},
-			{"google.ru", "yandex.ru"},
-			{"ok.ru", "rambler.ru", "ria.ru"},
-		}
-		delays := []int{5, 10, 20, 50}
-		for i, snis := range fakeSNISets {
-			for _, d := range delays {
-				presets = append(presets, ConfigPreset{
-					Name:     formatName("overlap-set%d-delay%d", i+1, d),
-					Family:   FamilyOverlap,
-					Phase:    PhaseOptimize,
-					Priority: d + i*100,
-					Config: withTCP(withFragmentation(base, config.FragmentationConfig{
-						Strategy: "overlap",
-						Overlap: config.OverlapFragConfig{
-							FakeSNIs: snis,
-						},
-					}), config.TCPConfig{
-						ConnBytesLimit: 19,
-						Seg2Delay:      d,
-					}),
-				})
-			}
 		}
 
 	case FamilyExtSplit:

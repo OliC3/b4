@@ -494,34 +494,6 @@ func (w *Worker) dropAndInjectTCP(cfg *config.SetConfig, raw []byte, dst net.IP)
 		return
 	}
 
-	// limit := cfg.TCP.ConnBytesLimit
-	// if limit > 0 {
-	// 	srcPort := binary.BigEndian.Uint16(raw[ipHdrLen : ipHdrLen+2])
-	// 	dstPort := binary.BigEndian.Uint16(raw[ipHdrLen+2 : ipHdrLen+4])
-	// 	connKey := fmt.Sprintf("%d:%d->%s:%d",
-	// 		binary.BigEndian.Uint32(raw[12:16]), srcPort,
-	// 		dst.String(), dstPort)
-
-	// 	now := time.Now().Unix()
-	// 	val, loaded := w.connState.LoadOrStore(connKey, &ConnState{PacketCount: 1, LastSeen: now})
-	// 	state := val.(*ConnState)
-
-	// 	var count int32
-	// 	if loaded {
-	// 		count = atomic.AddInt32(&state.PacketCount, 1)
-	// 		atomic.StoreInt64(&state.LastSeen, now)
-	// 	} else {
-	// 		count = 1
-	// 	}
-
-	// 	log.Tracef("CONNTRACK: key=%s count=%d limit=%d", connKey, count, limit)
-
-	// 	if int(count) >= limit {
-	// 		_ = w.sock.SendIPv4(raw, dst)
-	// 		return
-	// 	}
-	// }
-
 	if cfg.Faking.SNIMutation.Mode != config.ConfigOff {
 		raw = w.MutateClientHello(cfg, raw, dst)
 	}
@@ -550,8 +522,6 @@ func (w *Worker) dropAndInjectTCP(cfg *config.SetConfig, raw []byte, dst net.IP)
 		w.sendTLSFragments(cfg, raw, dst)
 	case "disorder":
 		w.sendDisorderFragments(cfg, raw, dst)
-	case "overlap":
-		w.sendOverlapFragments(cfg, raw, dst)
 	case "extsplit":
 		w.sendExtSplitFragments(cfg, raw, dst)
 	case "firstbyte":
@@ -841,15 +811,6 @@ func (w *Worker) gc(cfg *config.Config) {
 		case <-w.ctx.Done():
 			return
 		case <-t.C:
-
-			// now := time.Now().Unix()
-			// w.connState.Range(func(key, val interface{}) bool {
-			// 	state := val.(*ConnState)
-			// 	if now-atomic.LoadInt64(&state.LastSeen) > 60 {
-			// 		w.connState.Delete(key)
-			// 	}
-			// 	return true
-			// })
 
 			if cfg.System.WebServer.IsEnabled {
 				mtcs := metrics.GetMetricsCollector()

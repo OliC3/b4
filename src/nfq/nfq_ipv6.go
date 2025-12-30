@@ -73,29 +73,6 @@ func (w *Worker) dropAndInjectTCPv6(cfg *config.SetConfig, raw []byte, dst net.I
 		return
 	}
 
-	// limit := cfg.TCP.ConnBytesLimit
-	// if limit > 0 {
-	// 	srcPort := binary.BigEndian.Uint16(raw[ipv6HdrLen : ipv6HdrLen+2])
-	// 	dstPort := binary.BigEndian.Uint16(raw[ipv6HdrLen+2 : ipv6HdrLen+4])
-	// 	connKey := fmt.Sprintf("v6:%x:%d->%s:%d",
-	// 		raw[20:24], srcPort,
-	// 		dst.String(), dstPort)
-
-	// 	now := time.Now().Unix()
-	// 	val, loaded := w.connState.LoadOrStore(connKey, &ConnState{PacketCount: 1, LastSeen: now})
-	// 	state := val.(*ConnState)
-
-	// 	if loaded {
-	// 		count := atomic.AddInt32(&state.PacketCount, 1)
-	// 		atomic.StoreInt64(&state.LastSeen, now)
-
-	// 		if int(count) > limit {
-	// 			_ = w.sock.SendIPv6(raw, dst)
-	// 			return
-	// 		}
-	// 	}
-	// }
-
 	if cfg.Faking.SNIMutation.Mode != config.ConfigOff {
 		raw = w.MutateClientHelloV6(cfg, raw, dst)
 	}
@@ -126,8 +103,6 @@ func (w *Worker) dropAndInjectTCPv6(cfg *config.SetConfig, raw []byte, dst net.I
 		w.sendTLSFragmentsV6(cfg, raw, dst)
 	case "disorder":
 		w.sendDisorderFragmentsV6(cfg, raw, dst)
-	case "overlap":
-		w.sendOverlapFragmentsV6(cfg, raw, dst)
 	case "extsplit":
 		w.sendExtSplitFragmentsV6(cfg, raw, dst)
 	case "firstbyte":

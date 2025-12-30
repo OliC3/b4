@@ -60,7 +60,7 @@ var DefaultSetConfig = SetConfig{
 	},
 
 	Fragmentation: FragmentationConfig{
-		Strategy:          "tcp", // "tcp", "ip", "tls", "oob", "none", "combo", "hybrid", "disorder", "overlap", "extsplit", "firstbyte"
+		Strategy:          "tcp", // "tcp", "ip", "tls", "oob", "none", "combo", "hybrid", "disorder",  "extsplit", "firstbyte"
 		ReverseOrder:      true,
 		MiddleSNI:         true,
 		SNIPosition:       1,
@@ -77,16 +77,14 @@ var DefaultSetConfig = SetConfig{
 			ShuffleMode:    "full",
 			FirstDelayMs:   30,
 			JitterMaxUs:    1000,
+			DecoyEnabled:   false,
+			DecoySNIs:      []string{"ya.ru", "vk.com", "mail.ru", "dzen.ru"},
 		},
 
 		Disorder: DisorderFragConfig{
 			ShuffleMode: "full",
 			MinJitterUs: 1000,
 			MaxJitterUs: 3000,
-		},
-
-		Overlap: OverlapFragConfig{
-			FakeSNIs: []string{"ya.ru", "vk.com", "max.ru", "dzen.ru", "mail.ru"},
 		},
 	},
 
@@ -188,7 +186,7 @@ func NewSetConfig() SetConfig {
 	cfg.Targets.IPs = append(make([]string, 0), DefaultSetConfig.Targets.IPs...)
 	cfg.Targets.GeoSiteCategories = append(make([]string, 0), DefaultSetConfig.Targets.GeoSiteCategories...)
 	cfg.Targets.GeoIpCategories = append(make([]string, 0), DefaultSetConfig.Targets.GeoIpCategories...)
-	cfg.Fragmentation.Overlap.FakeSNIs = append(make([]string, 0), DefaultSetConfig.Fragmentation.Overlap.FakeSNIs...)
+	cfg.Fragmentation.Combo.DecoySNIs = append(make([]string, 0), DefaultSetConfig.Fragmentation.Combo.DecoySNIs...)
 	cfg.Fragmentation.SeqOverlapPattern = append(make([]string, 0), DefaultSetConfig.Fragmentation.SeqOverlapPattern...)
 	cfg.Faking.TLSMod = append(make([]string, 0), DefaultSetConfig.Faking.TLSMod...)
 

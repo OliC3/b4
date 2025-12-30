@@ -11,7 +11,6 @@ import {
 import { B4SetConfig, FragmentationStrategy } from "@models/config";
 import { ComboSettings } from "./frags/Combo";
 import { DisorderSettings } from "./frags/Disorder";
-import { OverlapSettings } from "./frags/Overlap";
 import { ExtSplitSettings } from "./frags/ExtSplit";
 import { FirstByteSettings } from "./frags/FirstByte";
 import { TcpIpSettings } from "./frags/TcpIp";
@@ -29,7 +28,6 @@ const fragmentationOptions: { label: string; value: FragmentationStrategy }[] =
     { label: "Combo", value: "combo" },
     { label: "Hybrid", value: "hybrid" },
     { label: "Disorder", value: "disorder" },
-    { label: "Overlap", value: "overlap" },
     { label: "Extension Split", value: "extsplit" },
     { label: "First-Byte Desync", value: "firstbyte" },
     { label: "TCP Segmentation", value: "tcp" },
@@ -87,10 +85,6 @@ export const FragmentationSettings = ({
 
         {strategy === "disorder" && (
           <DisorderSettings config={config} onChange={onChange} />
-        )}
-
-        {strategy === "overlap" && (
-          <OverlapSettings config={config} onChange={onChange} />
         )}
         {strategy === "extsplit" && <ExtSplitSettings />}
 

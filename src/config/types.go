@@ -62,7 +62,7 @@ type UDPConfig struct {
 }
 
 type FragmentationConfig struct {
-	Strategy     string `json:"strategy" bson:"strategy"` // Values: "tcp", "ip", "oob", "tls", "disorder", "overlap", "extsplit", "firstbyte", "combo", "none"
+	Strategy     string `json:"strategy" bson:"strategy"` // Values: "tcp", "ip", "oob", "tls", "disorder",  "extsplit", "firstbyte", "combo", "none"
 	ReverseOrder bool   `json:"reverse_order" bson:"reverse_order"`
 
 	TLSRecordPosition int `json:"tlsrec_pos" bson:"tlsrec_pos"` // where to split TLS record
@@ -78,7 +78,6 @@ type FragmentationConfig struct {
 
 	Combo    ComboFragConfig    `json:"combo" bson:"combo"`
 	Disorder DisorderFragConfig `json:"disorder" bson:"disorder"`
-	Overlap  OverlapFragConfig  `json:"overlap" bson:"overlap"`
 }
 
 type FakingConfig struct {
@@ -167,11 +166,13 @@ type GeoDatConfig struct {
 }
 
 type ComboFragConfig struct {
-	FirstByteSplit bool   `json:"first_byte_split" bson:"first_byte_split"`
-	ExtensionSplit bool   `json:"extension_split" bson:"extension_split"`
-	ShuffleMode    string `json:"shuffle_mode" bson:"shuffle_mode"` // "middle", "full", "reverse"
-	FirstDelayMs   int    `json:"first_delay_ms" bson:"first_delay_ms"`
-	JitterMaxUs    int    `json:"jitter_max_us" bson:"jitter_max_us"`
+	FirstByteSplit bool     `json:"first_byte_split" bson:"first_byte_split"`
+	ExtensionSplit bool     `json:"extension_split" bson:"extension_split"`
+	ShuffleMode    string   `json:"shuffle_mode" bson:"shuffle_mode"` // "middle", "full", "reverse"
+	FirstDelayMs   int      `json:"first_delay_ms" bson:"first_delay_ms"`
+	JitterMaxUs    int      `json:"jitter_max_us" bson:"jitter_max_us"`
+	DecoyEnabled   bool     `json:"decoy_enabled" bson:"decoy_enabled"`
+	DecoySNIs      []string `json:"decoy_snis" bson:"decoy_snis"`
 }
 
 type DisorderFragConfig struct {
@@ -184,8 +185,4 @@ type DNSConfig struct {
 	Enabled       bool   `json:"enabled" bson:"enabled"`
 	TargetDNS     string `json:"target_dns" bson:"target_dns"`
 	FragmentQuery bool   `json:"fragment_query" bson:"fragment_query"`
-}
-
-type OverlapFragConfig struct {
-	FakeSNIs []string `json:"fake_snis" bson:"fake_snis"`
 }

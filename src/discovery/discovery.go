@@ -135,26 +135,40 @@ func (ds *DiscoverySuite) RunDiscovery() {
 	ds.determineBest(baselineSpeed)
 
 	if baselineWorks {
-		dnsNeeded := dnsResult != nil && dnsResult.IsPoisoned && dnsResult.hasWorkingConfig()
+		phase1Presets := GetPhase1Presets()
+		if len(phase1Presets) > 1 {
+			provenPreset := phase1Presets[1]
+			verifyResult := ds.testPresetWithBestPayload(provenPreset)
+			ds.storeResult(provenPreset, verifyResult)
 
-		if !dnsNeeded {
-			ds.CheckSuite.mu.Lock()
-			ds.TotalChecks = 1
-			ds.domainResult.BestPreset = "no-bypass"
-			ds.domainResult.BestSpeed = baselineSpeed
-			ds.domainResult.BestSuccess = true
-			ds.domainResult.BaselineSpeed = baselineSpeed
-			ds.domainResult.Improvement = 0
-			ds.CheckSuite.mu.Unlock()
-
-			log.DiscoveryLogf("Baseline succeeded for %s - no DPI bypass needed", ds.Domain)
-			ds.restoreConfig()
-			ds.finalize()
-			ds.logDiscoverySummary()
-			return
+			if verifyResult.Status == CheckStatusComplete && verifyResult.Speed > baselineSpeed*1.5 {
+				log.DiscoveryLogf("  Bypass 50%%+ faster than baseline - DPI bypass needed")
+				baselineWorks = false
+			}
 		}
 
-		log.DiscoveryLogf("TCP works for %s but DNS bypass required - testing minimal preset", ds.Domain)
+		if baselineWorks {
+			dnsNeeded := dnsResult != nil && dnsResult.IsPoisoned && dnsResult.hasWorkingConfig()
+
+			if !dnsNeeded {
+				ds.CheckSuite.mu.Lock()
+				ds.TotalChecks = 2
+				ds.domainResult.BestPreset = "no-bypass"
+				ds.domainResult.BestSpeed = baselineSpeed
+				ds.domainResult.BestSuccess = true
+				ds.domainResult.BaselineSpeed = baselineSpeed
+				ds.domainResult.Improvement = 0
+				ds.CheckSuite.mu.Unlock()
+
+				log.DiscoveryLogf("Verified: no DPI bypass needed for %s", ds.Domain)
+				ds.restoreConfig()
+				ds.finalize()
+				ds.logDiscoverySummary()
+				return
+			}
+
+			log.DiscoveryLogf("TCP works for %s but DNS bypass required - testing minimal preset", ds.Domain)
+		}
 	}
 
 	if len(workingFamilies) == 0 {
@@ -203,7 +217,7 @@ func (ds *DiscoverySuite) runPhase1(presets []ConfigPreset) ([]StrategyFamily, f
 	baselineWorks := baselineResult.Status == CheckStatusComplete
 	if baselineWorks {
 		baselineSpeed = baselineResult.Speed
-		return workingFamilies, baselineSpeed, true
+		log.DiscoveryLogf("  Baseline succeeded - verifying with bypass test...")
 	}
 
 	ds.detectWorkingPayloads(presets)
@@ -996,6 +1010,7 @@ func (ds *DiscoverySuite) buildTestConfig(preset ConfigPreset) *config.Config {
 
 	if preset.Name == "no-bypass" {
 		mainSet.Enabled = false
+		mainSet.DNS = config.DNSConfig{}
 	} else {
 		mainSet.Enabled = true
 		mainSet.Targets.SNIDomains = []string{ds.Domain}
@@ -1010,20 +1025,21 @@ func (ds *DiscoverySuite) buildTestConfig(preset ConfigPreset) *config.Config {
 				mainSet.Targets.GeoSiteCategories = geosite
 			}
 
-			if len(ds.cfg.System.Checker.ReferenceDNS) > 0 {
-				mainSet.DNS = config.DNSConfig{
-					Enabled:       true,
-					TargetDNS:     ds.cfg.System.Checker.ReferenceDNS[0],
-					FragmentQuery: true,
-				}
-			} else {
-				mainSet.DNS = config.DNSConfig{
-					Enabled:       true,
-					TargetDNS:     "9.9.9.9",
-					FragmentQuery: true,
+			if !ds.skipDNS {
+				if len(ds.cfg.System.Checker.ReferenceDNS) > 0 {
+					mainSet.DNS = config.DNSConfig{
+						Enabled:       true,
+						TargetDNS:     ds.cfg.System.Checker.ReferenceDNS[0],
+						FragmentQuery: true,
+					}
+				} else {
+					mainSet.DNS = config.DNSConfig{
+						Enabled:       true,
+						TargetDNS:     "9.9.9.9",
+						FragmentQuery: true,
+					}
 				}
 			}
-
 			tempCfg := &config.Config{System: ds.cfg.System}
 			domains, ips, err := tempCfg.GetTargetsForSet(&mainSet)
 			if err != nil {

@@ -29,6 +29,18 @@ var migrationRegistry = map[int]MigrationFunc{
 	10: migrateV10to11,
 	11: migrateV11to12,
 	12: migrateV12to13,
+	13: migrateV13to14,
+}
+
+// Migration: v13 -> v14 (add fragmentation strategy field)
+func migrateV13to14(c *Config) error {
+	log.Tracef("Migration v13->v14: Adding fragmentation strategy field")
+
+	for _, set := range c.Sets {
+		set.Fragmentation.Combo.DecoySNIs = DefaultSetConfig.Fragmentation.Combo.DecoySNIs
+		set.Fragmentation.Combo.DecoyEnabled = DefaultSetConfig.Fragmentation.Combo.DecoyEnabled
+	}
+	return nil
 }
 
 // Migration: v12 -> v13 (add payload file/data to faking config)
@@ -107,7 +119,7 @@ func migrateV5to6(c *Config) error {
 	for _, set := range c.Sets {
 		set.Fragmentation.Combo = DefaultSetConfig.Fragmentation.Combo
 		set.Fragmentation.Disorder = DefaultSetConfig.Fragmentation.Disorder
-		set.Fragmentation.Overlap = DefaultSetConfig.Fragmentation.Overlap
+		//	set.Fragmentation.Overlap = DefaultSetConfig.Fragmentation.Overlap
 	}
 	return nil
 }

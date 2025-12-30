@@ -267,14 +267,13 @@ export const SetsManager = ({ config, onRefresh }: SetsManagerProps) => {
           shuffle_mode: "middle",
           first_delay_ms: 100,
           jitter_max_us: 2000,
+          decoy_enabled: false,
+          decoy_snis: ["ya.ru", "vk.com", "mail.ru"],
         },
         disorder: {
           shuffle_mode: "full",
           min_jitter_us: 1000,
           max_jitter_us: 3000,
-        },
-        overlap: {
-          fake_snis: [],
         },
       } as B4SetConfig["fragmentation"],
       faking: {

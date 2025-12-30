@@ -47,7 +47,6 @@ export type FragmentationStrategy =
   | "tls"
   | "oob"
   | "disorder"
-  | "overlap"
   | "extsplit"
   | "firstbyte"
   | "combo"
@@ -67,7 +66,6 @@ export interface FragmentationConfig {
 
   combo: ComboFragConfig;
   disorder: DisorderFragConfig;
-  overlap: OverlapFragConfig;
 }
 
 export enum LogLevel {
@@ -218,6 +216,8 @@ export interface ComboFragConfig {
   shuffle_mode: ComboShuffleMode;
   first_delay_ms: number;
   jitter_max_us: number;
+  decoy_enabled: boolean;
+  decoy_snis: string[];
 }
 
 export type DisorderShuffleMode = "full" | "reverse";
@@ -225,10 +225,6 @@ export interface DisorderFragConfig {
   shuffle_mode: DisorderShuffleMode;
   min_jitter_us: number;
   max_jitter_us: number;
-}
-
-export interface OverlapFragConfig {
-  fake_snis: string[];
 }
 
 export interface DNSConfig {

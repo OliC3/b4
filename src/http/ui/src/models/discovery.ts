@@ -11,7 +11,6 @@ export type StrategyFamily =
   | "desync"
   | "delay"
   | "disorder"
-  | "overlap"
   | "extsplit"
   | "firstbyte"
   | "combo"

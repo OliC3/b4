@@ -56,7 +56,6 @@ const familyNames: Record<StrategyFamily, string> = {
   desync: "Desync",
   delay: "Delay",
   disorder: "Disorder",
-  overlap: "Overlap",
   extsplit: "Extension Split",
   firstbyte: "First-Byte",
   combo: "Combo",
