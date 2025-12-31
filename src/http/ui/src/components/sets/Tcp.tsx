@@ -59,9 +59,9 @@ const windowModeDescriptions: Record<WindowMode, string> = {
 export const TcpSettings = ({ config, main, onChange }: TcpSettingsProps) => {
   const [newWinValue, setNewWinValue] = useState("");
 
-  const winValues = config.tcp.win_values || [0, 1460, 8192, 65535];
-  const showWinValues = ["oscillate", "random"].includes(config.tcp.win_mode);
-  const isDesyncEnabled = config.tcp.desync_mode !== "off";
+  const winValues = config.tcp.win.values || [0, 1460, 8192, 65535];
+  const showWinValues = ["oscillate", "random"].includes(config.tcp.win.mode);
+  const isDesyncEnabled = config.tcp.desync.mode !== "off";
 
   const handleAddWinValue = () => {
     const val = parseInt(newWinValue, 10);
@@ -209,10 +209,10 @@ export const TcpSettings = ({ config, main, onChange }: TcpSettingsProps) => {
         <Grid size={{ xs: 12, md: 6 }}>
           <B4Select
             label="Window Mode"
-            value={config.tcp.win_mode}
+            value={config.tcp.win.mode}
             options={windowModeOptions}
-            onChange={(e) => onChange("tcp.win_mode", e.target.value as string)}
-            helperText={windowModeDescriptions[config.tcp.win_mode]}
+            onChange={(e) => onChange("tcp.win.mode", e.target.value as string)}
+            helperText={windowModeDescriptions[config.tcp.win.mode]}
           />
         </Grid>
 
@@ -222,7 +222,7 @@ export const TcpSettings = ({ config, main, onChange }: TcpSettingsProps) => {
               Custom Window Values
             </Typography>
             <Typography variant="caption" color="text.secondary" gutterBottom>
-              {config.tcp.win_mode === "oscillate"
+              {config.tcp.win.mode === "oscillate"
                 ? "Packets will cycle through these values in order"
                 : "Random values will be picked from this list"}
             </Typography>
@@ -282,20 +282,20 @@ export const TcpSettings = ({ config, main, onChange }: TcpSettingsProps) => {
         <Grid size={{ xs: 12, md: 4 }}>
           <B4Select
             label="Desync Mode"
-            value={config.tcp.desync_mode}
+            value={config.tcp.desync.mode}
             options={desyncModeOptions}
             onChange={(e) =>
-              onChange("tcp.desync_mode", e.target.value as string)
+              onChange("tcp.desync.mode", e.target.value as string)
             }
-            helperText={desyncModeDescriptions[config.tcp.desync_mode]}
+            helperText={desyncModeDescriptions[config.tcp.desync.mode]}
           />
         </Grid>
 
         <Grid size={{ xs: 12, md: 4 }}>
           <B4Slider
             label="Desync TTL"
-            value={config.tcp.desync_ttl}
-            onChange={(value: number) => onChange("tcp.desync_ttl", value)}
+            value={config.tcp.desync.ttl}
+            onChange={(value: number) => onChange("tcp.desync.ttl", value)}
             min={1}
             max={50}
             step={1}
@@ -311,8 +311,8 @@ export const TcpSettings = ({ config, main, onChange }: TcpSettingsProps) => {
         <Grid size={{ xs: 12, md: 4 }}>
           <B4Slider
             label="Desync Packet Count"
-            value={config.tcp.desync_count}
-            onChange={(value: number) => onChange("tcp.desync_count", value)}
+            value={config.tcp.desync.count}
+            onChange={(value: number) => onChange("tcp.desync.count", value)}
             min={1}
             max={20}
             step={1}
@@ -328,8 +328,10 @@ export const TcpSettings = ({ config, main, onChange }: TcpSettingsProps) => {
           <FormControlLabel
             control={
               <Switch
-                checked={config.tcp.post_desync || false}
-                onChange={(e) => onChange("tcp.post_desync", e.target.checked)}
+                checked={config.tcp.desync.post_desync || false}
+                onChange={(e) =>
+                  onChange("tcp.desync.post_desync", e.target.checked)
+                }
                 color="primary"
               />
             }

@@ -152,12 +152,19 @@ export interface TcpConfig {
   syn_ttl: number;
   drop_sack: boolean;
 
-  win_mode: WindowMode;
-  win_values: number[];
+  desync: DesyncConfig;
+  win: WinConfig;
+}
 
-  desync_mode: DesyncMode;
-  desync_ttl: number;
-  desync_count: number;
+export interface WinConfig {
+  mode: WindowMode;
+  values: number[];
+}
+
+export interface DesyncConfig {
+  mode: DesyncMode;
+  ttl: number;
+  count: number;
   post_desync: boolean;
 }
 

@@ -45,13 +45,17 @@ var DefaultSetConfig = SetConfig{
 
 		DropSACK: false,
 
-		WinMode:   ConfigOff,
-		WinValues: []int{0, 1460, 8192, 65535},
+		Win: WinConfig{
+			Mode:   ConfigOff,
+			Values: []int{0, 1460, 8192, 65535},
+		},
 
-		DesyncMode:  ConfigOff,
-		DesyncTTL:   3,
-		DesyncCount: 3,
-		PostDesync:  false,
+		Desync: DesyncConfig{
+			Mode:       ConfigOff,
+			TTL:        3,
+			Count:      3,
+			PostDesync: false,
+		},
 	},
 
 	DNS: DNSConfig{
@@ -181,7 +185,7 @@ var DefaultConfig = Config{
 func NewSetConfig() SetConfig {
 	cfg := DefaultSetConfig
 
-	cfg.TCP.WinValues = append(make([]int, 0), DefaultSetConfig.TCP.WinValues...)
+	cfg.TCP.Win.Values = append(make([]int, 0), DefaultSetConfig.TCP.Win.Values...)
 	cfg.Faking.SNIMutation.FakeSNIs = append(make([]string, 0), DefaultSetConfig.Faking.SNIMutation.FakeSNIs...)
 	cfg.Targets.SNIDomains = append(make([]string, 0), DefaultSetConfig.Targets.SNIDomains...)
 	cfg.Targets.IPs = append(make([]string, 0), DefaultSetConfig.Targets.IPs...)

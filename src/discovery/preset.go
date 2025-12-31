@@ -122,9 +122,12 @@ func GetPhase1Presets() []ConfigPreset {
 					ConnBytesLimit: 19,
 					Seg2Delay:      20,
 					DropSACK:       true,
-					DesyncMode:     "ack",
-					DesyncTTL:      3,
-					DesyncCount:    15,
+					Desync: config.DesyncConfig{
+						Mode:       "ack",
+						TTL:        3,
+						Count:      15,
+						PostDesync: false,
+					},
 				},
 				UDP: config.UDPConfig{
 					Mode:           "fake",
@@ -333,9 +336,12 @@ func GetPhase1Presets() []ConfigPreset {
 			Config: config.SetConfig{
 				TCP: config.TCPConfig{
 					ConnBytesLimit: 19,
-					DesyncMode:     "rst",
-					DesyncTTL:      3,
-					DesyncCount:    3,
+					Desync: config.DesyncConfig{
+						Mode:       "rst",
+						TTL:        3,
+						Count:      3,
+						PostDesync: false,
+					},
 				},
 				UDP: defaultUDP(),
 				Fragmentation: config.FragmentationConfig{
@@ -364,9 +370,12 @@ func GetPhase1Presets() []ConfigPreset {
 			Config: config.SetConfig{
 				TCP: config.TCPConfig{
 					ConnBytesLimit: 19,
-					DesyncMode:     "combo",
-					DesyncTTL:      2,
-					DesyncCount:    5,
+					Desync: config.DesyncConfig{
+						Mode:       "combo",
+						TTL:        2,
+						Count:      5,
+						PostDesync: false,
+					},
 				},
 				UDP: defaultUDP(),
 				Fragmentation: config.FragmentationConfig{
@@ -523,9 +532,11 @@ func GetPhase1Presets() []ConfigPreset {
 			Config: config.SetConfig{
 				TCP: config.TCPConfig{
 					ConnBytesLimit: 19,
-					DesyncMode:     "full",
-					DesyncTTL:      3,
-					DesyncCount:    5,
+					Desync: config.DesyncConfig{
+						Mode:  "full",
+						TTL:   3,
+						Count: 5,
+					},
 				},
 				UDP: defaultUDP(),
 				Fragmentation: config.FragmentationConfig{
@@ -679,9 +690,12 @@ func GetPhase1Presets() []ConfigPreset {
 				TCP: config.TCPConfig{
 					ConnBytesLimit: 19,
 					Seg2Delay:      10,
-					DesyncMode:     "ack",
-					DesyncTTL:      3,
-					DesyncCount:    3,
+
+					Desync: config.DesyncConfig{
+						Mode:  "ack",
+						TTL:   3,
+						Count: 3,
+					},
 				},
 				UDP: config.UDPConfig{
 					Mode:           "fake",
@@ -967,9 +981,12 @@ func GetPhase2Presets(family StrategyFamily) []ConfigPreset {
 					ConnBytesLimit: 19,
 					Seg2Delay:      20,
 					DropSACK:       true,
-					DesyncMode:     "ack",
-					DesyncTTL:      3,
-					DesyncCount:    15,
+
+					Desync: config.DesyncConfig{
+						Mode:  "ack",
+						TTL:   3,
+						Count: 15,
+					},
 				}),
 			})
 		}
@@ -1216,9 +1233,12 @@ func GetPhase2Presets(family StrategyFamily) []ConfigPreset {
 							ReverseOrder: true,
 						}), config.TCPConfig{
 							ConnBytesLimit: 19,
-							DesyncMode:     mode,
-							DesyncTTL:      ttl,
-							DesyncCount:    count,
+
+							Desync: config.DesyncConfig{
+								Mode:  mode,
+								TTL:   ttl,
+								Count: count,
+							},
 						}),
 					})
 				}

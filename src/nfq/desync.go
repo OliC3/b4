@@ -19,14 +19,14 @@ type DesyncAttacker struct {
 
 func NewDesyncAttacker(cfg *config.TCPConfig) *DesyncAttacker {
 	return &DesyncAttacker{
-		mode:  cfg.DesyncMode,
-		ttl:   cfg.DesyncTTL,
-		count: cfg.DesyncCount,
+		mode:  cfg.Desync.Mode,
+		ttl:   cfg.Desync.TTL,
+		count: cfg.Desync.Count,
 	}
 }
 
 func (w *Worker) ExecuteDesyncIPv4(cfg *config.SetConfig, packet []byte, dst net.IP) {
-	if cfg.TCP.DesyncMode == config.ConfigOff {
+	if cfg.TCP.Desync.Mode == config.ConfigOff {
 		return
 	}
 
@@ -284,7 +284,7 @@ func (w *Worker) sendDesyncFull(packet []byte, dst net.IP, da *DesyncAttacker) {
 }
 
 func (w *Worker) ExecuteDesyncIPv6(cfg *config.SetConfig, packet []byte, dst net.IP) {
-	if cfg.TCP.DesyncMode == config.ConfigOff {
+	if cfg.TCP.Desync.Mode == config.ConfigOff {
 		return
 	}
 

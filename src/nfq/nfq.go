@@ -575,12 +575,12 @@ func (w *Worker) dropAndInjectTCP(cfg *config.SetConfig, raw []byte, dst net.IP)
 		raw = w.MutateClientHello(cfg, raw, dst)
 	}
 
-	if cfg.TCP.DesyncMode != config.ConfigOff {
+	if cfg.TCP.Desync.Mode != config.ConfigOff {
 		w.ExecuteDesyncIPv4(cfg, raw, dst)
 		time.Sleep(time.Duration(cfg.TCP.Seg2Delay) * time.Millisecond)
 	}
 
-	if cfg.TCP.WinMode != config.ConfigOff {
+	if cfg.TCP.Win.Mode != config.ConfigOff {
 		w.ManipulateWindowIPv4(cfg, raw, dst)
 	}
 
@@ -613,7 +613,7 @@ func (w *Worker) dropAndInjectTCP(cfg *config.SetConfig, raw []byte, dst net.IP)
 		w.sendComboFragments(cfg, raw, dst)
 	}
 
-	if cfg.TCP.PostDesync {
+	if cfg.TCP.Desync.PostDesync {
 		time.Sleep(50 * time.Millisecond)
 		w.sendPostDesyncRST(cfg, raw, ipHdrLen, dst)
 	}

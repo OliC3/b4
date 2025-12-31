@@ -40,14 +40,28 @@ type TCPConfig struct {
 	SynTTL         uint8 `json:"syn_ttl" bson:"syn_ttl"`
 	DropSACK       bool  `json:"drop_sack" bson:"drop_sack"`
 
-	WinMode   string `json:"win_mode" bson:"win_mode"`     // "off", "oscillate", "zero", "random", "escalate"
-	WinValues []int  `json:"win_values" bson:"win_values"` // Custom window values
+	Incoming IncomingConfig `json:"incoming" bson:"incoming"`
+	Desync   DesyncConfig   `json:"desync" bson:"desync"`
+	Win      WinConfig      `json:"win" bson:"win"`
+}
 
-	DesyncMode  string `json:"desync_mode" bson:"desync_mode"`   // "off" "rst", "fin", "ack", "combo", "full"
-	DesyncTTL   uint8  `json:"desync_ttl" bson:"desync_ttl"`     // TTL for desync packets
-	DesyncCount int    `json:"desync_count" bson:"desync_count"` // Number of desync packets
-	PostDesync  bool   `json:"post_desync" bson:"post_desync"`   // Send fake RST after ClientHello
+type WinConfig struct {
+	Mode   string `json:"mode" bson:"mode"`     // "off", "oscillate", "zero", "random", "escalate"
+	Values []int  `json:"values" bson:"values"` // Custom window values
+}
 
+type DesyncConfig struct {
+	Mode       string `json:"mode" bson:"mode"`               // "off" "rst", "fin", "ack", "combo", "full"
+	TTL        uint8  `json:"ttl" bson:"ttl"`                 // TTL for desync packets
+	Count      int    `json:"count" bson:"count"`             // Number of desync packets
+	PostDesync bool   `json:"post_desync" bson:"post_desync"` // Send fake RST after ClientHello
+}
+
+type IncomingConfig struct {
+	Mode        string `json:"mode"` // "off", "fake", "reset"
+	ThresholdKB int    `json:"threshold_kb"`
+	FakeTTL     uint8  `json:"fake_ttl"`
+	FakeCount   int    `json:"fake_count"`
 }
 
 type UDPConfig struct {

@@ -284,8 +284,8 @@ func (set *SetConfig) ResetToDefaults() {
 	set.Name = name
 	set.Targets = targets
 
-	set.TCP.WinValues = make([]int, len(defaultSet.TCP.WinValues))
-	copy(set.TCP.WinValues, defaultSet.TCP.WinValues)
+	set.TCP.Win.Values = make([]int, len(defaultSet.TCP.Win.Values))
+	copy(set.TCP.Win.Values, defaultSet.TCP.Win.Values)
 
 	set.Faking.SNIMutation.FakeSNIs = make([]string, len(defaultSet.Faking.SNIMutation.FakeSNIs))
 	copy(set.Faking.SNIMutation.FakeSNIs, defaultSet.Faking.SNIMutation.FakeSNIs)

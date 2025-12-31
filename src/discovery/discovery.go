@@ -994,11 +994,11 @@ func (ds *DiscoverySuite) buildTestConfig(preset ConfigPreset) *config.Config {
 	mainSet.Faking = preset.Config.Faking
 	mainSet.DNS = ds.cfg.MainSet.DNS
 
-	if mainSet.TCP.WinMode == "" {
-		mainSet.TCP.WinMode = config.ConfigOff
+	if mainSet.TCP.Win.Mode == "" {
+		mainSet.TCP.Win.Mode = config.ConfigOff
 	}
-	if mainSet.TCP.DesyncMode == "" {
-		mainSet.TCP.DesyncMode = config.ConfigOff
+	if mainSet.TCP.Desync.Mode == "" {
+		mainSet.TCP.Desync.Mode = config.ConfigOff
 	}
 
 	if mainSet.Faking.SNIMutation.Mode == "" {

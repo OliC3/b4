@@ -77,12 +77,12 @@ func (w *Worker) dropAndInjectTCPv6(cfg *config.SetConfig, raw []byte, dst net.I
 		raw = w.MutateClientHelloV6(cfg, raw, dst)
 	}
 
-	if cfg.TCP.DesyncMode != config.ConfigOff {
+	if cfg.TCP.Desync.Mode != config.ConfigOff {
 		w.ExecuteDesyncIPv6(cfg, raw, dst)
 		time.Sleep(time.Duration(cfg.TCP.Seg2Delay) * time.Millisecond)
 	}
 
-	if cfg.TCP.WinMode != config.ConfigOff {
+	if cfg.TCP.Win.Mode != config.ConfigOff {
 		w.ManipulateWindowIPv6(cfg, raw, dst)
 	}
 
@@ -115,7 +115,7 @@ func (w *Worker) dropAndInjectTCPv6(cfg *config.SetConfig, raw []byte, dst net.I
 		w.sendComboFragmentsV6(cfg, raw, dst)
 	}
 
-	if cfg.TCP.PostDesync {
+	if cfg.TCP.Desync.PostDesync {
 		time.Sleep(50 * time.Millisecond)
 		w.sendPostDesyncRSTv6(cfg, raw, dst)
 	}
