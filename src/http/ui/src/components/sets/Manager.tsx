@@ -231,7 +231,14 @@ export const SetsManager = ({ config, onRefresh }: SetsManagerProps) => {
         drop_sack: false,
         win: { mode: "off", values: [0, 1460, 8192, 65535] },
         desync: { mode: "off", ttl: 3, count: 3, post_desync: false },
-        incoming: { mode: "off", threshold: 14, fake_ttl: 3, fake_count: 3 },
+        incoming: {
+          mode: "off",
+          min: 14,
+          max: 14,
+          fake_ttl: 3,
+          fake_count: 3,
+          strategy: "badsum",
+        },
       } as B4SetConfig["tcp"],
       udp: {
         mode: "fake",

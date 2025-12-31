@@ -58,10 +58,12 @@ type DesyncConfig struct {
 }
 
 type IncomingConfig struct {
-	Mode      string `json:"mode"` // "off", "fake", "reset"
-	Threshold int    `json:"threshold"`
-	FakeTTL   uint8  `json:"fake_ttl"`
-	FakeCount int    `json:"fake_count"`
+	Mode      string `json:"mode" bson:"mode"` // "off", "fake", "reset", "fin", "desync"
+	Min       int    `json:"min" bson:"min"`   // threshold min (KB)
+	Max       int    `json:"max" bson:"max"`   // threshold max (KB), if 0 or eq MinKB -> uses MinKB
+	FakeTTL   uint8  `json:"fake_ttl" bson:"fake_ttl"`
+	FakeCount int    `json:"fake_count" bson:"fake_count"`
+	Strategy  string `json:"strategy" bson:"strategy"` // "badsum", "badseq", "badack",  "rand", "all"
 }
 
 type UDPConfig struct {

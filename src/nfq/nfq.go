@@ -209,39 +209,9 @@ func (w *Worker) Start() error {
 				dport := binary.BigEndian.Uint16(tcp[2:4])
 
 				if sport == HTTPSPort {
-					incomingSet := connState.GetSetForIncoming(dstStr, dport, srcStr, sport)
-
-					if incomingSet != nil && incomingSet.TCP.Incoming.Mode != config.ConfigOff {
-						payloadLen := len(payload)
-
-						if payloadLen > 0 {
-							switch incomingSet.TCP.Incoming.Mode {
-							case "fake":
-								if v == IPv4 {
-									w.InjectFakeIncoming(incomingSet, raw, ihl, src)
-								} else {
-									w.InjectFakeIncomingV6(incomingSet, raw, src)
-								}
-
-							case "reset":
-								if connState.TrackIncomingBytes(dstStr, dport, srcStr, sport, uint64(payloadLen), incomingSet.TCP.Incoming.Threshold) {
-									log.Tracef("Incoming: %dKB threshold for %s:%d, injecting reset", incomingSet.TCP.Incoming.Threshold, srcStr, sport)
-									if v == IPv4 {
-										w.InjectResetIncoming(incomingSet, raw, ihl, src)
-									} else {
-										w.InjectResetIncomingV6(incomingSet, raw, src)
-									}
-								}
-							}
-						}
-					}
-
-					// Always accept incoming
-					if err := q.SetVerdict(id, nfqueue.NfAccept); err != nil {
-						log.Tracef("failed to accept incoming packet %d: %v", id, err)
-					}
-					return 0
+					return w.HandleIncoming(q, id, v, raw, ihl, src, dstStr, dport, srcStr, sport, payload)
 				}
+
 				tcpFlags := tcp[13]
 				isSyn := (tcpFlags & 0x02) != 0 // SYN flag
 				isAck := (tcpFlags & 0x10) != 0 // ACK flag
@@ -932,6 +902,7 @@ func (w *Worker) gc(cfg *config.Config) {
 		case <-w.ctx.Done():
 			return
 		case <-t.C:
+			connState.Cleanup()
 
 			if cfg.System.WebServer.IsEnabled {
 				mtcs := metrics.GetMetricsCollector()

@@ -144,7 +144,9 @@ export interface DiscoveryConfig {
 
 export type WindowMode = "off" | "oscillate" | "zero" | "random" | "escalate";
 export type DesyncMode = "off" | "rst" | "fin" | "ack" | "combo" | "full";
-export type IncomingMode = "off" | "fake" | "reset";
+export type IncomingMode = "off" | "fake" | "reset" | "fin" | "desync";
+export type IncomingStrategy = "badsum" | "badseq" | "badack" | "rand" | "all";
+
 export interface TcpConfig {
   conn_bytes_limit: number;
   seg2delay: number;
@@ -160,9 +162,11 @@ export interface TcpConfig {
 
 export interface IncomingConfig {
   mode: IncomingMode;
-  threshold: number;
+  min: number;
+  max: number;
   fake_ttl: number;
   fake_count: number;
+  strategy: IncomingStrategy;
 }
 
 export interface WinConfig {

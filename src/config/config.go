@@ -41,7 +41,7 @@ var DefaultSetConfig = SetConfig{
 		Seg2Delay:      0,
 		SynFake:        false,
 		SynFakeLen:     0,
-		SynTTL:         3,
+		SynTTL:         7,
 
 		DropSACK: false,
 
@@ -52,16 +52,18 @@ var DefaultSetConfig = SetConfig{
 
 		Desync: DesyncConfig{
 			Mode:       ConfigOff,
-			TTL:        3,
+			TTL:        7,
 			Count:      3,
 			PostDesync: false,
 		},
 
 		Incoming: IncomingConfig{
 			Mode:      ConfigOff,
-			Threshold: 14,
-			FakeTTL:   3,
+			Min:       14,
+			Max:       14,
+			FakeTTL:   7,
 			FakeCount: 3,
+			Strategy:  "badsum",
 		},
 	},
 
@@ -102,7 +104,7 @@ var DefaultSetConfig = SetConfig{
 
 	Faking: FakingConfig{
 		SNI:           true,
-		TTL:           8,
+		TTL:           7,
 		SNISeqLength:  1,
 		SNIType:       FakePayloadDefault1,
 		CustomPayload: "",
