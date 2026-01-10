@@ -236,9 +236,15 @@ func (manager *IPTablesManager) buildManifest() (Manifest, error) {
 			manager.buildNFQSpec(queueNum, threads)...,
 		)
 
+		synackSpec := append(
+			[]string{"-p", "tcp", "--sport", "443", "--tcp-flags", "SYN,ACK", "SYN,ACK"},
+			manager.buildNFQSpec(queueNum, threads)...,
+		)
+
 		rules = append(rules,
 			Rule{manager: manager, IPT: ipt, Table: "mangle", Chain: "PREROUTING", Action: "I", Spec: dnsResponseSpec},
 			Rule{manager: manager, IPT: ipt, Table: "mangle", Chain: "PREROUTING", Action: "I", Spec: tcpResponseSpec},
+			Rule{manager: manager, IPT: ipt, Table: "mangle", Chain: "PREROUTING", Action: "I", Spec: synackSpec},
 
 			Rule{manager: manager, IPT: ipt, Table: "mangle", Chain: chainName, Action: "A", Spec: tcpSpec},
 			Rule{manager: manager, IPT: ipt, Table: "mangle", Chain: chainName, Action: "A", Spec: dnsSpec},

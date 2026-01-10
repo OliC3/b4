@@ -202,6 +202,28 @@ export const TcpSettings = ({ config, main, onChange }: TcpSettingsProps) => {
           />
         </Grid>
 
+        <Grid size={{ xs: 12, md: 6 }}>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={config.faking.tcp_md5 || false}
+                onChange={(e) => onChange("faking.tcp_md5", e.target.checked)}
+                color="primary"
+              />
+            }
+            label={
+              <Box>
+                <Typography variant="body1" fontWeight={500}>
+                  SYN MD5 Signature
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Send fake SYN with TCP MD5 option before real handshake
+                </Typography>
+              </Box>
+            }
+          />
+        </Grid>
+
         {config.tcp.syn_fake && (
           <>
             <Grid size={{ xs: 12, md: 6 }}>
