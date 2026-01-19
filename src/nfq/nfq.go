@@ -377,7 +377,6 @@ func (w *Worker) Start() error {
 
 				matchedIP := matched
 				matchedQUIC := false
-				matchedLearned := false
 				isSTUN := false
 				host := ""
 				ipTarget := ""
@@ -389,7 +388,6 @@ func (w *Worker) Start() error {
 
 				if !matchedIP {
 					if mLearned, learnedSet, learnedDomain := matcher.MatchLearnedIP(dst); mLearned {
-						matchedLearned = true
 						matchedIP = true
 						matched = true
 						set = learnedSet
@@ -430,7 +428,7 @@ func (w *Worker) Start() error {
 					captureManager.CapturePayload(connKey, host, "quic", payload)
 				}
 
-				shouldHandle := (matchedIP || matchedQUIC || matchedLearned) && !(isSTUN && set.UDP.FilterSTUN)
+				shouldHandle := (matchedIP || matchedQUIC) && !(isSTUN && set.UDP.FilterSTUN)
 
 				matched = shouldHandle
 
