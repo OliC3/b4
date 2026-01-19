@@ -91,6 +91,7 @@ export const DiscoveryRunner = () => {
   const [options, setOptions] = useState<DiscoveryOptions>(() => ({
     skipDNS: localStorage.getItem("b4_discovery_skipdns") === "true",
     payloadFiles: [],
+    validationTries: parseInt(localStorage.getItem("b4_discovery_validation_tries") || "1") || 1,
   }));
 
   useEffect(() => {
@@ -100,6 +101,10 @@ export const DiscoveryRunner = () => {
   useEffect(() => {
     localStorage.setItem("b4_discovery_skipdns", String(options.skipDNS));
   }, [options.skipDNS]);
+
+  useEffect(() => {
+    localStorage.setItem("b4_discovery_validation_tries", String(options.validationTries));
+  }, [options.validationTries]);
   const [checkUrl, setCheckUrl] = useState("");
 
   const [addingPreset, setAddingPreset] = useState(false);
@@ -145,7 +150,7 @@ export const DiscoveryRunner = () => {
       if (e.key !== "Enter") return;
       if (!checkUrl.trim()) return;
       e.preventDefault();
-      void startDiscovery(checkUrl, options.skipDNS, options.payloadFiles);
+      void startDiscovery(checkUrl, options.skipDNS, options.payloadFiles, options.validationTries);
     },
     [checkUrl, options, startDiscovery]
   );
@@ -248,7 +253,8 @@ export const DiscoveryRunner = () => {
                   void startDiscovery(
                     checkUrl,
                     options.skipDNS,
-                    options.payloadFiles
+                    options.payloadFiles,
+                    options.validationTries
                   );
                 }}
                 disabled={!checkUrl.trim()}

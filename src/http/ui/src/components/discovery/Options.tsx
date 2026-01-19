@@ -8,13 +8,20 @@ import {
   Paper,
 } from "@mui/material";
 import { FilterIcon, ExpandIcon, CollapseIcon } from "@b4.icons";
-import { B4Badge, B4FormGroup, B4Switch, B4TextField } from "@b4.elements";
+import {
+  B4Badge,
+  B4FormGroup,
+  B4Slider,
+  B4Switch,
+  B4TextField,
+} from "@b4.elements";
 import { colors } from "@design";
 import { Capture } from "@b4.capture";
 
 export interface DiscoveryOptions {
   skipDNS: boolean;
   payloadFiles: string[];
+  validationTries: number;
 }
 
 interface DiscoveryOptionsPanelProps {
@@ -39,7 +46,10 @@ export const DiscoveryOptionsPanel = ({
   }, [expanded]);
 
   const tlsCaptures = captures.filter((c) => c.protocol === "tls");
-  const hasOptions = options.skipDNS || options.payloadFiles.length > 0;
+  const hasOptions =
+    options.skipDNS ||
+    options.payloadFiles.length > 0 ||
+    options.validationTries > 1;
 
   return (
     <Box
@@ -157,6 +167,20 @@ export const DiscoveryOptionsPanel = ({
                 />
               </Box>
             )}
+            {/* Validation Tries */}
+            <Box>
+              <B4Slider
+                label="Validation Tries"
+                value={options.validationTries}
+                onChange={(value: number) =>
+                  onChange({ ...options, validationTries: value })
+                }
+                min={1}
+                max={5}
+                step={1}
+                helperText="Number of successful connection attempts required to validate a preset"
+              />
+            </Box>
 
             {tlsCaptures.length === 0 && (
               <Typography variant="caption" color="text.secondary">
@@ -177,11 +201,13 @@ export const DiscoveryOptionsPanel = ({
 function getOptionsSummary(options: DiscoveryOptions): string {
   const parts: string[] = [];
   if (options.skipDNS) parts.push("Skip DNS");
+  if (options.validationTries > 1)
+    parts.push(`${options.validationTries} tries`);
   if (options.payloadFiles.length > 0) {
     parts.push(
       `${options.payloadFiles.length} payload${
         options.payloadFiles.length > 1 ? "s" : ""
-      }`
+      }`,
     );
   }
   return parts.join(", ");
